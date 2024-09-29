@@ -9,17 +9,23 @@ import glfw
 import imgui
 import numpy as np
 
-# Vertex Shader (GLSL)
-vertex_shader_src = """
+WIDTH = 1280
+HEIGHT = 720
+
+VERTICES = np.array([[-0.5, -0.5, 0.0],
+                     [ 0.5, -0.5, 0.0],
+                     [ 0.0,  0.5, 0.0]],
+                    dtype=np.float32)
+
+VERTEX_SHADER = """
 #version 330 core
-layout(location = 0) in vec3 aPos;
+layout(location = 0) in vec3 VertexPos;
 void main() {
-    gl_Position = vec4(aPos, 1.0);
+    gl_Position = vec4(VertexPos, 1.0);
 }
 """
 
-# Fragment Shader (GLSL)
-fragment_shader_src = """
+FRAGMENT_SHADER = """
 #version 330 core
 out vec4 FragColor;
 void main() {
@@ -28,67 +34,16 @@ void main() {
 }
 """
 
-def main():
-    imgui.create_context()
-    window = impl_glfw_init()
-    impl = GlfwRenderer(window)
 
-    show_custom_window = True
-
-    values = (1., 1., 1.,)
-
-    VAO, VBO = create_vertices()
-    vertex_shader = create_shader(gl.GL_VERTEX_SHADER, vertex_shader_src)
-    fragment_shader = create_shader(gl.GL_FRAGMENT_SHADER, fragment_shader_src)
-    shader_program = create_program(vertex_shader, fragment_shader)
-    # TODO delete shaders gl.glDeleteShader(fragment_shader)
-
-    while not glfw.window_should_close(window):
-        glfw.poll_events()
-        # impl.process_inputs()
-
-        # imgui.new_frame()
-
-        ######
-
-        # open new window context
-        # imgui.begin("Your first window!", True)
-        # # draw text label inside of current window
-        # imgui.text("Hello world!")
-        # changed, values = imgui.drag_float3("Drag Float", *values,
-        #                                     min_value=0.,
-        #                                     max_value=1.,
-        #                                     change_speed=0.01)
-        # imgui.end()
-
-        ######
-
-        # imgui.render()
-        # imgui.end_frame()
-
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
-        gl.glUseProgram(shader_program)
-        gl.glBindVertexArray(VAO)
-        gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
-
-        # imgui.render()
-        # impl.render(imgui.get_draw_data())
-        glfw.swap_buffers(window)
-
-    # TODO
-    # glDeleteVertexArrays(1, [VAO])
-    # glDeleteBuffers(1, [VBO])
-    # glDeleteProgram(shader_program)
-
-    impl.shutdown()
-    glfw.terminate()
+class ShaderCompileError(RuntimeError):
+	"""shader compile error."""
 
 
-def impl_glfw_init():
-    width, height = 1280, 720
-    window_name = "minimal ImGui/GLFW3 example"
+class ProgramLinkError(RuntimeError):
+	"""program link error."""
 
+
+def init_window(width, height, name):
     if not glfw.init():
         print("Could not initialize OpenGL context")
         sys.exit(1)
@@ -101,7 +56,7 @@ def impl_glfw_init():
     glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
 
     # Create a windowed mode window and its OpenGL context
-    window = glfw.create_window(int(width), int(height), window_name, None, None)
+    window = glfw.create_window(int(width), int(height), name, None, None)
     glfw.make_context_current(window)
 
     if not window:
@@ -112,38 +67,32 @@ def impl_glfw_init():
     return window
 
 
-class ShaderCompileError(RuntimeError):
-	"""shader compile error."""
-
-class ProgramLinkError(RuntimeError):
-
-	"""program link error."""
-
-def create_vertices():
-    # Vertex data (triangle)
-    vertices = np.array([
-        [-0.5, -0.5, 0.0],
-        [ 0.5, -0.5, 0.0],
-        [ 0.0,  0.5, 0.0]
-    ], dtype=np.float32)
-
+def create_vertices(vertices: np.array):
     # Create Vertex Array Object and Vertex Buffer Object
-    VAO = gl.glGenVertexArrays(1)
-    VBO = gl.glGenBuffers(1)
+    vao = gl.glGenVertexArrays(1)
+    vbo = gl.glGenBuffers(1)
 
-    gl.glBindVertexArray(VAO)
+    gl.glBindVertexArray(vao)
 
-    gl.glBindBuffer(gl.GL_ARRAY_BUFFER, VBO)
-    gl.glBufferData(gl.GL_ARRAY_BUFFER, vertices.nbytes, vertices, gl.GL_STATIC_DRAW)
+    gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
+    gl.glBufferData(target=gl.GL_ARRAY_BUFFER,
+                    size=vertices.nbytes,
+                    data=vertices,
+                    usage=gl.GL_STATIC_DRAW)
 
     # Specify the layout of the vertex data
-    gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 3 * 4, gl.ctypes.c_void_p(0))
+    gl.glVertexAttribPointer(index=0,
+                             size=3,
+                             type=gl.GL_FLOAT,
+                             normalized=gl.GL_FALSE,
+                             stride=3 * 4,  # (x, y, z) * sizeof(GL_FLOAT)  # TODO
+                             pointer=gl.ctypes.c_void_p(0))
     gl.glEnableVertexAttribArray(0)
 
     # Unbind the VAO
     gl.glBindVertexArray(0)
 
-    return VAO, VBO
+    return vao, vbo
 
 
 def create_shader(shader_type, shader_source):
@@ -152,7 +101,7 @@ def create_shader(shader_type, shader_source):
 	gl.glShaderSource(shader, shader_source)
 	gl.glCompileShader(shader)
 	if gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
-		raise ShaderCompileError(gl.glGetShaderInfoLog(shader))
+		raise ShaderCompileError(gl.glGetShaderInfoLog(shader).decode('utf-8'))
 	return shader
 
 
@@ -163,8 +112,63 @@ def create_program(*shaders):
 		gl.glAttachShader(program, shader)
 	gl.glLinkProgram(program)
 	if gl.glGetProgramiv(program, gl.GL_LINK_STATUS) != gl.GL_TRUE:
-		raise ProgramLinkError(gl.glGetProgramInfoLog(program))
+		raise ProgramLinkError(gl.glGetProgramInfoLog(program).decode('utf-8'))
 	return program
+
+
+def main():
+    imgui.create_context()
+    window = init_window(WIDTH, HEIGHT, "Hello World!")
+    renderer = GlfwRenderer(window)
+
+    tunable_values = (1., 1., 1.,)
+
+    vao, vbo = create_vertices(VERTICES)
+    vertex_shader = create_shader(gl.GL_VERTEX_SHADER, VERTEX_SHADER)
+    fragment_shader = create_shader(gl.GL_FRAGMENT_SHADER, FRAGMENT_SHADER)
+    shader_program = create_program(vertex_shader, fragment_shader)
+    gl.glDeleteShader(vertex_shader)
+    gl.glDeleteShader(fragment_shader)
+
+    while not glfw.window_should_close(window):
+        glfw.poll_events()
+        renderer.process_inputs()
+
+        # layout imgui
+        imgui.new_frame()
+
+        # open new window context
+        imgui.begin("Settings", True)
+        # draw text label inside of current window
+        imgui.text("tunable_values")
+        changed, tunable_values = imgui.drag_float3("Drag Float", *tunable_values,
+                                            min_value=0.,
+                                            max_value=1.,
+                                            change_speed=0.01)
+        imgui.end()
+
+        imgui.end_frame()
+
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+
+        # draw OpenGL
+        gl.glUseProgram(shader_program)
+        gl.glBindVertexArray(vao)
+        gl.glDrawArrays(gl.GL_TRIANGLES, 0, len(VERTICES))
+
+
+        # render imgui on top
+        imgui.render()
+        renderer.render(imgui.get_draw_data())
+        glfw.swap_buffers(window)
+
+    gl.glDeleteVertexArrays(1, [vao])
+    gl.glDeleteBuffers(1, [vbo])
+    gl.glDeleteProgram(shader_program)
+
+    renderer.shutdown()
+    glfw.terminate()
 
 
 if __name__ == "__main__":
