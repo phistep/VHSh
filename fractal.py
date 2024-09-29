@@ -1,13 +1,21 @@
 #!/usr/bin/env python
-"""https://github.com/pyimgui/pyimgui/blob/master/doc/examples/integrations_glfw3.py"""
+
 import sys
 
 from OpenGL.raw.GL.VERSION.GL_2_0 import glUseProgram
 from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
 import glfw
-import imgui
 import numpy as np
+import imgui
+
+# TODO
+# - full screen triangles
+# - read shader src from file
+# - classes for Shader, ShaderProgram, etc
+# - hot reload
+# - auto-generate imgui from uniforms
+
 
 WIDTH = 1280
 HEIGHT = 720
@@ -19,7 +27,9 @@ VERTICES = np.array([[-0.5, -0.5, 0.0],
 
 VERTEX_SHADER = """
 #version 330 core
+
 layout(location = 0) in vec3 VertexPos;
+
 void main() {
     gl_Position = vec4(VertexPos, 1.0);
 }
@@ -27,10 +37,19 @@ void main() {
 
 FRAGMENT_SHADER = """
 #version 330 core
+
 out vec4 FragColor;
+uniform vec2 u_Resolution;
+uniform vec3 u_tunable;
+
 void main() {
-    vec2 pos = gl_FragCoord.xy / vec2(1280., 720.);
-    FragColor = vec4(pos.x, pos.y, 1., 1.0);
+    vec2 pos = gl_FragCoord.xy / u_Resolution;
+    FragColor = vec4(
+        pos.x * u_tunable.x,
+        pos.y * u_tunable.y,
+        u_tunable.z,
+        1.0
+    );
 }
 """
 
@@ -118,7 +137,7 @@ def create_program(*shaders):
 
 def main():
     imgui.create_context()
-    window = init_window(WIDTH, HEIGHT, "Hello World!")
+    window = init_window(WIDTH, HEIGHT, "Triangle Demo")
     renderer = GlfwRenderer(window)
 
     tunable_values = (1., 1., 1.,)
@@ -130,9 +149,15 @@ def main():
     gl.glDeleteShader(vertex_shader)
     gl.glDeleteShader(fragment_shader)
 
+    uniform_location = {
+        'u_Resolution': gl.glGetUniformLocation(shader_program, "u_Resolution"),
+        'u_tunable': gl.glGetUniformLocation(shader_program, "u_tunable"),
+    }
+
     while not glfw.window_should_close(window):
         glfw.poll_events()
         renderer.process_inputs()
+        width, height = glfw.get_framebuffer_size(window)
 
         # layout imgui
         imgui.new_frame()
@@ -141,10 +166,13 @@ def main():
         imgui.begin("Settings", True)
         # draw text label inside of current window
         imgui.text("tunable_values")
-        changed, tunable_values = imgui.drag_float3("Drag Float", *tunable_values,
-                                            min_value=0.,
-                                            max_value=1.,
-                                            change_speed=0.01)
+        changed, tunable_values = imgui.drag_float3(
+            "RGB",
+            *tunable_values,
+            min_value=0.,
+            max_value=1.,
+            change_speed=0.01
+        )
         imgui.end()
 
         imgui.end_frame()
@@ -154,6 +182,8 @@ def main():
 
         # draw OpenGL
         gl.glUseProgram(shader_program)
+        gl.glUniform2f(uniform_location["u_Resolution"], float(width), float(height))
+        gl.glUniform3f(uniform_location["u_tunable"], *tunable_values)
         gl.glBindVertexArray(vao)
         gl.glDrawArrays(gl.GL_TRIANGLES, 0, len(VERTICES))
 
