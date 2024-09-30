@@ -3,6 +3,7 @@
 import sys
 import argparse
 import re
+import time
 from typing import Optional
 
 from OpenGL.raw.GL.VERSION.GL_2_0 import glUseProgram
@@ -23,7 +24,6 @@ import imgui
 #       https://github.com/ocornut/imgui/wiki/Multi-Viewports
 #       https://github.com/ocornut/imgui/blob/docking/examples/example_glfw_opengl2/main.cpp
 # - uniforms
-#   - time
 #   - prev frame
 #   - audio fft
 #   - video in
@@ -83,6 +83,8 @@ class Uniform:
 
     def update(self):
         match self.value:
+            case float(x):
+                gl.glUniform1f(self.location, x)
             case [float(x), float(y)]:
                 gl.glUniform2f(self.location, x, y)
             case [float(x), float(y), float(z)]:
@@ -125,7 +127,8 @@ class VHSRenderer:
     """
 
     def __init__(self):
-        self._builtin_uniforms = {'u_Resolution'}
+        self._builtin_uniforms = {'u_Resolution', 'u_Time'}
+        self._start_time = time.time()
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
@@ -196,9 +199,16 @@ class VHSRenderer:
                 continue
 
             match uniform.value:
+                case float(x):
+                    _, uniform.value = imgui.drag_float(
+                        name,
+                        uniform.value,
+                        min_value=0.,
+                        max_value=1.,
+                        change_speed=0.01
+                    )
                 case [float(x), float(y), float(z)]:
-
-                    changed, uniform.value = imgui.drag_float3(
+                    _, uniform.value = imgui.drag_float3(
                         name,
                         *uniform.value,
                         min_value=0.,
@@ -214,11 +224,16 @@ class VHSRenderer:
         imgui.render()
 
     def _draw_shader(self, width: float, height: float):
-        self.uniforms['u_Resolution'].value = [float(width), float(height)]
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
         gl.glUseProgram(self.shader_program)
+        self.uniforms['u_Resolution'].value = [float(width), float(height)]
+        # regular `time.time()` is too big for f32, so we just return
+        # seconds from program start
+        self.uniforms['u_Time'].value = time.time() - self._start_time
         for uniform in self.uniforms.values():
             uniform.update()
+
         gl.glBindVertexArray(self.vao)
         gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(self.VERTICES))
 
@@ -259,7 +274,6 @@ def main(argv: Optional[list[str]] = None):
     glfw_imgui_renderer = GlfwRenderer(window)
 
     vhs_renderer = VHSRenderer()
-
     if args.shader:
         with open(args.shader) as f:
             shader_src = f.read()
