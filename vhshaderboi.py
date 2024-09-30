@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import re
 from typing import Optional
 
 from OpenGL.raw.GL.VERSION.GL_2_0 import glUseProgram
@@ -12,8 +13,6 @@ import numpy as np
 import imgui
 
 # TODO
-# - auto-generate imgui from uniforms
-#      manual reges or https://github.com/anentropic/python-glsl-shaderinfo
 # - imgui display shader compile errors
 # - hot reload
 #     https://watchfiles.helpmanual.io/api/watch/
@@ -126,24 +125,15 @@ class VHSRenderer:
     """
 
     def __init__(self):
+        self._builtin_uniforms = {'u_Resolution'}
+
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
         self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
                                             self.VERTEX_SHADER)
-        fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
-                                              self.FRAGMENT_SHADER)
-        self.shader_program = self._create_program(self.vertex_shader,
-                                                   fragment_shader)
+        # we need to set a default shader for initialization to work
+        self.set_shader(self.FRAGMENT_SHADER)
 
-        # we keep the vertex shader object around, so we can re-use it when
-        # updating the fragment shader
-        gl.glDeleteShader(fragment_shader)
-
-        self.uniforms = {
-            'u_Resolution': Uniform(self.shader_program, 'u_Resolution',
-                                    [float(WIDTH), float(HEIGHT)]),
-            'u_color': Uniform(self.shader_program, 'u_color', [1., 1., 1.])
-        }
 
     def __del__(self):
         gl.glDeleteVertexArrays(1, [self.vao])
@@ -200,15 +190,22 @@ class VHSRenderer:
     def _update_gui(self):
         imgui.new_frame()
         imgui.begin("Settings", True)
-        imgui.text("color")
-        changed, color = imgui.drag_float3(
-            "RGB",
-            *self.uniforms['u_color'].value,
-            min_value=0.,
-            max_value=1.,
-            change_speed=0.01
-        )
-        self.uniforms['u_color'].value = color
+
+        for name, uniform in self.uniforms.items():
+            if name in self._builtin_uniforms:
+                continue
+
+            match uniform.value:
+                case [float(x), float(y), float(z)]:
+
+                    changed, uniform.value = imgui.drag_float3(
+                        name,
+                        *uniform.value,
+                        min_value=0.,
+                        max_value=1.,
+                        change_speed=0.01
+                    )
+
         imgui.end()
         imgui.end_frame()
 
@@ -237,10 +234,24 @@ class VHSRenderer:
                                                    fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
+        self.uniforms = {}
+        uniform_defs = re.findall(
+            r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;',
+            shader_src
+        )
+        for type_, name in uniform_defs:
+            default = {'float': 0.,
+                       'vec2': [0.]*2,
+                       'vec3': [0.]*3,
+                       'vec4': [0.]*4}
+            self.uniforms[name] = Uniform(self.shader_program,
+                                          name,
+                                          default[type_])
+
 
 def main(argv: Optional[list[str]] = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('shader', help='Path to GLSL fragment shader')
+    parser.add_argument('--shader', help='Path to GLSL fragment shader')
     args = parser.parse_args(argv)
 
     imgui.create_context()
