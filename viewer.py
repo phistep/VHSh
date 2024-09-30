@@ -10,19 +10,33 @@ import numpy as np
 import imgui
 
 # TODO
-# - full screen triangles
 # - read shader src from file
 # - classes for Shader, ShaderProgram, etc
 # - hot reload
+#     https://watchfiles.helpmanual.io/api/watch/
 # - auto-generate imgui from uniforms
-
+#      manual reges or https://github.com/anentropic/python-glsl-shaderinfo
+# - select different shaders
+# - save and load different presets (toml in the shader file?)
+# - imgui display shader compile errors
+# - split into runtime and imgui viewer
+#     maybe just have option to show or hide the controls as separate window
+#       https://github.com/ocornut/imgui/wiki/Multi-Viewports
+#       https://github.com/ocornut/imgui/blob/docking/examples/example_glfw_opengl2/main.cpp
+# - uniforms
+#   - time
+#   - prev frame
+#   - audio fft
+#   - video in
+# - raspberry pi midi or gpio support
 
 WIDTH = 1280
 HEIGHT = 720
 
-VERTICES = np.array([[-0.5, -0.5, 0.0],
-                     [ 0.5, -0.5, 0.0],
-                     [ 0.0,  0.5, 0.0]],
+VERTICES = np.array([[-1.0,  1.0, 0.0],
+                     [-1.0, -1.0, 0.0],
+                     [ 1.0,  1.0, 0.0],
+                     [ 1.0, -1.0, 0.0]],
                     dtype=np.float32)
 
 VERTEX_SHADER = """
@@ -100,16 +114,17 @@ def create_vertices(vertices: np.array):
                     usage=gl.GL_STATIC_DRAW)
 
     # Specify the layout of the vertex data
-    gl.glVertexAttribPointer(index=0,
-                             size=3,
+    vertex_attrib_idx = 0
+    gl.glVertexAttribPointer(index=vertex_attrib_idx,
+                             size=3, # len(vertices),
                              type=gl.GL_FLOAT,
                              normalized=gl.GL_FALSE,
                              stride=3 * 4,  # (x, y, z) * sizeof(GL_FLOAT)  # TODO
                              pointer=gl.ctypes.c_void_p(0))
-    gl.glEnableVertexAttribArray(0)
+    gl.glEnableVertexAttribArray(vertex_attrib_idx)
 
     # Unbind the VAO
-    gl.glBindVertexArray(0)
+    gl.glBindVertexArray(vertex_attrib_idx)
 
     return vao, vbo
 
@@ -140,7 +155,6 @@ def main():
     window = init_window(WIDTH, HEIGHT, "Triangle Demo")
     renderer = GlfwRenderer(window)
 
-    tunable_values = (1., 1., 1.,)
 
     vao, vbo = create_vertices(VERTICES)
     vertex_shader = create_shader(gl.GL_VERTEX_SHADER, VERTEX_SHADER)
@@ -154,6 +168,8 @@ def main():
         'u_tunable': gl.glGetUniformLocation(shader_program, "u_tunable"),
     }
 
+    tunable_values = (1., 1., 1.,)
+
     while not glfw.window_should_close(window):
         glfw.poll_events()
         renderer.process_inputs()
@@ -161,10 +177,7 @@ def main():
 
         # layout imgui
         imgui.new_frame()
-
-        # open new window context
         imgui.begin("Settings", True)
-        # draw text label inside of current window
         imgui.text("tunable_values")
         changed, tunable_values = imgui.drag_float3(
             "RGB",
@@ -174,19 +187,15 @@ def main():
             change_speed=0.01
         )
         imgui.end()
-
         imgui.end_frame()
 
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
-
         # draw OpenGL
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glUseProgram(shader_program)
         gl.glUniform2f(uniform_location["u_Resolution"], float(width), float(height))
         gl.glUniform3f(uniform_location["u_tunable"], *tunable_values)
         gl.glBindVertexArray(vao)
-        gl.glDrawArrays(gl.GL_TRIANGLES, 0, len(VERTICES))
-
+        gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(VERTICES))
 
         # render imgui on top
         imgui.render()
