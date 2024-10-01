@@ -68,6 +68,8 @@ class Uniform:
 
     def update(self):
         match self.value:
+            case int(x):
+                gl.glUniform1i(self.location, x)
             case float(x):
                 gl.glUniform1f(self.location, x)
             case [float(x), float(y)]:
@@ -186,10 +188,25 @@ class VHShRenderer:
                 continue
 
             match uniform.value:
+                case int(x):
+                    _, uniform.value = imgui.drag_int(
+                        name,
+                        uniform.value,
+                        min_value=0,
+                        max_value=100,
+                    )
                 case float(x):
                     _, uniform.value = imgui.drag_float(
                         name,
                         uniform.value,
+                        min_value=0.,
+                        max_value=1.,
+                        change_speed=0.01
+                    )
+                case [float(x), float(y)]:
+                    _, uniform.value = imgui.drag_float2(
+                        name,
+                        *uniform.value,
                         min_value=0.,
                         max_value=1.,
                         change_speed=0.01
@@ -241,7 +258,8 @@ class VHShRenderer:
             shader_src
         )
         for type_, name in uniform_defs:
-            default = {'float': 0.,
+            default = {'int': 0,
+                       'float': 0.,
                        'vec2': [0.]*2,
                        'vec3': [0.]*3,
                        'vec4': [0.]*4}
@@ -252,7 +270,7 @@ class VHShRenderer:
 
 def main(argv: Optional[list[str]] = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--shader', help='Path to GLSL fragment shader')
+    parser.add_argument('shader', help='Path to GLSL fragment shader')
     args = parser.parse_args(argv)
 
     imgui.create_context()

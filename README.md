@@ -17,7 +17,7 @@ Then run `VHSh` fron that environment
 
 ```bash
 source .venv/bin/activate
-python3 vhsh.phy --shader test.glsl
+python3 vhsh.py mandelbrot.glsl
 ```
 
 
@@ -27,6 +27,8 @@ python3 vhsh.phy --shader test.glsl
 - [x] load shader from file
 - [x] auto-generate tuning ui for uniforms
 - [ ] imgui display shader compile errors
+- [ ] define defaults and ranges in uniform definition as comment
+- [ ] auto-define builtin uniforms / math library / preamble
 - [ ] hot reload https://watchfiles.helpmanual.io/api/watch/
 - [ ] select different shaders
 - [ ] save and load different presets (toml in the shader file?)
@@ -36,6 +38,7 @@ python3 vhsh.phy --shader test.glsl
       - https://github.com/ocornut/imgui/blob/docking/examples/example_glfw_opengl2/main.cpp
 - uniforms
   - [x] time
+  - [ ] mouse
   - [ ] prev frame
   - [ ] audio fft
   - [ ] video in
