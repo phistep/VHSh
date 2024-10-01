@@ -13,21 +13,6 @@ import glfw
 import numpy as np
 import imgui
 
-# TODO
-# - imgui display shader compile errors
-# - hot reload
-#     https://watchfiles.helpmanual.io/api/watch/
-# - select different shaders
-# - save and load different presets (toml in the shader file?)
-# - split into runtime and imgui viewer
-#     maybe just have option to show or hide the controls as separate window
-#       https://github.com/ocornut/imgui/wiki/Multi-Viewports
-#       https://github.com/ocornut/imgui/blob/docking/examples/example_glfw_opengl2/main.cpp
-# - uniforms
-#   - prev frame
-#   - audio fft
-#   - video in
-# - raspberry pi midi or gpio support
 
 VertexArrayObject = np.uint32
 VertexBufferObject = np.uint32
@@ -96,7 +81,7 @@ class Uniform:
         return iter(self.value)
 
 
-class VHSRenderer:
+class VHShRenderer:
 
     VERTICES = np.array([[-1.0,  1.0, 0.0],
                          [-1.0, -1.0, 0.0],
@@ -177,7 +162,8 @@ class VHSRenderer:
         gl.glShaderSource(shader, shader_source)
         gl.glCompileShader(shader)
         if gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
-            raise ShaderCompileError(gl.glGetShaderInfoLog(shader).decode('utf-8'))
+            raise ShaderCompileError(
+                gl.glGetShaderInfoLog(shader).decode('utf-8'))
         return shader
 
     def _create_program(self, *shaders) -> ShaderProgram:
@@ -187,7 +173,8 @@ class VHSRenderer:
             gl.glAttachShader(program, shader)
         gl.glLinkProgram(program)
         if gl.glGetProgramiv(program, gl.GL_LINK_STATUS) != gl.GL_TRUE:
-            raise ProgramLinkError(gl.glGetProgramInfoLog(program).decode('utf-8'))
+            raise ProgramLinkError(
+                gl.glGetProgramInfoLog(program).decode('utf-8'))
         return program
 
     def _update_gui(self):
@@ -220,7 +207,6 @@ class VHSRenderer:
         imgui.end_frame()
 
     def _draw_gui(self):
-
         imgui.render()
 
     def _draw_shader(self, width: float, height: float):
@@ -273,23 +259,23 @@ def main(argv: Optional[list[str]] = None):
     window = init_window(WIDTH, HEIGHT, "VHShaderboi")
     glfw_imgui_renderer = GlfwRenderer(window)
 
-    vhs_renderer = VHSRenderer()
+    vhsh_renderer = VHShRenderer()
     if args.shader:
         with open(args.shader) as f:
             shader_src = f.read()
-        vhs_renderer.set_shader(shader_src)
+        vhsh_renderer.set_shader(shader_src)
 
     while not glfw.window_should_close(window):
         glfw.poll_events()
         glfw_imgui_renderer.process_inputs()
         width, height = glfw.get_framebuffer_size(window)
 
-        vhs_renderer.render(width, height)
+        vhsh_renderer.render(width, height)
 
         glfw_imgui_renderer.render(imgui.get_draw_data())
         glfw.swap_buffers(window)
 
-    del vhs_renderer
+    del vhsh_renderer
     glfw_imgui_renderer.shutdown()
     glfw.terminate()
 
