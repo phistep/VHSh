@@ -77,7 +77,7 @@ class Uniform:
             case [float(x), float(y), float(z)]:
                 gl.glUniform3f(self.location, x, y, z)
             case _:
-                raise NotImplementedError(f"{type(self.value)}: {self.value}")
+                raise NotImplementedError(f"{self.name} {type(self.value)}: {self.value}")
 
     def __iter__(self):
         return iter(self.value)
@@ -254,6 +254,7 @@ class VHShRenderer:
 
         self.uniforms = {}
         uniform_defs = re.findall(
+            # TODO why ^(?!\/\/)\s* not working to ignore comments?
             r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;',
             shader_src
         )

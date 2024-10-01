@@ -20,9 +20,7 @@ float f(vec2 c) {
 }
 
 void main() {
-    vec2 pos = gl_FragCoord.xy / u_Resolution;
-
+    vec2 pos = gl_FragCoord.xy / u_Resolution * 2. - vec2(1.5, 1.0);
     float n = f(scale * pos + origin);
-
     FragColor.rgba = vec4(vec3(n), 1.0);
 }
