@@ -5,12 +5,14 @@ import argparse
 import re
 import time
 from typing import Optional
+from threading import Thread, Event
 
 from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
 import glfw
 import numpy as np
 import imgui
+from watchfiles import watch
 
 
 VertexArrayObject = np.uint32
@@ -101,11 +103,12 @@ class VHShRenderer:
     """
 
     FRAGMENT_SHADER_PREAMBLE = """
-    #version 330 core
+        #version 330 core
 
-    out vec4 FragColor;
-    uniform vec2 u_Resolution;
-    uniform float u_Time;
+        out vec4 FragColor;
+        uniform vec2 u_Resolution;
+        uniform float u_Time;
+        #line 1
     """
 
     FRAGMENT_SHADER = """
@@ -116,21 +119,71 @@ class VHShRenderer:
     """
 
 
-    def __init__(self):
+    def __init__(self, shader_path: str):
         self._start_time = time.time()
+        self.vao = self.vbo = self.shader_program = self._file_watcher = None
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
         self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
                                             self.VERTEX_SHADER)
-        # we need to set a default shader for initialization to work
-        self.set_shader(self.FRAGMENT_SHADER)
 
+        self._shader_path = shader_path
+        self.uniforms = {}
+        with open(self._shader_path) as f:
+            shader_src = f.read()
+        try:
+            self.set_shader(shader_src)
+        except ShaderCompileError as e:
+            self._print_error(e)
+            sys.exit(1)
+
+        self._file_changed = Event()
+        self._file_watcher = Thread(target=self._watch_files,
+                                    name="VHSh.file_watcher",
+                                    args=(self._shader_path,))
+        self._file_watcher.start()
 
     def __del__(self):
-        gl.glDeleteVertexArrays(1, [self.vao])
-        gl.glDeleteBuffers(1, [self.vbo])
-        gl.glDeleteProgram(self.shader_program)
+        if self.vao is not None:
+            gl.glDeleteVertexArrays(1, [self.vao])
+        if self.vbo is not None:
+            gl.glDeleteBuffers(1, [self.vbo])
+        if self.shader_program is not None:
+            gl.glDeleteProgram(self.shader_program)
+        if self._file_watcher is not None:
+            self._file_watcher.join()
+
+    def _print_error(self, e: Exception):
+        try:
+            lines = str(e).strip().split('\n')
+            if len(lines) == 2:
+                flex, error = lines
+            else:
+                error = lines[0]
+                flex = ""
+            parts = error.split(':')
+            title = parts[0].strip()
+            col = parts[1].strip()
+            line = parts[2].strip()
+            offender = parts[3].strip()
+            message = ':'.join(parts[4:])
+            print(f"\x1b[1;31m{title}: \x1b[0;0m"
+                  f"\x1b[2;37m{self._shader_path}:\x1b[0;0m"
+                  f"\x1b[1;37m{col}:{line} \x1b[0;0m"
+                  f"\x1b[2;37m({offender})\x1b[0;0m"
+                  f"\x1b[0;37m:{message}\x1b[0;0m"
+                  f"\x1b[2;37m ({flex})\x1b[0;0m")
+                  # white on red: [0;37;41m
+        except IndexError:
+            print(e)
+
+
+    def _watch_files(self, filename: str):
+        print(f"Watching for changes in '{filename}'")
+        for _ in watch(filename):
+            # print(f"'{filename}' changed!")
+            self._file_changed.set()
 
     def _create_vertices(self, vertices: np.ndarray
                          ) -> tuple[VertexArrayObject, VertexBufferObject]:
@@ -243,6 +296,18 @@ class VHShRenderer:
         gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(self.VERTICES))
 
     def render(self, width, height):
+        if self._file_changed.is_set():
+            with open(self._shader_path) as f:
+                shader_src = f.read()
+            # print(f"Read '{self._shader_path}'")
+            self._file_changed.clear()
+            try:
+                self.set_shader(shader_src)
+            except ShaderCompileError as e:
+                self._print_error(e)
+            else:
+                print(f"\x1b[2;32mOK: \x1b[2;37m{self._shader_path}\x1b[0;0m")
+
         self._update_gui()
         self._draw_shader(width, height)
         self._draw_gui()
@@ -250,26 +315,29 @@ class VHShRenderer:
     def set_shader(self, shader_src: str):
         shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
-                                              shader_src)
+                                            shader_src)
+
         self.shader_program = self._create_program(self.vertex_shader,
                                                    fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
-        self.uniforms = {}
         uniform_defs = re.findall(
             # TODO why ^(?!\/\/)\s* not working to ignore comments?
             r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;',
             shader_src
         )
         for type_, name in uniform_defs:
-            default = {'int': 0,
-                       'float': 0.,
-                       'vec2': [0.]*2,
-                       'vec3': [0.]*3,
-                       'vec4': [0.]*4}
-            self.uniforms[name] = Uniform(self.shader_program,
-                                          name,
-                                          default[type_])
+            if name not in self.uniforms:
+                # TODO if we change the type but not the name, it won't be
+                # reloaded -> do store the type
+                default = {'int': 0,
+                        'float': 0.,
+                        'vec2': [0.]*2,
+                        'vec3': [0.]*3,
+                        'vec4': [0.]*4}
+                self.uniforms[name] = Uniform(self.shader_program,
+                                            name,
+                                            default[type_])
 
 
 def main(argv: Optional[list[str]] = None):
@@ -281,11 +349,7 @@ def main(argv: Optional[list[str]] = None):
     window = init_window(WIDTH, HEIGHT, "VHShaderboi")
     glfw_imgui_renderer = GlfwRenderer(window)
 
-    vhsh_renderer = VHShRenderer()
-    if args.shader:
-        with open(args.shader) as f:
-            shader_src = f.read()
-        vhsh_renderer.set_shader(shader_src)
+    vhsh_renderer = VHShRenderer(args.shader)
 
     while not glfw.window_should_close(window):
         glfw.poll_events()
