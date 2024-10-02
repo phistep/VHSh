@@ -6,7 +6,6 @@ import re
 import time
 from typing import Optional
 
-from OpenGL.raw.GL.VERSION.GL_2_0 import glUseProgram
 from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
 import glfw
@@ -101,20 +100,23 @@ class VHShRenderer:
         }
     """
 
+    FRAGMENT_SHADER_PREAMBLE = """
+    #version 330 core
+
+    out vec4 FragColor;
+    uniform vec2 u_Resolution;
+    uniform float u_Time;
+    """
+
     FRAGMENT_SHADER = """
-        #version 330 core
-
-        out vec4 FragColor;
-        uniform vec2 u_Resolution;
-
         void main() {
             vec2 pos = gl_FragCoord.xy / u_Resolution;
             FragColor = vec4(pos.x, pos.y, 1.0 - (pos.x + pos.y) / 2.0, 1.0);
         }
     """
 
+
     def __init__(self):
-        self._builtin_uniforms = {'u_Resolution', 'u_Time'}
         self._start_time = time.time()
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
@@ -184,7 +186,7 @@ class VHShRenderer:
         imgui.begin("Settings", True)
 
         for name, uniform in self.uniforms.items():
-            if name in self._builtin_uniforms:
+            if name in self.FRAGMENT_SHADER_PREAMBLE:
                 continue
 
             match uniform.value:
@@ -246,6 +248,7 @@ class VHShRenderer:
         self._draw_gui()
 
     def set_shader(self, shader_src: str):
+        shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
                                               shader_src)
         self.shader_program = self._create_program(self.vertex_shader,

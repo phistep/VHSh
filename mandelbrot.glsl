@@ -1,9 +1,3 @@
-#version 330 core
-
-out vec4 FragColor;
-uniform vec2 u_Resolution;
-uniform float u_Time;
-
 uniform vec2 origin;
 uniform float scale;
 uniform int n_max;

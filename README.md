@@ -20,6 +20,16 @@ source .venv/bin/activate
 python3 vhsh.py mandelbrot.glsl
 ```
 
+If you're seeing a message like
+
+> 2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
+
+run the following to get rid of it:
+
+```bash
+defaults write org.python.python ApplePersistenceIgnoreState NO
+```
+
 
 ## TODO
 
@@ -28,7 +38,7 @@ python3 vhsh.py mandelbrot.glsl
 - [x] auto-generate tuning ui for uniforms
 - [ ] imgui display shader compile errors
 - [ ] define defaults and ranges in uniform definition as comment
-- [ ] auto-define builtin uniforms / math library / preamble
+- [x] auto-define builtin uniforms / math library / preamble
 - [ ] hot reload https://watchfiles.helpmanual.io/api/watch/
 - [ ] select different shaders
 - [ ] save and load different presets (toml in the shader file?)
