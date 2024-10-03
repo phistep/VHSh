@@ -325,11 +325,10 @@ class VHShRenderer:
         gl.glBindVertexArray(self.vao)
         gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(self.VERTICES))
 
-    def _render(self, width, height):
+    def _reload_shader(self):
         if self._file_changed.is_set():
             with open(self._shader_path) as f:
                 shader_src = f.read()
-            # print(f"Read '{self._shader_path}'")
             self._file_changed.clear()
             try:
                 self.set_shader(shader_src)
@@ -456,6 +455,7 @@ class VHShRenderer:
             self.width, self.height = \
                 glfw.get_framebuffer_size(self._window)
 
+            self._reload_shader()
             self._update_gui()
             self._draw_shader()
             self._draw_gui()

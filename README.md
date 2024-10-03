@@ -2,6 +2,8 @@
 
 _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
+![Screenshot of VHSh in action](vhsh.png)
+
 
 ## Setup
 
@@ -137,6 +139,8 @@ dir.z *=5;
 - [x] hot reload https://watchfiles.helpmanual.io/api/watch/
 - [x] define defaults and ranges in uniform definition as comment
 - [ ] fix file watch thread stop
+- [ ] widget size and close button
+- [ ] re-parse metadata on reload
 - [ ] select different shaders
 - [ ] imgui display shader compile errors
 - [ ] 60fps cap
@@ -151,7 +155,7 @@ dir.z *=5;
   "@2" = 0xa2
 
   [[uniforms.n_max]]
-  type = int
+  type = "int"
   value = 25
   min = 0
   max = 100
