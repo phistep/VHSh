@@ -4,8 +4,9 @@ import sys
 import argparse
 import re
 import time
-from typing import Optional, TypeVar, Iterable, get_args, get_origin
+from typing import Optional, TypeVar, Iterable, get_args
 from threading import Thread, Event
+from pprint import pprint
 
 from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
@@ -20,6 +21,7 @@ VertexBufferObject = np.uint32
 Shader = int
 ShaderProgram = int
 
+GLSLBool = bool
 GLSLInt = int
 GLSLFloat = float
 GLSLVec2 = tuple[float, float]
@@ -43,15 +45,15 @@ class ProgramLinkError(RuntimeError):
 class Uniform:
     def __init__(self, program, type_, name, value, range=None, widget=None):
         self.location = gl.glGetUniformLocation(program, name)
-        self._type = type_
+        self.type = type_
         self.name = name
         self.value = value
         self.range = range
         self.widget = widget
 
     def __str__(self):
-        return (f"uniform {self._type} {self.name}"
-                f" // <{self.widget}> ={self.value} {self.range}")
+        return (f"uniform {self.type} {self.name}"
+                f" // ={self.value} {self.range} <{self.widget}> ")
         self.range = range
         self.widget = widget
 
@@ -63,10 +65,8 @@ class Uniform:
         self.value = val
 
     def update(self):
-        print("uni", self._type, self.name, self.value)
         match self.value:
             case int(x):
-                print(x)
                 gl.glUniform1i(self.location, int(x))
             case float(x):
                 gl.glUniform1f(self.location, x)
@@ -233,7 +233,7 @@ class VHShRenderer:
 
     def _update_gui(self):
         imgui.new_frame()  # pyright: ignore [reportAttributeAccessIssue]
-        imgui.begin("Settings", True)  # pyright: ignore [reportAttributeAccessIssue]
+        imgui.begin("Paramters", True)  # pyright: ignore [reportAttributeAccessIssue]
 
         T = TypeVar('T')
         def get_range(value: Iterable[T],
@@ -252,8 +252,10 @@ class VHShRenderer:
             if name in self.FRAGMENT_SHADER_PREAMBLE:
                 continue
 
-            match uniform.value:
-                case int(x):
+            match uniform.value, uniform.widget:
+                case bool(x), _:
+                    _, uniform.value = imgui.checkbox(name, uniform.value)  # pyright: ignore [reportAttributeAccessIssue]
+                case int(x), _:
                     min_, max_, step = get_range(uniform.range, 0, 100, 1)
                     _, uniform.value = imgui.drag_int(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
@@ -262,7 +264,7 @@ class VHShRenderer:
                         max_value=max_,
                         change_speed=step
                     )
-                case float(x):
+                case float(x), _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
@@ -271,7 +273,7 @@ class VHShRenderer:
                         max_value=max_,
                         change_speed=step
                     )
-                case [float(x), float(y)]:
+                case [float(x), float(y)], _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float2(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
@@ -280,9 +282,21 @@ class VHShRenderer:
                         max_value=max_,
                         change_speed=step
                     )
-                case [float(x), float(y), float(z)]:
+                case [float(x), float(y), float(z)], _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float3(  # pyright: ignore [reportAttributeAccessIssue]
+                        name,
+                        *uniform.value,
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step
+                    )
+                case [float(x), float(y), float(z), float(w)], 'color':
+                    _, uniform.value = imgui.color_edit4(name, *uniform.value,  # pyright: ignore [reportAttributeAccessIssue]
+                                                         imgui.COLOR_EDIT_FLOAT)
+                case [float(x), float(y), float(z), float(w)], _:
+                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
+                    _, uniform.value = imgui.drag_float4(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         *uniform.value,
                         min_value=min_,
@@ -339,22 +353,24 @@ class VHShRenderer:
             # TODO why ^(?!\/\/)\s* not working to ignore comments?
             # TODO allow whitespace in values and ranges
             (r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
-             r'(?:'
-             r'\s*//\s*(?P<widget>\<\w+\>)?'
+             r'(?:\s*//'
+             r'\s*(?P<widget>\<\w+\>)?'
              r'\s+(?P<default>=\S+)?'
-             r'\s+(?P<range>[\[\(]\S+[\]\)])?'
+             r'\s+(?P<range>\[\S+\])?'
              r')?'),
             shader_src
         )
         # TODO move to Uniform class
         # bundle all type info (default, default range, update func, widget func, ...)
         # in one big table and use it i
-        DEFAULTS = {'int': 0,
+        DEFAULTS = {'bool': True,
+                    'int': 0,
                     'float': 0.,
                     'vec2': (0.,)*2,
                     'vec3': (0.,)*3,
                     'vec4': (0.,)*4}
-        TYPES = {'int': GLSLInt,
+        TYPES = {'bool': GLSLBool,
+                 'int': GLSLInt,
                  'float': GLSLFloat,
                  'vec2': GLSLVec2,
                  'vec3': GLSLVec3,
@@ -364,7 +380,7 @@ class VHShRenderer:
                       for line in shader_src.split('\n')].index(True) + 1
                       - len(self.FRAGMENT_SHADER_PREAMBLE.split('\n')) + 1)
 
-            widget = widget.strip('<>')
+            widget = widget.strip('<>') or None
             try:
                 value = (eval(value_s.lstrip('='))
                         if value_s
@@ -373,15 +389,14 @@ class VHShRenderer:
                 raise UniformIntializationError(
                     f"ERROR: 0:{lineno} Invalid 'value' metadata for uniform"
                     f" '{name}': {e}: {value_s}"
-                ) from  e
+                ) from e
             try:
                 range = eval(range_s) if range_s else None
             except SyntaxError as e:
                 raise UniformIntializationError(
                     f"ERROR: 0:{lineno} Invalid 'range' metadata for uniform"
                     f" '{name}': {e}: {range_s!r}"
-                ) from  e
-
+                ) from e
 
             uniform_type = get_args(TYPES[type_]) or TYPES[type_]
             value_type = (tuple(type(i) for i in value)
@@ -395,15 +410,18 @@ class VHShRenderer:
 
             if name not in self.uniforms:
                 # TODO if we change the type but not the name, it won't be
-                # reloaded -> do store the type
+                # reloaded
                 self.uniforms[name] = Uniform(
                     program=self.shader_program,
-                    type_=type_,
+                    type_=TYPES[type_],
                     name=name,
                     value=value,
                     range=range,
                     widget=widget
                 )
+
+        for uniform in self.uniforms.values():
+            print(uniform)
 
     def _print_error(self, e: Exception):
         try:
