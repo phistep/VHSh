@@ -4,7 +4,7 @@ import sys
 import argparse
 import re
 import time
-from typing import Optional
+from typing import Optional, TypeVar, Iterable, get_args, get_origin
 from threading import Thread, Event
 
 from imgui.integrations.glfw import GlfwRenderer
@@ -20,19 +20,40 @@ VertexBufferObject = np.uint32
 Shader = int
 ShaderProgram = int
 
+GLSLInt = int
+GLSLFloat = float
+GLSLVec2 = tuple[float, float]
+GLSLVec3 = tuple[float, float, float]
+GLSLVec4 = tuple[float, float, float, float]
+
+
 class ShaderCompileError(RuntimeError):
     """shader compile error."""
+
+
+class UniformIntializationError(ShaderCompileError):
+    """custom uniform initialization error."""
 
 
 class ProgramLinkError(RuntimeError):
     """program link error."""
 
 
+# TODO dataclass?
 class Uniform:
-    def __init__(self, program, name, value):
-        self.name = name
+    def __init__(self, program, type_, name, value, range=None, widget=None):
         self.location = gl.glGetUniformLocation(program, name)
+        self._type = type_
+        self.name = name
         self.value = value
+        self.range = range
+        self.widget = widget
+
+    def __str__(self):
+        return (f"uniform {self._type} {self.name}"
+                f" // <{self.widget}> ={self.value} {self.range}")
+        self.range = range
+        self.widget = widget
 
     def __get__(self):
         return self.value
@@ -42,15 +63,19 @@ class Uniform:
         self.value = val
 
     def update(self):
+        print("uni", self._type, self.name, self.value)
         match self.value:
             case int(x):
-                gl.glUniform1i(self.location, x)
+                print(x)
+                gl.glUniform1i(self.location, int(x))
             case float(x):
                 gl.glUniform1f(self.location, x)
             case [float(x), float(y)]:
                 gl.glUniform2f(self.location, x, y)
             case [float(x), float(y), float(z)]:
                 gl.glUniform3f(self.location, x, y, z)
+            case [float(x), float(y), float(z), float(w)]:
+                gl.glUniform4f(self.location, x, y, z, w)
             case _:
                 raise NotImplementedError(f"{self.name} {type(self.value)}: {self.value}")
 
@@ -207,8 +232,21 @@ class VHShRenderer:
         return program  # pyright: ignore [reportReturnType]
 
     def _update_gui(self):
-        imgui.new_frame()  # pyright: ignore
+        imgui.new_frame()  # pyright: ignore [reportAttributeAccessIssue]
         imgui.begin("Settings", True)  # pyright: ignore [reportAttributeAccessIssue]
+
+        T = TypeVar('T')
+        def get_range(value: Iterable[T],
+                      min_default: T,
+                      max_default: T,
+                      step_default: T = None):
+            match value:
+                case (min_, max_):
+                    return min_, max_, step_default
+                case (min_, max_, step):
+                    return min_, max_, step
+                case _:
+                    return min_default, max_default, step_default
 
         for name, uniform in self.uniforms.items():
             if name in self.FRAGMENT_SHADER_PREAMBLE:
@@ -216,35 +254,40 @@ class VHShRenderer:
 
             match uniform.value:
                 case int(x):
+                    min_, max_, step = get_range(uniform.range, 0, 100, 1)
                     _, uniform.value = imgui.drag_int(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         uniform.value,
-                        min_value=0,
-                        max_value=100,
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step
                     )
                 case float(x):
+                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         uniform.value,
-                        min_value=0.,
-                        max_value=1.,
-                        change_speed=0.01
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step
                     )
                 case [float(x), float(y)]:
+                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float2(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         *uniform.value,
-                        min_value=0.,
-                        max_value=1.,
-                        change_speed=0.01
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step
                     )
                 case [float(x), float(y), float(z)]:
+                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float3(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         *uniform.value,
-                        min_value=0.,
-                        max_value=1.,
-                        change_speed=0.01
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step
                     )
 
         imgui.end()  # pyright: ignore [reportAttributeAccessIssue]
@@ -286,7 +329,7 @@ class VHShRenderer:
     def set_shader(self, shader_src: str):
         shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
-                                            shader_src)
+                                              shader_src)
 
         self.shader_program = self._create_program(self.vertex_shader,
                                                    fragment_shader)
@@ -294,21 +337,73 @@ class VHShRenderer:
 
         uniform_defs = re.findall(
             # TODO why ^(?!\/\/)\s* not working to ignore comments?
-            r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;',
+            # TODO allow whitespace in values and ranges
+            (r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
+             r'(?:'
+             r'\s*//\s*(?P<widget>\<\w+\>)?'
+             r'\s+(?P<default>=\S+)?'
+             r'\s+(?P<range>[\[\(]\S+[\]\)])?'
+             r')?'),
             shader_src
         )
-        for type_, name in uniform_defs:
+        # TODO move to Uniform class
+        # bundle all type info (default, default range, update func, widget func, ...)
+        # in one big table and use it i
+        DEFAULTS = {'int': 0,
+                    'float': 0.,
+                    'vec2': (0.,)*2,
+                    'vec3': (0.,)*3,
+                    'vec4': (0.,)*4}
+        TYPES = {'int': GLSLInt,
+                 'float': GLSLFloat,
+                 'vec2': GLSLVec2,
+                 'vec3': GLSLVec3,
+                 'vec4': GLSLVec4}
+        for type_, name, widget, value_s, range_s in uniform_defs:
+            lineno = ([f'uniform {type_} {name};' in line
+                      for line in shader_src.split('\n')].index(True) + 1
+                      - len(self.FRAGMENT_SHADER_PREAMBLE.split('\n')) + 1)
+
+            widget = widget.strip('<>')
+            try:
+                value = (eval(value_s.lstrip('='))
+                        if value_s
+                        else DEFAULTS[type_])
+            except SyntaxError as e:
+                raise UniformIntializationError(
+                    f"ERROR: 0:{lineno} Invalid 'value' metadata for uniform"
+                    f" '{name}': {e}: {value_s}"
+                ) from  e
+            try:
+                range = eval(range_s) if range_s else None
+            except SyntaxError as e:
+                raise UniformIntializationError(
+                    f"ERROR: 0:{lineno} Invalid 'range' metadata for uniform"
+                    f" '{name}': {e}: {range_s!r}"
+                ) from  e
+
+
+            uniform_type = get_args(TYPES[type_]) or TYPES[type_]
+            value_type = (tuple(type(i) for i in value)
+                          if isinstance(value, Iterable)
+                          else type(value))
+            if  value_type != uniform_type:
+                raise UniformIntializationError(
+                    f"ERROR: 0:{lineno} Uniform '{name}' defined as"
+                    f" '{type_}' ({uniform_type}), but provided value"
+                    f" has type '{value_type}': {value!r}")
+
             if name not in self.uniforms:
                 # TODO if we change the type but not the name, it won't be
                 # reloaded -> do store the type
-                default = {'int': 0,
-                        'float': 0.,
-                        'vec2': [0.]*2,
-                        'vec3': [0.]*3,
-                        'vec4': [0.]*4}
-                self.uniforms[name] = Uniform(self.shader_program,
-                                            name,
-                                            default[type_])
+                self.uniforms[name] = Uniform(
+                    program=self.shader_program,
+                    type_=type_,
+                    name=name,
+                    value=value,
+                    range=range,
+                    widget=widget
+                )
 
     def _print_error(self, e: Exception):
         try:
