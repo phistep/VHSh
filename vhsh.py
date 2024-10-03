@@ -20,38 +20,12 @@ VertexBufferObject = np.uint32
 Shader = int
 ShaderProgram = int
 
-WIDTH = 1280
-HEIGHT = 720
-
-
 class ShaderCompileError(RuntimeError):
     """shader compile error."""
 
 
 class ProgramLinkError(RuntimeError):
     """program link error."""
-
-
-def init_window(width, height, name):
-    if not glfw.init():
-        RuntimeError("GLFW could not initialize OpenGL context")
-
-    # OS X supports only forward-compatible core profiles from 3.2
-    glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-    glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-    glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-
-    glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
-
-    # Create a windowed mode window and its OpenGL context
-    window = glfw.create_window(int(width), int(height), name, None, None)
-    glfw.make_context_current(window)
-
-    if not window:
-        glfw.terminate()
-        raise RuntimeError("GLFW could not initialize Window")
-
-    return window
 
 
 class Uniform:
@@ -86,6 +60,8 @@ class Uniform:
 
 class VHShRenderer:
 
+    NAME = "Video Home Shader"
+
     VERTICES = np.array([[-1.0,  1.0, 0.0],
                          [-1.0, -1.0, 0.0],
                          [ 1.0,  1.0, 0.0],
@@ -118,10 +94,18 @@ class VHShRenderer:
         }
     """
 
+    def __init__(self, shader_path: str, width=1280, height=720, watch=False):
+        self.vao = None
+        self.vbo = None
+        self.shader_program = None
+        self._file_watcher = None
+        self._glfw_imgui_renderer = None
 
-    def __init__(self, shader_path: str):
+        imgui.create_context()  # pyright: ignore
+        self._window = self._init_window(width, height, self.NAME)
+        self._glfw_imgui_renderer = GlfwRenderer(self._window)
+
         self._start_time = time.time()
-        self.vao = self.vbo = self.shader_program = self._file_watcher = None
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
@@ -139,49 +123,37 @@ class VHShRenderer:
             sys.exit(1)
 
         self._file_changed = Event()
-        self._file_watcher = Thread(target=self._watch_files,
-                                    name="VHSh.file_watcher",
-                                    args=(self._shader_path,))
-        self._file_watcher.start()
+        self._stop_watching = Event()
+        if watch:
+            self._file_watcher = Thread(target=self._watch_file,
+                                        name="VHSh.file_watcher",
+                                        args=(self._shader_path,))
+            self._file_watcher.start()
 
-    def __del__(self):
-        if self.vao is not None:
-            gl.glDeleteVertexArrays(1, [self.vao])
-        if self.vbo is not None:
-            gl.glDeleteBuffers(1, [self.vbo])
-        if self.shader_program is not None:
-            gl.glDeleteProgram(self.shader_program)
-        if self._file_watcher is not None:
-            self._file_watcher.join()
+    @staticmethod
+    def _init_window(width, height, name):
+        if not glfw.init():
+            RuntimeError("GLFW could not initialize OpenGL context")
 
-    def _print_error(self, e: Exception):
-        try:
-            lines = str(e).strip().split('\n')
-            if len(lines) == 2:
-                flex, error = lines
-            else:
-                error = lines[0]
-                flex = ""
-            parts = error.split(':')
-            title = parts[0].strip()
-            col = parts[1].strip()
-            line = parts[2].strip()
-            offender = parts[3].strip()
-            message = ':'.join(parts[4:])
-            print(f"\x1b[1;31m{title}: \x1b[0;0m"
-                  f"\x1b[2;37m{self._shader_path}:\x1b[0;0m"
-                  f"\x1b[1;37m{col}:{line} \x1b[0;0m"
-                  f"\x1b[2;37m({offender})\x1b[0;0m"
-                  f"\x1b[0;37m:{message}\x1b[0;0m"
-                  f"\x1b[2;37m ({flex})\x1b[0;0m")
-                  # white on red: [0;37;41m
-        except IndexError:
-            print(e)
+        # OS X supports only forward-compatible core profiles from 3.2
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 
+        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
 
-    def _watch_files(self, filename: str):
+        window = glfw.create_window(int(width), int(height), name, None, None)
+        glfw.make_context_current(window)
+
+        if not window:
+            glfw.terminate()
+            raise RuntimeError("GLFW could not initialize Window")
+
+        return window
+
+    def _watch_file(self, filename: str):
         print(f"Watching for changes in '{filename}'")
-        for _ in watch(filename):
+        for _ in watch(filename, stop_event=self._stop_watching):
             # print(f"'{filename}' changed!")
             self._file_changed.set()
 
@@ -221,7 +193,7 @@ class VHShRenderer:
         if gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
             raise ShaderCompileError(
                 gl.glGetShaderInfoLog(shader).decode('utf-8'))
-        return shader
+        return shader  # pyright: ignore [reportReturnType]
 
     def _create_program(self, *shaders) -> ShaderProgram:
         """creates a program from its vertex & fragment shader sources."""
@@ -232,11 +204,11 @@ class VHShRenderer:
         if gl.glGetProgramiv(program, gl.GL_LINK_STATUS) != gl.GL_TRUE:
             raise ProgramLinkError(
                 gl.glGetProgramInfoLog(program).decode('utf-8'))
-        return program
+        return program  # pyright: ignore [reportReturnType]
 
     def _update_gui(self):
-        imgui.new_frame()
-        imgui.begin("Settings", True)
+        imgui.new_frame()  # pyright: ignore
+        imgui.begin("Settings", True)  # pyright: ignore [reportAttributeAccessIssue]
 
         for name, uniform in self.uniforms.items():
             if name in self.FRAGMENT_SHADER_PREAMBLE:
@@ -244,14 +216,14 @@ class VHShRenderer:
 
             match uniform.value:
                 case int(x):
-                    _, uniform.value = imgui.drag_int(
+                    _, uniform.value = imgui.drag_int(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         uniform.value,
                         min_value=0,
                         max_value=100,
                     )
                 case float(x):
-                    _, uniform.value = imgui.drag_float(
+                    _, uniform.value = imgui.drag_float(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         uniform.value,
                         min_value=0.,
@@ -259,7 +231,7 @@ class VHShRenderer:
                         change_speed=0.01
                     )
                 case [float(x), float(y)]:
-                    _, uniform.value = imgui.drag_float2(
+                    _, uniform.value = imgui.drag_float2(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         *uniform.value,
                         min_value=0.,
@@ -267,7 +239,7 @@ class VHShRenderer:
                         change_speed=0.01
                     )
                 case [float(x), float(y), float(z)]:
-                    _, uniform.value = imgui.drag_float3(
+                    _, uniform.value = imgui.drag_float3(  # pyright: ignore [reportAttributeAccessIssue]
                         name,
                         *uniform.value,
                         min_value=0.,
@@ -275,17 +247,18 @@ class VHShRenderer:
                         change_speed=0.01
                     )
 
-        imgui.end()
-        imgui.end_frame()
+        imgui.end()  # pyright: ignore [reportAttributeAccessIssue]
+        imgui.end_frame()  # pyright: ignore [reportAttributeAccessIssue]
 
     def _draw_gui(self):
-        imgui.render()
+        imgui.render()  # pyright: ignore [reportAttributeAccessIssue]
 
-    def _draw_shader(self, width: float, height: float):
+    def _draw_shader(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
         gl.glUseProgram(self.shader_program)
-        self.uniforms['u_Resolution'].value = [float(width), float(height)]
+        self.uniforms['u_Resolution'].value = [float(self.width),
+                                               float(self.height)]
         # regular `time.time()` is too big for f32, so we just return
         # seconds from program start
         self.uniforms['u_Time'].value = time.time() - self._start_time
@@ -295,7 +268,7 @@ class VHShRenderer:
         gl.glBindVertexArray(self.vao)
         gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(self.VERTICES))
 
-    def render(self, width, height):
+    def _render(self, width, height):
         if self._file_changed.is_set():
             with open(self._shader_path) as f:
                 shader_src = f.read()
@@ -306,11 +279,9 @@ class VHShRenderer:
             except ShaderCompileError as e:
                 self._print_error(e)
             else:
-                print(f"\x1b[2;32mOK: \x1b[2;37m{self._shader_path}\x1b[0;0m")
-
-        self._update_gui()
-        self._draw_shader(width, height)
-        self._draw_gui()
+                print("\x1b[2;32mOK:"
+                      f" \x1b[2;37m{self._shader_path}"
+                      "\x1b[0;0m")
 
     def set_shader(self, shader_src: str):
         shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
@@ -339,31 +310,72 @@ class VHShRenderer:
                                             name,
                                             default[type_])
 
+    def _print_error(self, e: Exception):
+        try:
+            lines = str(e).strip().split('\n')
+            if len(lines) == 2:
+                flex, error = lines
+            else:
+                error = lines[0]
+                flex = ""
+            parts = error.split(':')
+            title = parts[0].strip()
+            col = parts[1].strip()
+            line = parts[2].strip()
+            offender = parts[3].strip()
+            message = ':'.join(parts[4:])
+            print(f"\x1b[1;31m{title}: \x1b[0;0m"
+                  f"\x1b[2;37m{self._shader_path}:\x1b[0;0m"
+                  f"\x1b[1;37m{col}:{line} \x1b[0;0m"
+                  f"\x1b[2;37m({offender})\x1b[0;0m"
+                  f"\x1b[0;37m:{message}\x1b[0;0m"
+                  f"\x1b[2;37m ({flex})\x1b[0;0m")
+                  # white on red: [0;37;41m
+        except IndexError:
+            print(e)
+
+    def run(self):
+        if self._glfw_imgui_renderer is None:
+            raise RuntimeError("glfw imgui renderer not initialized!")
+        while not glfw.window_should_close(self._window):
+            glfw.poll_events()
+            self._glfw_imgui_renderer.process_inputs()
+            self.width, self.height = \
+                glfw.get_framebuffer_size(self._window)
+
+            self._update_gui()
+            self._draw_shader()
+            self._draw_gui()
+
+            self._glfw_imgui_renderer.render(imgui.get_draw_data())  # pyright: ignore [reportAttributeAccessIssue]
+            glfw.swap_buffers(self._window)
+
+    def __del__(self):
+        if self.vao is not None:
+            gl.glDeleteVertexArrays(1, [self.vao])
+        if self.vbo is not None:
+            gl.glDeleteBuffers(1, [self.vbo])
+        if self.shader_program is not None:
+            gl.glDeleteProgram(self.shader_program)
+        if self._glfw_imgui_renderer is not None:
+            self._glfw_imgui_renderer.shutdown()
+        glfw.terminate()
+
+        if self._file_watcher is not None:
+            self._stop_watching.set()
+            if self._file_watcher.is_alive():
+                self._file_watcher.join()
+
 
 def main(argv: Optional[list[str]] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('shader', help='Path to GLSL fragment shader')
+    parser.add_argument('-w', '--watch', action='store_true',
+        help="Watch for file changes and automatically reload shader")
     args = parser.parse_args(argv)
 
-    imgui.create_context()
-    window = init_window(WIDTH, HEIGHT, "VHShaderboi")
-    glfw_imgui_renderer = GlfwRenderer(window)
-
-    vhsh_renderer = VHShRenderer(args.shader)
-
-    while not glfw.window_should_close(window):
-        glfw.poll_events()
-        glfw_imgui_renderer.process_inputs()
-        width, height = glfw.get_framebuffer_size(window)
-
-        vhsh_renderer.render(width, height)
-
-        glfw_imgui_renderer.render(imgui.get_draw_data())
-        glfw.swap_buffers(window)
-
-    del vhsh_renderer
-    glfw_imgui_renderer.shutdown()
-    glfw.terminate()
+    vhsh_renderer = VHShRenderer(args.shader, watch=args.watch)
+    vhsh_renderer.run()
 
 
 if __name__ == "__main__":

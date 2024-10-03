@@ -38,6 +38,7 @@ defaults write org.python.python ApplePersistenceIgnoreState NO
 - [x] auto-generate tuning ui for uniforms
 - [x] auto-define builtin uniforms / math library / preamble
 - [x] hot reload https://watchfiles.helpmanual.io/api/watch/
+- [ ] fix file watch thread stop
 - [ ] select different shaders
 - [ ] imgui display shader compile errors
 - [ ] define defaults and ranges in uniform definition as comment
