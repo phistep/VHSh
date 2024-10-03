@@ -34,6 +34,9 @@ run the following to get rid of it:
 defaults write org.python.python ApplePersistenceIgnoreState NO
 ```
 
+To [fix type checking][imgui-issue-stubs] on `imgui`, download [this stubs file][] and
+place it in this directory.
+
 
 ## Writing Shaders for _Video Home Shader_
 
@@ -46,8 +49,8 @@ It defines
 
 > OpenGL Version 330 core
 
-so you just need to supply a `main` function and set the output color `FragColor` as an
-RGBA `vec4` with floats between 0 and 1 (`0., 0., 0., 1.)` being black).
+so you just need to supply a `main` function and set the output color `FragColor`
+as an RGBA `vec4` with floats between 0 and 1 (`0., 0., 0., 1.)` being black).
 
 ```glsl
 void main() {
@@ -70,7 +73,7 @@ preamble:
 - `float u_Time`: Seconds since the program start. This can be used to animate
   things. For example
   ```glsl
-  vec4 color = vec4((sin(2 * 3.14 * u_Time * ) + 1) / 2, 0., 0., 1.);
+  vec4 color = vec4((sin(2. * 3.14 * u_Time * ) + 1.) / 2., 0., 0., 1.);
   ```
   will create a red pulsing effect with one pulse per second.
 
@@ -123,10 +126,10 @@ uniform vec2 origin; // =[0.,0.]
 uniform vec2 origin; // =(0.,0.)
 
 // syntax error
-uniform vec3 dir; // [[0.,1.],[0.,1.],[0.,5.]
+uniform vec3 dir; // [[0.,1.],[0.,1.],[0.,5.]]
 // OK
 uniform vec3 dir; // [0.,1.]
-dir.z *=5;
+dir.z *= 5;
 ```
 
 
@@ -141,9 +144,10 @@ dir.z *=5;
 - [ ] fix file watch thread stop
 - [ ] widget size and close button
 - [ ] re-parse metadata on reload
+- [ ] write current values to file
 - [ ] select different shaders
 - [ ] imgui display shader compile errors
-- [ ] 60fps cap
+- [ ] 60fps cap / fps counter
 - [ ] save and load different presets (toml in the shader file?)
   ```toml
   [mapping]
@@ -160,7 +164,7 @@ dir.z *=5;
   min = 0
   max = 100
 
-  [[uniforms.n_max]]
+  [[uniforms.color]]
   type = "color"
   value = [1.0, 1.0, 1.0]
   min = [0.0, 0.0, 0.0]
@@ -171,8 +175,8 @@ dir.z *=5;
   color = [0.0, 1.0, 0.75]
 
   [[presets.1]]
-  n_max = 10
-  color = [0.0, 1.0, 0.75]
+  n_max = 5
+  color = [1.0, 1.0, 1.0]
   ```
 - [ ] split into runtime and imgui viewer
   - maybe just have option to show or hide the controls as separate window
@@ -193,3 +197,9 @@ dir.z *=5;
 - https://regex101.com
 - https://github.com/pyimgui/pyimgui/blob/master/doc/examples/testwindow.py
 - https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
+- https://iquilezles.org/articles/
+- https://docs.gl/sl4/
+
+
+[imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364
+[imgui.pyi]: https://raw.githubusercontent.com/denballakh/pyimgui-stubs/refs/heads/master/imgui.pyi

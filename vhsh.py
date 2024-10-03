@@ -126,7 +126,7 @@ class VHShRenderer:
         self._file_watcher = None
         self._glfw_imgui_renderer = None
 
-        imgui.create_context()  # pyright: ignore
+        imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
 
@@ -232,8 +232,8 @@ class VHShRenderer:
         return program  # pyright: ignore [reportReturnType]
 
     def _update_gui(self):
-        imgui.new_frame()  # pyright: ignore [reportAttributeAccessIssue]
-        imgui.begin("Paramters", True)  # pyright: ignore [reportAttributeAccessIssue]
+        imgui.new_frame()
+        imgui.begin("Paramters", True)
 
         T = TypeVar('T')
         def get_range(value: Iterable[T],
@@ -254,10 +254,10 @@ class VHShRenderer:
 
             match uniform.value, uniform.widget:
                 case bool(x), _:
-                    _, uniform.value = imgui.checkbox(name, uniform.value)  # pyright: ignore [reportAttributeAccessIssue]
+                    _, uniform.value = imgui.checkbox(name, uniform.value)
                 case int(x), _:
                     min_, max_, step = get_range(uniform.range, 0, 100, 1)
-                    _, uniform.value = imgui.drag_int(  # pyright: ignore [reportAttributeAccessIssue]
+                    _, uniform.value = imgui.drag_int(
                         name,
                         uniform.value,
                         min_value=min_,
@@ -266,7 +266,7 @@ class VHShRenderer:
                     )
                 case float(x), _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float(  # pyright: ignore [reportAttributeAccessIssue]
+                    _, uniform.value = imgui.drag_float(
                         name,
                         uniform.value,
                         min_value=min_,
@@ -275,7 +275,7 @@ class VHShRenderer:
                     )
                 case [float(x), float(y)], _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float2(  # pyright: ignore [reportAttributeAccessIssue]
+                    _, uniform.value = imgui.drag_float2(
                         name,
                         *uniform.value,
                         min_value=min_,
@@ -284,7 +284,7 @@ class VHShRenderer:
                     )
                 case [float(x), float(y), float(z)], _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float3(  # pyright: ignore [reportAttributeAccessIssue]
+                    _, uniform.value = imgui.drag_float3(
                         name,
                         *uniform.value,
                         min_value=min_,
@@ -292,11 +292,11 @@ class VHShRenderer:
                         change_speed=step
                     )
                 case [float(x), float(y), float(z), float(w)], 'color':
-                    _, uniform.value = imgui.color_edit4(name, *uniform.value,  # pyright: ignore [reportAttributeAccessIssue]
-                                                         imgui.COLOR_EDIT_FLOAT)
+                    _, uniform.value = imgui.color_edit4(name, *uniform.value,
+                                                         imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z), float(w)], _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float4(  # pyright: ignore [reportAttributeAccessIssue]
+                    _, uniform.value = imgui.drag_float4(
                         name,
                         *uniform.value,
                         min_value=min_,
@@ -304,11 +304,11 @@ class VHShRenderer:
                         change_speed=step
                     )
 
-        imgui.end()  # pyright: ignore [reportAttributeAccessIssue]
-        imgui.end_frame()  # pyright: ignore [reportAttributeAccessIssue]
+        imgui.end()
+        imgui.end_frame()
 
     def _draw_gui(self):
-        imgui.render()  # pyright: ignore [reportAttributeAccessIssue]
+        imgui.render()
 
     def _draw_shader(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -460,7 +460,7 @@ class VHShRenderer:
             self._draw_shader()
             self._draw_gui()
 
-            self._glfw_imgui_renderer.render(imgui.get_draw_data())  # pyright: ignore [reportAttributeAccessIssue]
+            self._glfw_imgui_renderer.render(imgui.get_draw_data())
             glfw.swap_buffers(self._window)
 
     def __del__(self):
