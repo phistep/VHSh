@@ -1,21 +1,25 @@
-uniform float zoom; // =.01 [0.,.01,0.0001]
+uniform float zoom; // =.5 [0.,1.,0.01]
+uniform vec2 focus; // =(0.5,0.5) [-1.,1.]
+uniform vec4 bgcolor; // <color> =(1.,1.,0.,1.)
+uniform float colormix;
+uniform float noisiness; // =0.1
+uniform float range; // =0. [-4.,4.]
 
 float rand(vec2 co) {
     return fract(sin(dot(floor(co.xy), vec2(0, 1) + tan(u_Time * 0.0001))) * 500.0);
 }
 
 void main(void) {
-    vec2 surfacePosition = vec2(0.5);
-    vec2 mouse = vec2(0.5);
+    float z = zoom / 10000.;
+    vec2 position = gl_FragCoord.xy - (focus * u_Resolution);
 
-    //float zoom = atan(fract(u_Time * 2e-1) * 2.0 - 1.0);
-    vec2 sp = surfacePosition;
-    vec2 position = gl_FragCoord.xy - (mouse * u_Resolution);
-    float color = rand(position.xy * (0.25 + asin(sin(zoom)) * 11.1));
-    position *= sp;
+    float noise = rand(position.xy * (0.25 + asin(sin(z)) * 11.1));
 
-    //if (color < 0.5) color = 0.0; else color = 1.0;
-    color = (floor(color * 4.0) + 0.0) / 4.0;
+    FragColor = vec4(
+            bgcolor.r,
+            mix(bgcolor.g, fract(position.x * position.y * z) + sin(range), colormix),
+            bgcolor.b, //cos(color2.b + z * 3.0),
+            1);
 
-    FragColor = vec4(color, sin(position.x * position.y * zoom * 2.0), cos(color + zoom * 3.0), 1);
+    FragColor = mix(FragColor, vec4(vec3(noise), 1.), noisiness);
 }
