@@ -141,7 +141,13 @@ dir.z *= 5;
 - [x] auto-define builtin uniforms / math library / preamble
 - [x] hot reload https://watchfiles.helpmanual.io/api/watch/
 - [x] define defaults and ranges in uniform definition as comment
-- [ ] fix file watch thread stop
+- [ ] play/pause toggle for  `u_Time`
+- [ ] `<log>` widget modifyer
+- [ ] "touchpad" widget for `vec2`
+- [ ] autosave and restore uniform values, have a reset button
+- [ ] remember window position
+- [ ] fix `t` as uniform name doesn't generate ui
+- [ ] fix threads stop
 - [ ] widget size and close button
 - [ ] re-parse metadata on reload
 - [ ] write current values to file
@@ -155,8 +161,8 @@ dir.z *= 5;
   n_max = 0x23
   color = 0x42
   # mapping preset ids to MIDI addresses
-  "@1" = 0xa1
-  "@2" = 0xa2
+  "$1" = 0xa1
+  "$2" = 0xa2
 
   [[uniforms.n_max]]
   type = "int"
@@ -174,7 +180,7 @@ dir.z *= 5;
   n_max = 10
   color = [0.0, 1.0, 0.75]
 
-  [[presets.1]]
+  [[presets.2]]
   n_max = 5
   color = [1.0, 1.0, 1.0]
   ```
@@ -199,6 +205,9 @@ dir.z *= 5;
 - https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
 - https://iquilezles.org/articles/
 - https://docs.gl/sl4/
+- https://www.youtube.com/watch?v=f4s1h2YETNY
+- http://dev.thi.ng/gradients/
+- https://mido.readthedocs.io/en/stable/intro.html
 
 
 [imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364

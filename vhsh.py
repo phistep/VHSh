@@ -4,16 +4,21 @@ import sys
 import argparse
 import re
 import time
-from typing import Optional, TypeVar, Iterable, get_args
-from threading import Thread, Event
+import warnings
+from typing import Optional, TypeVar, Iterable, get_args, Literal, Callable, Any, Self
+from threading import Thread, Event, Lock
 from pprint import pprint
+from textwrap import dedent
 
+from OpenGL.raw.GL.VERSION.GL_4_0 import glUniform1d
 from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
 import glfw
 import numpy as np
 import imgui
-from watchfiles import watch
+
+# `watchfiles` imported conditionally in VHShRenderer._watch_file()
+# `mido` imported conditionally in VHShRenderer._midi_listen()
 
 
 VertexArrayObject = np.uint32
@@ -28,6 +33,9 @@ GLSLVec2 = tuple[float, float]
 GLSLVec3 = tuple[float, float, float]
 GLSLVec4 = tuple[float, float, float, float]
 
+T = TypeVar('T')
+UniformT = TypeVar('UniformT', GLSLBool, GLSLInt, GLSLVec2, GLSLVec3, GLSLVec4)
+
 
 class ShaderCompileError(RuntimeError):
     """shader compile error."""
@@ -41,47 +49,145 @@ class ProgramLinkError(RuntimeError):
     """program link error."""
 
 
-# TODO dataclass?
 class Uniform:
-    def __init__(self, program, type_, name, value, range=None, widget=None):
-        self.location = gl.glGetUniformLocation(program, name)
+
+    def __init__(self,
+                 program: ShaderProgram,
+                 type_: str,
+                 name: str,
+                 value: Optional[UniformT] = None,
+                 default: Optional[UniformT] = None,
+                 range: Optional[list[UniformT]] = None,
+                 widget: Optional[str] = None):
+        self._location: int = gl.glGetUniformLocation(program, name)
         self.type = type_
+        self._type = None
         self.name = name
-        self.value = value
+        self.default = default
         self.range = range
         self.widget = widget
+
+        # TODO default step is dropped if not passed
+        self._glUniform: Callable[[Any, ...], None]
+        match self.type:
+            case 'bool':
+                self._type = GLSLBool
+                self._glUniform = gl.glUniform1i
+                self.default = self.default or True
+                self.range = None
+            case 'int':
+                self._type = GLSLInt
+                self._glUniform = gl.glUniform1i
+                self.default = self.default or 1
+                self.range = self.range or (0, 10, 1)
+            case 'float':
+                self._type = GLSLFloat
+                self._glUniform = gl.glUniform1f
+                self.default = self.default or 1.0
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case 'vec2':
+                self._type = GLSLVec2
+                self._glUniform = gl.glUniform2f
+                self.default = self.default or (1.,)*2
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case 'vec3':
+                self._type = GLSLVec3
+                self._glUniform = gl.glUniform3f
+                self.default = self.default or (1.,)*3
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case 'vec4':
+                self._type = GLSLVec4
+                self._glUniform = gl.glUniform4f
+                self.default = self.default or (1.,)*4
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case _:
+                raise NotImplementedError(
+                    f"Uniform type '{self.type}' not implemented:"
+                    f" {self.name} ({self.value})")
+
+        uniform_type = get_args(self._type) or self._type
+        value_type = (tuple(type(elem) for elem in self.default)
+                      if isinstance(self.default, Iterable)
+                      else type(self.default))
+        if  value_type != uniform_type:
+            raise UniformIntializationError(
+                f"Uniform '{self.name}' defined as"
+                f" '{self.type}' ({uniform_type}), but provided value"
+                f" has type '{value_type}': {self.default!r}")
+
+        self.value = value if value is not None else self.default
 
     def __str__(self):
-        return (f"uniform {self.type} {self.name}"
-                f" // ={self.value} {self.range} <{self.widget}> ")
-        self.range = range
-        self.widget = widget
+        return (f"uniform {self.type} {self.name};"
+                f"  // ={self.value} {self.range} <{self.widget}> ")
 
-    def __get__(self):
-        return self.value
-
-    # TODO not working?
-    def __set__(self, val):
-        self.value = val
+    def __repr__(self):
+        return (f'Uniform'
+                f' type={self.type}'
+                f' name="{self.name}"'
+                f' value={self.value}'
+                f' default={self.default}'
+                f' range={self.range}'
+                f' widget={self.widget}'
+                f' _type={self._type}'
+                f' _glUniform={self._glUniform.__name__}'
+                f' at 0x{self._location:04x}>')
 
     def update(self):
-        match self.value:
-            case int(x):
-                gl.glUniform1i(self.location, int(x))
-            case float(x):
-                gl.glUniform1f(self.location, x)
-            case [float(x), float(y)]:
-                gl.glUniform2f(self.location, x, y)
-            case [float(x), float(y), float(z)]:
-                gl.glUniform3f(self.location, x, y, z)
-            case [float(x), float(y), float(z), float(w)]:
-                gl.glUniform4f(self.location, x, y, z, w)
-            case _:
-                raise NotImplementedError(f"{self.name} {type(self.value)}: {self.value}")
+        args = self.value
+        if not isinstance(args, Iterable):
+            args = [args]
+        self._glUniform(self._location, *args)
 
-    def __iter__(self):
-        return iter(self.value)
+    @classmethod
+    def from_def(cls,
+                shader_program: ShaderProgram,
+                definition: str) -> 'Uniform':
 
+        try:
+            matches = re.search(
+                # TODO why ^(?!\/\/)\s* not working to ignore comments?
+                (r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
+                 r'(?:\s*//\s*(?:'
+                 r'(?P<widget><\w+>)?\s*)?'
+                 r'(?P<default>=(?:\S+|\([^\)]+\)))?'
+                 r'\s*(?P<range>\[[^\]]+\])?'
+                 r')?'),
+                definition
+            )
+            type_, name, widget, value_s, range_s = matches.groups()
+        except Exception as e:
+            raise UniformIntializationError(
+                f"Syntax error in metadata defintion: {definition}") from e
+
+        if widget is not None:
+            widget = widget.strip('<>')
+        try:
+            default = (eval(value_s.lstrip('='))
+                        if value_s
+                        else None)
+        except SyntaxError as e:
+            raise UniformIntializationError(
+                f"Invalid 'value' metadata for uniform"
+                f" '{name}': {e}: {value_s}"
+            ) from e
+        try:
+            range = eval(range_s) if range_s else None
+        except SyntaxError as e:
+            raise UniformIntializationError(
+                f"Invalid 'range' metadata for uniform"
+                f" '{name}': {e}: {range_s!r}"
+            ) from e
+
+        uniform = Uniform(program=shader_program,
+                          type_=type_,
+                          name=name,
+                          default=default,
+                          range=range,
+                          widget=widget)
+
+
+        return uniform
 
 class VHShRenderer:
 
@@ -93,7 +199,7 @@ class VHShRenderer:
                          [ 1.0, -1.0, 0.0]],
                         dtype=np.float32)
 
-    VERTEX_SHADER = """
+    VERTEX_SHADER = dedent("""\
         #version 330 core
 
         layout(location = 0) in vec3 VertexPos;
@@ -101,30 +207,44 @@ class VHShRenderer:
         void main() {
             gl_Position = vec4(VertexPos, 1.0);
         }
-    """
+        """
+    )
 
-    FRAGMENT_SHADER_PREAMBLE = """
+    FRAGMENT_SHADER_PREAMBLE = dedent("""\
         #version 330 core
 
         out vec4 FragColor;
         uniform vec2 u_Resolution;
         uniform float u_Time;
         #line 1
-    """
+        """
+    )
 
-    FRAGMENT_SHADER = """
+    FRAGMENT_SHADER = dedent("""\
         void main() {
             vec2 pos = gl_FragCoord.xy / u_Resolution;
             FragColor = vec4(pos.x, pos.y, 1.0 - (pos.x + pos.y) / 2.0, 1.0);
         }
-    """
+        """
+    )
 
-    def __init__(self, shader_path: str, width=1280, height=720, watch=False):
+    def __init__(self,
+                 shader_path: str,
+                 width: int = 1280,
+                 height: int = 720,
+                 watch: bool = False,
+                 midi: bool = False):
         self.vao = None
         self.vbo = None
         self.shader_program = None
+        self._shader_path = shader_path
+        self._stop = Event()
+        self._uniform_lock = Lock()
         self._file_watcher = None
+        self._midi_listener = None
         self._glfw_imgui_renderer = None
+        self._lineno_offset = \
+            len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
 
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
@@ -137,7 +257,6 @@ class VHShRenderer:
         self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
                                             self.VERTEX_SHADER)
 
-        self._shader_path = shader_path
         self.uniforms = {}
         with open(self._shader_path) as f:
             shader_src = f.read()
@@ -148,12 +267,17 @@ class VHShRenderer:
             sys.exit(1)
 
         self._file_changed = Event()
-        self._stop_watching = Event()
         if watch:
             self._file_watcher = Thread(target=self._watch_file,
                                         name="VHSh.file_watcher",
                                         args=(self._shader_path,))
             self._file_watcher.start()
+
+        if midi:
+            self._midi_listener = Thread(target=self._midi_listen,
+                                         name="VHSh.midi_listener",
+                                         )#args=(,))
+            self._midi_listener.start()
 
     @staticmethod
     def _init_window(width, height, name):
@@ -177,10 +301,40 @@ class VHShRenderer:
         return window
 
     def _watch_file(self, filename: str):
-        print(f"Watching for changes in '{filename}'")
-        for _ in watch(filename, stop_event=self._stop_watching):
+        from watchfiles import watch
+        print(f"Watching for changes in '{filename}'...")
+        for _ in watch(filename, stop_event=self._stop):
             # print(f"'{filename}' changed!")
             self._file_changed.set()
+
+    def _midi_listen(self):
+        import mido
+        print("Listening for MIDI messages...")
+
+        # TODO metadata parsing
+        mapping = {
+            0: "scale",
+            16: "n_max"
+        }
+
+        with mido.open_input() as inport:
+            while True:
+                if self._stop.is_set():
+                    break
+                for msg in inport.iter_pending():
+                    # print(f"Received MIDI message: {msg}")
+                    # print(f"Received MIDI message: @{msg.control} = {msg.value}")
+
+                    try:
+                        # TODO range mapping
+                        self._uniform_lock.acquire()
+                        self.uniforms[mapping[msg.control]].value = float(msg.value / 127)
+                    except KeyError as e:
+                        print(f"MIDI mapping not found for {msg.control}: {e}")
+                        print(msg)
+                        pprint(mapping)
+                    finally:
+                        self._uniform_lock.release()
 
     def _create_vertices(self, vertices: np.ndarray
                          ) -> tuple[VertexArrayObject, VertexBufferObject]:
@@ -235,7 +389,6 @@ class VHShRenderer:
         imgui.new_frame()
         imgui.begin("Paramters", True)
 
-        T = TypeVar('T')
         def get_range(value: Iterable[T],
                       min_default: T,
                       max_default: T,
@@ -348,79 +501,26 @@ class VHShRenderer:
                                                    fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
-        uniform_defs = re.findall(
-            # TODO why ^(?!\/\/)\s* not working to ignore comments?
-            # TODO allow whitespace in values and ranges
-            (r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
-             r'(?:\s*//'
-             r'\s*(?P<widget>\<\w+\>)?'
-             r'\s+(?P<default>=\S+)?'
-             r'\s+(?P<range>\[\S+\])?'
-             r')?'),
-            shader_src
-        )
-        # TODO move to Uniform class
-        # bundle all type info (default, default range, update func, widget func, ...)
-        # in one big table and use it i
-        DEFAULTS = {'bool': True,
-                    'int': 0,
-                    'float': 0.,
-                    'vec2': (0.,)*2,
-                    'vec3': (0.,)*3,
-                    'vec4': (0.,)*4}
-        TYPES = {'bool': GLSLBool,
-                 'int': GLSLInt,
-                 'float': GLSLFloat,
-                 'vec2': GLSLVec2,
-                 'vec3': GLSLVec3,
-                 'vec4': GLSLVec4}
-        for type_, name, widget, value_s, range_s in uniform_defs:
-            lineno = ([f'uniform {type_} {name};' in line
-                      for line in shader_src.split('\n')].index(True) + 1
-                      - len(self.FRAGMENT_SHADER_PREAMBLE.split('\n')) + 1)
+        for n, line in enumerate(shader_src.split('\n')):
+            if line.strip().startswith('uniform'):
+                try:
+                    uniform = Uniform.from_def(self.shader_program, line)
+                    try:
+                        self._uniform_lock.acquire()
+                        self.uniforms[uniform.name] = uniform
+                    finally:
+                        self._uniform_lock.release()
+                except UniformIntializationError as e:
+                    lineno = n - self._lineno_offset
+                    raise ShaderCompileError(f"ERROR 0:{lineno}: {e}")
 
-            widget = widget.strip('<>') or None
-            try:
-                value = (eval(value_s.lstrip('='))
-                        if value_s
-                        else DEFAULTS[type_])
-            except SyntaxError as e:
-                raise UniformIntializationError(
-                    f"ERROR: 0:{lineno} Invalid 'value' metadata for uniform"
-                    f" '{name}': {e}: {value_s}"
-                ) from e
-            try:
-                range = eval(range_s) if range_s else None
-            except SyntaxError as e:
-                raise UniformIntializationError(
-                    f"ERROR: 0:{lineno} Invalid 'range' metadata for uniform"
-                    f" '{name}': {e}: {range_s!r}"
-                ) from e
 
-            uniform_type = get_args(TYPES[type_]) or TYPES[type_]
-            value_type = (tuple(type(i) for i in value)
-                          if isinstance(value, Iterable)
-                          else type(value))
-            if  value_type != uniform_type:
-                raise UniformIntializationError(
-                    f"ERROR: 0:{lineno} Uniform '{name}' defined as"
-                    f" '{type_}' ({uniform_type}), but provided value"
-                    f" has type '{value_type}': {value!r}")
-
-            if name not in self.uniforms:
-                # TODO if we change the type but not the name, it won't be
-                # reloaded
-                self.uniforms[name] = Uniform(
-                    program=self.shader_program,
-                    type_=TYPES[type_],
-                    name=name,
-                    value=value,
-                    range=range,
-                    widget=widget
-                )
-
-        for uniform in self.uniforms.values():
-            print(uniform)
+        try:
+            self._uniform_lock.acquire()
+            for uniform in self.uniforms.values():
+                print(uniform)
+        finally:
+            self._uniform_lock.release()
 
     def _print_error(self, e: Exception):
         try:
@@ -464,20 +564,27 @@ class VHShRenderer:
             glfw.swap_buffers(self._window)
 
     def __del__(self):
-        if self.vao is not None:
-            gl.glDeleteVertexArrays(1, [self.vao])
-        if self.vbo is not None:
-            gl.glDeleteBuffers(1, [self.vbo])
-        if self.shader_program is not None:
-            gl.glDeleteProgram(self.shader_program)
-        if self._glfw_imgui_renderer is not None:
-            self._glfw_imgui_renderer.shutdown()
+        # TODO this keeps crashing if not initialized correctly,
+        #      do we really need to do this?
+        # if self.vao is not None:
+        #     gl.glDeleteVertexArrays(1, [self.vao])
+        # if self.vbo is not None:
+        #     gl.glDeleteBuffers(1, [self.vbo])
+        # if self.shader_program is not None:
+        #     gl.glDeleteProgram(self.shader_program)
+        # if self._glfw_imgui_renderer is not None:
+        #     self._glfw_imgui_renderer.shutdown()
         glfw.terminate()
 
+        self._stop.set()
+
         if self._file_watcher is not None:
-            self._stop_watching.set()
             if self._file_watcher.is_alive():
                 self._file_watcher.join()
+
+        if self._midi_listener is not None:
+            if self._midi_listener.is_alive():
+                self._midi_listener.join()
 
 
 def main(argv: Optional[list[str]] = None):
@@ -485,9 +592,11 @@ def main(argv: Optional[list[str]] = None):
     parser.add_argument('shader', help='Path to GLSL fragment shader')
     parser.add_argument('-w', '--watch', action='store_true',
         help="Watch for file changes and automatically reload shader")
+    parser.add_argument('-m', '--midi', action='store_true',
+        help="Listen to MIDI messages for uniform control")
     args = parser.parse_args(argv)
 
-    vhsh_renderer = VHShRenderer(args.shader, watch=args.watch)
+    vhsh_renderer = VHShRenderer(args.shader, watch=args.watch, midi=args.midi)
     vhsh_renderer.run()
 
 
