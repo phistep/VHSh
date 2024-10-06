@@ -1,6 +1,6 @@
 uniform vec2 origin; // =(0.,0.) [-2.,-2.]
-uniform float scale; // =1. [0.,2.]
-uniform int n_max; // =10 [1,100]
+uniform float scale; // =1. [0.,2.] @0
+uniform int n_max; // =10 [1,100] @16
 uniform vec4 base_color; // <color> =(1.,1.,0.,1.)
 uniform float intensity; // =0.5
 uniform bool animate; // =False
@@ -21,6 +21,7 @@ float f(vec2 c) {
     }
     return 0.;
 }
+//
 
 void main() {
     vec2 pos = gl_FragCoord.xy / u_Resolution * 2. - vec2(1.5, 1.0);

@@ -5,7 +5,7 @@ import argparse
 import re
 import time
 import warnings
-from typing import Optional, TypeVar, Iterable, get_args, Literal, Callable, Any, Self
+from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Callable, Any, Self
 from threading import Thread, Event, Lock
 from pprint import pprint
 from textwrap import dedent
@@ -21,17 +21,17 @@ import imgui
 # `mido` imported conditionally in VHShRenderer._midi_listen()
 
 
-VertexArrayObject = np.uint32
-VertexBufferObject = np.uint32
-Shader = int
-ShaderProgram = int
+VertexArrayObject: TypeAlias = np.uint32
+VertexBufferObject: TypeAlias = np.uint32
+Shader: TypeAlias = int
+ShaderProgram: TypeAlias = int
 
-GLSLBool = bool
-GLSLInt = int
-GLSLFloat = float
-GLSLVec2 = tuple[float, float]
-GLSLVec3 = tuple[float, float, float]
-GLSLVec4 = tuple[float, float, float, float]
+GLSLBool: TypeAlias = bool
+GLSLInt: TypeAlias = int
+GLSLFloat: TypeAlias = float
+GLSLVec2: TypeAlias = tuple[float, float]
+GLSLVec3: TypeAlias = tuple[float, float, float]
+GLSLVec4: TypeAlias = tuple[float, float, float, float]
 
 T = TypeVar('T')
 UniformT = TypeVar('UniformT', GLSLBool, GLSLInt, GLSLVec2, GLSLVec3, GLSLVec4)
@@ -58,7 +58,8 @@ class Uniform:
                  value: Optional[UniformT] = None,
                  default: Optional[UniformT] = None,
                  range: Optional[list[UniformT]] = None,
-                 widget: Optional[str] = None):
+                 widget: Optional[str] = None,
+                 midi: Optional[int] = None):
         self._location: int = gl.glGetUniformLocation(program, name)
         self.type = type_
         self._type = None
@@ -66,6 +67,7 @@ class Uniform:
         self.default = default
         self.range = range
         self.widget = widget
+        self.midi = midi
 
         # TODO default step is dropped if not passed
         self._glUniform: Callable[[Any, ...], None]
@@ -118,8 +120,9 @@ class Uniform:
         self.value = value if value is not None else self.default
 
     def __str__(self):
-        return (f"uniform {self.type} {self.name};"
-                f"  // ={self.value} {self.range} <{self.widget}> ")
+        # TODO don't print None
+        return (f"uniform {self.type} {self.name};  //"
+                f" ={self.value} {self.range} <{self.widget}> @{self.midi}")
 
     def __repr__(self):
         return (f'Uniform'
@@ -129,6 +132,7 @@ class Uniform:
                 f' default={self.default}'
                 f' range={self.range}'
                 f' widget={self.widget}'
+                f' midi={self.midi}'
                 f' _type={self._type}'
                 f' _glUniform={self._glUniform.__name__}'
                 f' at 0x{self._location:04x}>')
@@ -138,6 +142,23 @@ class Uniform:
         if not isinstance(args, Iterable):
             args = [args]
         self._glUniform(self._location, *args)
+
+    def set_value_midi(self, value: int):
+        assert 0 <= value <= 127
+        assert self.range
+        min_, max_ = self.range[:2]
+        interpolated = min_ + (value / 127.0) * (max_ - min_)
+
+        match self.type:
+            case 'bool':
+                self.value = bool(value)
+            case 'int':
+                self.value = int(interpolated)
+            case 'float':
+                self.value = float(interpolated)
+            case _:
+                raise NotImplementedError(
+                    f"MIDI update not implemented for Uniform type '{self.type}'")
 
     @classmethod
     def from_def(cls,
@@ -152,25 +173,28 @@ class Uniform:
                  r'(?P<widget><\w+>)?\s*)?'
                  r'(?P<default>=(?:\S+|\([^\)]+\)))?'
                  r'\s*(?P<range>\[[^\]]+\])?'
+                 r'\s*(?P<midi>@\d+)?'
                  r')?'),
                 definition
             )
-            type_, name, widget, value_s, range_s = matches.groups()
+            type_, name, widget, default_s, range_s, midi = matches.groups()
         except Exception as e:
             raise UniformIntializationError(
                 f"Syntax error in metadata defintion: {definition}") from e
 
         if widget is not None:
             widget = widget.strip('<>')
+
         try:
-            default = (eval(value_s.lstrip('='))
-                        if value_s
+            default = (eval(default_s.removeprefix('='))
+                        if default_s
                         else None)
         except SyntaxError as e:
             raise UniformIntializationError(
-                f"Invalid 'value' metadata for uniform"
-                f" '{name}': {e}: {value_s}"
+                f"Invalid 'default' metadata for uniform"
+                f" '{name}': {e}: {default_s}"
             ) from e
+
         try:
             range = eval(range_s) if range_s else None
         except SyntaxError as e:
@@ -179,12 +203,22 @@ class Uniform:
                 f" '{name}': {e}: {range_s!r}"
             ) from e
 
+        if midi is not None:
+            try:
+                midi = int(midi.removeprefix('@'))
+            except ValueError as e:
+                raise UniformIntializationError(
+                    f"Invalid 'midi' metadata for uniform"
+                    f" '{name}': {e}: {midi!r}"
+                ) from e
+
         uniform = Uniform(program=shader_program,
                           type_=type_,
                           name=name,
                           default=default,
                           range=range,
-                          widget=widget)
+                          widget=widget,
+                          midi=midi)
 
 
         return uniform
@@ -234,17 +268,14 @@ class VHShRenderer:
                  height: int = 720,
                  watch: bool = False,
                  midi: bool = False):
+        # need to be defined for __del__() before glfw/imgui init can fail
         self.vao = None
         self.vbo = None
         self.shader_program = None
-        self._shader_path = shader_path
         self._stop = Event()
-        self._uniform_lock = Lock()
         self._file_watcher = None
         self._midi_listener = None
         self._glfw_imgui_renderer = None
-        self._lineno_offset = \
-            len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
 
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
@@ -255,9 +286,14 @@ class VHShRenderer:
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
         self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
-                                            self.VERTEX_SHADER)
+                                                 self.VERTEX_SHADER)
 
-        self.uniforms = {}
+        self.uniforms: dict[str, Uniform] = {}
+        self._midi_mapping: dict[int, str] = {}
+        self._uniform_lock = Lock()
+        self._shader_path = shader_path
+        self._lineno_offset = \
+            len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
         with open(self._shader_path) as f:
             shader_src = f.read()
         try:
@@ -311,12 +347,6 @@ class VHShRenderer:
         import mido
         print("Listening for MIDI messages...")
 
-        # TODO metadata parsing
-        mapping = {
-            0: "scale",
-            16: "n_max"
-        }
-
         with mido.open_input() as inport:
             while True:
                 if self._stop.is_set():
@@ -326,13 +356,15 @@ class VHShRenderer:
                     # print(f"Received MIDI message: @{msg.control} = {msg.value}")
 
                     try:
-                        # TODO range mapping
                         self._uniform_lock.acquire()
-                        self.uniforms[mapping[msg.control]].value = float(msg.value / 127)
+                        uniform = self.uniforms[self._midi_mapping[msg.control]]
+                        uniform.set_value_midi(msg.value)
                     except KeyError as e:
-                        print(f"MIDI mapping not found for {msg.control}: {e}")
-                        print(msg)
-                        pprint(mapping)
+                        print(f"MIDI mapping not found for: {msg.control}")
+                        # print(msg)
+                        pprint(self._midi_mapping)
+                    except NotImplementedError as e:
+                        self._print_error(f"ERROR setting uniform '{uniform.name}': {e}")
                     finally:
                         self._uniform_lock.release()
 
@@ -405,6 +437,7 @@ class VHShRenderer:
             if name in self.FRAGMENT_SHADER_PREAMBLE:
                 continue
 
+            # TODO move to Unifom.imgui
             match uniform.value, uniform.widget:
                 case bool(x), _:
                     _, uniform.value = imgui.checkbox(name, uniform.value)
@@ -507,18 +540,23 @@ class VHShRenderer:
                     uniform = Uniform.from_def(self.shader_program, line)
                     try:
                         self._uniform_lock.acquire()
-                        self.uniforms[uniform.name] = uniform
+                        if uniform.name not in self.uniforms:
+                            self.uniforms[uniform.name] = uniform
                     finally:
                         self._uniform_lock.release()
                 except UniformIntializationError as e:
                     lineno = n - self._lineno_offset
-                    raise ShaderCompileError(f"ERROR 0:{lineno}: {e}")
-
+                    raise ShaderCompileError(f"ERROR 0:{lineno} {e}")
 
         try:
             self._uniform_lock.acquire()
+            self._midi_mapping = {}
             for uniform in self.uniforms.values():
                 print(uniform)
+                print(uniform.name, uniform.midi)
+                if uniform.midi is not None:
+                    self._midi_mapping[uniform.midi] = uniform.name
+            pprint(self._midi_mapping)
         finally:
             self._uniform_lock.release()
 

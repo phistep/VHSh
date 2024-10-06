@@ -87,22 +87,22 @@ a name.
 
 ```glsl
 uniform bool override_red; // =False
-uniform int n_max; // =10 [1,200]
-uniform float scale; // =1. [0.,2.]
+uniform int n_max; // =10 [1,200] @0
+uniform float scale; // =1. [0.,2.] @16
 uniform vec2 origin; // =(0.,0.) [-2.,-2.]
 uniform vec3 dir; // =(1.,0.,0.) [-1.,-1.]
 uniform vec4 base_color; // <color> =(1.,1.,0.,1.)
 ```
 
 Using a special syntax in a comment on the same line, you can define the
-default value `=VALUE`, range `[MIN,MAX,STEP]` (where `STEP` is optional),
-and `<WIDGET>` to indicate a special UI widget  (`<color>` on `vec4` for
-RGBA color picker).
+default value `=VALUE` and a range `[MIN,MAX,STEP]` (where `STEP` is optional).
+With `<WIDGET>`, you can indicate a special UI widget  (`<color>` on `vec4` for
+RGBA color picker). To bind a MIDI control to a uniform, use `@MIDI` with the control ID.
 
 The have to be defined in the order
 
 ```glsl
-uniform type name; // <WIDGET> =VALUE [MIN,MAX,STEP]
+uniform type name; // <WIDGET> =VALUE [MIN,MAX,STEP] @MIDI
 ```
 
 and the values (and ranges) may not contain whitespace. Each individual part
@@ -141,7 +141,7 @@ dir.z *= 5;
 - [x] auto-define builtin uniforms / math library / preamble
 - [x] hot reload https://watchfiles.helpmanual.io/api/watch/
 - [x] define defaults and ranges in uniform definition as comment
-- [ ] play/pause toggle for  `u_Time`
+- [x] MIDI controller support
 - [ ] `<log>` widget modifyer
 - [ ] "touchpad" widget for `vec2`
 - [ ] autosave and restore uniform values, have a reset button
@@ -151,6 +151,9 @@ dir.z *= 5;
 - [ ] widget size and close button
 - [ ] re-parse metadata on reload
 - [ ] write current values to file
+- [ ] nanoKontrol2 support:
+  - [ ] play/pause toggle for  `u_Time`
+  - [ ] vec3 input method: select dim with S/M/R buttons, then use the slider
 - [ ] select different shaders
 - [ ] imgui display shader compile errors
 - [ ] 60fps cap / fps counter
@@ -194,7 +197,6 @@ dir.z *= 5;
   - [ ] prev frame
   - [ ] audio fft
   - [ ] video in
-- [ ] raspberry pi midi or gpio support
 
 
 ## Resources
