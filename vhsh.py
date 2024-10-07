@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import argparse
 import re
@@ -9,6 +10,7 @@ from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Ca
 from threading import Thread, Event, Lock
 from pprint import pprint
 from textwrap import dedent
+from itertools import cycle
 
 from OpenGL.raw.GL.VERSION.GL_4_0 import glUniform1d
 from imgui.integrations.glfw import GlfwRenderer
@@ -223,6 +225,7 @@ class Uniform:
 
         return uniform
 
+
 class VHShRenderer:
 
     NAME = "Video Home Shader"
@@ -263,7 +266,7 @@ class VHShRenderer:
     )
 
     def __init__(self,
-                 shader_path: str,
+                 shader_paths: list[str],
                  width: int = 1280,
                  height: int = 720,
                  watch: bool = False,
@@ -272,6 +275,7 @@ class VHShRenderer:
         self.vao = None
         self.vbo = None
         self.shader_program = None
+        self._file_changed = Event()
         self._stop = Event()
         self._file_watcher = None
         self._midi_listener = None
@@ -280,6 +284,9 @@ class VHShRenderer:
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
+
+        self.imgui_state = {'system_section_expanded': True,
+                            'uniform_section_expanded': True}
 
         self._start_time = time.time()
 
@@ -291,7 +298,8 @@ class VHShRenderer:
         self.uniforms: dict[str, Uniform] = {}
         self._midi_mapping: dict[int, str] = {}
         self._uniform_lock = Lock()
-        self._shader_path = shader_path
+        self._shader_paths = shader_paths
+        self._shader_index = 0
         self._lineno_offset = \
             len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
         with open(self._shader_path) as f:
@@ -302,7 +310,6 @@ class VHShRenderer:
             self._print_error(e)
             sys.exit(1)
 
-        self._file_changed = Event()
         if watch:
             self._file_watcher = Thread(target=self._watch_file,
                                         name="VHSh.file_watcher",
@@ -407,6 +414,7 @@ class VHShRenderer:
         return shader  # pyright: ignore [reportReturnType]
 
     def _create_program(self, *shaders) -> ShaderProgram:
+
         """creates a program from its vertex & fragment shader sources."""
         program = gl.glCreateProgram()
         for shader in shaders:
@@ -417,9 +425,29 @@ class VHShRenderer:
                 gl.glGetProgramInfoLog(program).decode('utf-8'))
         return program  # pyright: ignore [reportReturnType]
 
+    @property
+    def _shader_path(self) -> str:
+        return self._shader_paths[self._shader_index]
+
+    @property
+    def _shader_index(self) -> int:
+        return self.__shader_index
+
+    @_shader_index.setter
+    def _shader_index(self, value: int):
+        self.__shader_index = value
+        with open(self._shader_path) as f:
+            shader_src = f.read()
+        self.uniforms = {}
+        self.set_shader(shader_src)
+
+    def prev_shader(self, n=1):
+        self._shader_index = (self._shader_index - n) % len(self._shader_paths)
+
+    def next_shader(self, n=1):
+        self._shader_index = (self._shader_index + n) % len(self._shader_paths)
+
     def _update_gui(self):
-        imgui.new_frame()
-        imgui.begin("Paramters", True)
 
         def get_range(value: Iterable[T],
                       min_default: T,
@@ -432,6 +460,32 @@ class VHShRenderer:
                     return min_, max_, step
                 case _:
                     return min_default, max_default, step_default
+
+        def get_shader_title(shader_path: str) -> str:
+            return os.path.splitext(os.path.basename(shader_path))[0]
+
+
+        imgui.new_frame()
+        imgui.begin("Paramters", True)
+
+        with imgui.begin_group():
+            if imgui.button("<"):
+                self.prev_shader()
+            imgui.same_line()
+            if imgui.begin_combo("", get_shader_title(self._shader_path)):
+                for idx, item in enumerate(
+                        map(get_shader_title, self._shader_paths)):
+                    is_selected = (idx == self._shader_index)
+                    if imgui.selectable(item, is_selected)[0]:
+                        self._shader_index = idx
+                    if is_selected:
+                        imgui.set_item_default_focus()
+                imgui.end_combo()
+            imgui.same_line()
+            if imgui.button(">"):
+                self.next_shader()
+
+        imgui.separator()
 
         for name, uniform in self.uniforms.items():
             if name in self.FRAGMENT_SHADER_PREAMBLE:
@@ -479,7 +533,7 @@ class VHShRenderer:
                     )
                 case [float(x), float(y), float(z), float(w)], 'color':
                     _, uniform.value = imgui.color_edit4(name, *uniform.value,
-                                                         imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
+                                                        imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z), float(w)], _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float4(
@@ -497,6 +551,7 @@ class VHShRenderer:
         imgui.render()
 
     def _draw_shader(self):
+
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
         gl.glUseProgram(self.shader_program)
@@ -627,7 +682,8 @@ class VHShRenderer:
 
 def main(argv: Optional[list[str]] = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('shader', help='Path to GLSL fragment shader')
+    parser.add_argument('shader', nargs='+',
+        help='Path to GLSL fragment shader')
     parser.add_argument('-w', '--watch', action='store_true',
         help="Watch for file changes and automatically reload shader")
     parser.add_argument('-m', '--midi', action='store_true',

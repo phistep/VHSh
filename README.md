@@ -24,6 +24,9 @@ python3 vhsh.py mandelbrot.glsl
 
 You can pass `--watch` to automatically reload the shader upon file change.
 
+You can connect a MIDI controller and map uniforms to it's input controls using the
+`--midi` flag and uniform metadata syntax (described below).
+
 If you're seeing a message like
 
 > 2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
@@ -142,6 +145,7 @@ dir.z *= 5;
 - [x] hot reload https://watchfiles.helpmanual.io/api/watch/
 - [x] define defaults and ranges in uniform definition as comment
 - [x] MIDI controller support
+- [x] select different shaders
 - [ ] `<log>` widget modifyer
 - [ ] "touchpad" widget for `vec2`
 - [ ] autosave and restore uniform values, have a reset button
@@ -151,10 +155,9 @@ dir.z *= 5;
 - [ ] widget size and close button
 - [ ] re-parse metadata on reload
 - [ ] write current values to file
-- [ ] nanoKontrol2 support:
-  - [ ] play/pause toggle for  `u_Time`
-  - [ ] vec3 input method: select dim with S/M/R buttons, then use the slider
-- [ ] select different shaders
+- [ ] play/pause/speed midi control for  `u_Time`
+- [ ] vec3 input method: select dim with S/M/R buttons, then use the slider
+- [ ] record mp4
 - [ ] imgui display shader compile errors
 - [ ] 60fps cap / fps counter
 - [ ] save and load different presets (toml in the shader file?)
