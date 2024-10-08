@@ -42,9 +42,6 @@ run the following to get rid of it:
 defaults write org.python.python ApplePersistenceIgnoreState NO
 ```
 
-To [fix type checking][imgui-issue-stubs] on `imgui`, download
-[this stubs file][] and place it in this directory.
-
 
 ### MIDI Support
 

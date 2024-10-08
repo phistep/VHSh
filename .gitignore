@@ -4,5 +4,3 @@ __pycache__
 .venv
 
 imgui.ini
-# https://raw.githubusercontent.com/denballakh/pyimgui-stubs/refs/heads/master/imgui.pyi
-imgui.pyi
