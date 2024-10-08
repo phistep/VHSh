@@ -293,6 +293,7 @@ class VHShRenderer:
         self._file_watcher = None
         self._midi_listener = None
         self._glfw_imgui_renderer = None
+        self._time_running = True
 
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
@@ -491,9 +492,17 @@ class VHShRenderer:
         imgui.begin("Parameters", True)
 
         with imgui.begin_group():
-            if imgui.button("<"):
-                self.prev_shader()
+            imgui.input_float("u_Time", self.uniforms['u_Time'].value)
             imgui.same_line()
+            _, self._time_running = imgui.checkbox(
+                'playing' if self._time_running else 'paused',
+                self._time_running
+            )
+        imgui.drag_float2('u_Resolution', *self.uniforms['u_Resolution'].value)
+
+        imgui.spacing()
+
+        with imgui.begin_group():
             if imgui.begin_combo("", get_shader_title(self._shader_path)):
                 for idx, item in enumerate(
                         map(get_shader_title, self._shader_paths)):
@@ -504,10 +513,18 @@ class VHShRenderer:
                         imgui.set_item_default_focus()
                 imgui.end_combo()
             imgui.same_line()
-            if imgui.button(">"):
+            if imgui.arrow_button("Prev Scene", imgui.DIRECTION_LEFT):
+                self.prev_shader()
+            imgui.same_line()
+            if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
                 self.next_shader()
+            imgui.same_line()
+            imgui.text("Scene")
 
+
+        imgui.spacing()
         imgui.separator()
+        imgui.spacing()
 
         for name, uniform in self.uniforms.items():
             if name in self.FRAGMENT_SHADER_PREAMBLE:
@@ -581,7 +598,8 @@ class VHShRenderer:
                                                float(self.height)]
         # regular `time.time()` is too big for f32, so we just return
         # seconds from program start
-        self.uniforms['u_Time'].value = time.time() - self._start_time
+        if self._time_running:
+            self.uniforms['u_Time'].value = time.time() - self._start_time
         for uniform in self.uniforms.values():
             uniform.update()
 
