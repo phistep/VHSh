@@ -57,6 +57,9 @@ passed via `--midi-mapping`.
 [scene]
 prev = 58  # switch to next scene
 next = 59  # switch to previous scene
+
+[uniform.time]
+toggle = 41  # toggle u_Time running
 ```
 
 Sensible mappings for various controls are supplied in

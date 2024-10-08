@@ -134,9 +134,14 @@ class Uniform:
         self.value = value if value is not None else self.default
 
     def __str__(self):
-        # TODO don't print None
-        return (f"uniform {self.type} {self.name};  //"
-                f" ={self.value} {self.range} <{self.widget}> @{self.midi}")
+        s = f"uniform {self.type} {self.name};  // ={self.value}"
+        if self.range is not None:
+            s += f' {list(self.range)}'
+        if self.widget is not None:
+            s += f' <{self.widget}>'
+        if self.midi is not None:
+            s += f' #{self.midi}'
+        return s
 
     def __repr__(self):
         return (f'Uniform'
@@ -187,7 +192,7 @@ class Uniform:
                  r'(?P<widget><\w+>)?\s*)?'
                  r'(?P<default>=(?:\S+|\([^\)]+\)))?'
                  r'\s*(?P<range>\[[^\]]+\])?'
-                 r'\s*(?P<midi>@\d+)?'
+                 r'\s*(?P<midi>#\d+)?'
                  r')?'),
                 definition
             )
@@ -219,7 +224,7 @@ class Uniform:
 
         if midi is not None:
             try:
-                midi = int(midi.removeprefix('@'))
+                midi = int(midi.removeprefix('#'))
             except ValueError as e:
                 raise UniformIntializationError(
                     f"Invalid 'midi' metadata for uniform"
@@ -387,6 +392,10 @@ class VHShRenderer:
                         continue
                     if button_down and msg.control == system_mapping['scene'].get('next'):
                         self.next_shader()
+                        continue
+
+                    if msg.control == system_mapping['uniform'].get('time', {}).get('toggle'):
+                        self._time_running = bool(msg.value)
                         continue
 
                     try:
