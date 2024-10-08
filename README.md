@@ -15,6 +15,9 @@ source .venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
+
+## Usage
+
 Then run `VHSh` fron that environment
 
 ```bash
@@ -22,14 +25,16 @@ source .venv/bin/activate
 python3 vhsh.py mandelbrot.glsl
 ```
 
-You can pass `--watch` to automatically reload the shader upon file change.
+If you pass multiple shader files, you can switch between them in the tool.
+To open all files in a given folder, use `my_shader_folder/*`.
 
-You can connect a MIDI controller and map uniforms to it's input controls using the
-`--midi` flag and uniform metadata syntax (described below).
+You can pass `--watch` to automatically reload the shader upon file change.
 
 If you're seeing a message like
 
-> 2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
+> 2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState:
+> Existing state will not be touched. New state will be written to
+> /var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
 
 run the following to get rid of it:
 
@@ -37,8 +42,28 @@ run the following to get rid of it:
 defaults write org.python.python ApplePersistenceIgnoreState NO
 ```
 
-To [fix type checking][imgui-issue-stubs] on `imgui`, download [this stubs file][] and
-place it in this directory.
+To [fix type checking][imgui-issue-stubs] on `imgui`, download
+[this stubs file][] and place it in this directory.
+
+
+### MIDI Support
+
+When using the `--midi` flag, VHSh will listen to incoming MIDI messages and allow
+you to map parameters to MIDI controls. How to assign uniform mappings is described
+in [Custom Parameters](#Custom_Parameters).
+
+There are also a couple of system controls, like switching scenes, that can be
+mapped to buttons as well. Such a mapping is defined as a [TOML][toml] file and
+passed via `--midi-mapping`.
+
+```toml
+[scene]
+prev = 58  # switch to next scene
+next = 59  # switch to previous scene
+```
+
+Sensible mappings for various controls are supplied in
+[`midi_mappings/`](./midi_mappings).
 
 
 ## Writing Shaders for _Video Home Shader_
@@ -90,8 +115,8 @@ a name.
 
 ```glsl
 uniform bool override_red; // =False
-uniform int n_max; // =10 [1,200] @0
-uniform float scale; // =1. [0.,2.] @16
+uniform int n_max; // =10 [1,200] #0
+uniform float scale; // =1. [0.,2.] #16
 uniform vec2 origin; // =(0.,0.) [-2.,-2.]
 uniform vec3 dir; // =(1.,0.,0.) [-1.,-1.]
 uniform vec4 base_color; // <color> =(1.,1.,0.,1.)
@@ -100,12 +125,12 @@ uniform vec4 base_color; // <color> =(1.,1.,0.,1.)
 Using a special syntax in a comment on the same line, you can define the
 default value `=VALUE` and a range `[MIN,MAX,STEP]` (where `STEP` is optional).
 With `<WIDGET>`, you can indicate a special UI widget  (`<color>` on `vec4` for
-RGBA color picker). To bind a MIDI control to a uniform, use `@MIDI` with the control ID.
+RGBA color picker). To bind a MIDI control to a uniform, use `#MIDI` with the control ID.
 
 The have to be defined in the order
 
 ```glsl
-uniform type name; // <WIDGET> =VALUE [MIN,MAX,STEP] @MIDI
+uniform type name; // <WIDGET> =VALUE [MIN,MAX,STEP] #MIDI
 ```
 
 and the values (and ranges) may not contain whitespace. Each individual part
@@ -160,36 +185,10 @@ dir.z *= 5;
 - [ ] record mp4
 - [ ] imgui display shader compile errors
 - [ ] 60fps cap / fps counter
-- [ ] save and load different presets (toml in the shader file?)
-  ```toml
-  [mapping]
-  # mapping uniforms to MIDI addresses
-  n_max = 0x23
-  color = 0x42
-  # mapping preset ids to MIDI addresses
-  "$1" = 0xa1
-  "$2" = 0xa2
-
-  [[uniforms.n_max]]
-  type = "int"
-  value = 25
-  min = 0
-  max = 100
-
-  [[uniforms.color]]
-  type = "color"
-  value = [1.0, 1.0, 1.0]
-  min = [0.0, 0.0, 0.0]
-  max = [1.0, 1.0, 1.0]
-
-  [[presets.1]]
-  n_max = 10
-  color = [0.0, 1.0, 0.75]
-
-  [[presets.2]]
-  n_max = 5
-  color = [1.0, 1.0, 1.0]
-  ```
+- [ ] save and load different presets
+  - comment section at top of file, `///`
+  - shader metadata definitions as co
+  - separate by `///// Name` (optional)
 - [ ] split into runtime and imgui viewer
   - maybe just have option to show or hide the controls as separate window
   - https://github.com/ocornut/imgui/wiki/Multi-Viewports
@@ -217,3 +216,4 @@ dir.z *= 5;
 
 [imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364
 [imgui.pyi]: https://raw.githubusercontent.com/denballakh/pyimgui-stubs/refs/heads/master/imgui.pyi
+[toml]: https://toml.io

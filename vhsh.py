@@ -6,11 +6,14 @@ import argparse
 import re
 import time
 import warnings
+import tomllib
+from collections import defaultdict
 from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Callable, Any, Self
 from threading import Thread, Event, Lock
 from pprint import pprint
 from textwrap import dedent
 from itertools import cycle
+from contextlib import contextmanager
 
 from OpenGL.raw.GL.VERSION.GL_4_0 import glUniform1d
 from imgui.integrations.glfw import GlfwRenderer
@@ -37,6 +40,15 @@ GLSLVec4: TypeAlias = tuple[float, float, float, float]
 
 T = TypeVar('T')
 UniformT = TypeVar('UniformT', GLSLBool, GLSLInt, GLSLVec2, GLSLVec3, GLSLVec4)
+
+
+@contextmanager
+def acquire_lock(lock):
+    try:
+        lock.acquire()
+        yield
+    finally:
+        lock.release()
 
 
 class ShaderCompileError(RuntimeError):
@@ -270,7 +282,8 @@ class VHShRenderer:
                  width: int = 1280,
                  height: int = 720,
                  watch: bool = False,
-                 midi: bool = False):
+                 midi: bool = False,
+                 midi_mapping: dict = {}):
         # need to be defined for __del__() before glfw/imgui init can fail
         self.vao = None
         self.vbo = None
@@ -300,6 +313,7 @@ class VHShRenderer:
         self._uniform_lock = Lock()
         self._shader_paths = shader_paths
         self._shader_index = 0
+        self.__shader_path = self._shader_path
         self._lineno_offset = \
             len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
         with open(self._shader_path) as f:
@@ -319,7 +333,7 @@ class VHShRenderer:
         if midi:
             self._midi_listener = Thread(target=self._midi_listen,
                                          name="VHSh.midi_listener",
-                                         )#args=(,))
+                                         args=(midi_mapping,))
             self._midi_listener.start()
 
     @staticmethod
@@ -350,17 +364,29 @@ class VHShRenderer:
             # print(f"'{filename}' changed!")
             self._file_changed.set()
 
-    def _midi_listen(self):
+    def _midi_listen(self, system_mapping: dict):
         import mido
-        print("Listening for MIDI messages...")
+
+        pprint(system_mapping)
+        system_mapping = defaultdict(dict, system_mapping)
 
         with mido.open_input() as inport:
+            print(f"Listening for MIDI messages on '{inport.name}'...")
+
             while True:
                 if self._stop.is_set():
                     break
                 for msg in inport.iter_pending():
                     # print(f"Received MIDI message: {msg}")
                     # print(f"Received MIDI message: @{msg.control} = {msg.value}")
+                    button_down = bool(msg.value)
+
+                    if button_down and msg.control == system_mapping['scene'].get('prev'):
+                        self.prev_shader()
+                        continue
+                    if button_down and msg.control == system_mapping['scene'].get('next'):
+                        self.next_shader()
+                        continue
 
                     try:
                         self._uniform_lock.acquire()
@@ -436,10 +462,7 @@ class VHShRenderer:
     @_shader_index.setter
     def _shader_index(self, value: int):
         self.__shader_index = value
-        with open(self._shader_path) as f:
-            shader_src = f.read()
-        self.uniforms = {}
-        self.set_shader(shader_src)
+        self._file_changed.set()
 
     def prev_shader(self, n=1):
         self._shader_index = (self._shader_index - n) % len(self._shader_paths)
@@ -464,9 +487,8 @@ class VHShRenderer:
         def get_shader_title(shader_path: str) -> str:
             return os.path.splitext(os.path.basename(shader_path))[0]
 
-
         imgui.new_frame()
-        imgui.begin("Paramters", True)
+        imgui.begin("Parameters", True)
 
         with imgui.begin_group():
             if imgui.button("<"):
@@ -571,6 +593,14 @@ class VHShRenderer:
             with open(self._shader_path) as f:
                 shader_src = f.read()
             self._file_changed.clear()
+
+            if self._shader_path != self.__shader_path:
+                # clear instead of update uniforms if this is a
+                # new file (vs just reload)
+                with acquire_lock(self._uniform_lock):
+                    self.uniforms = {}
+                self.__shader_path = self._shader_path
+
             try:
                 self.set_shader(shader_src)
             except ShaderCompileError as e:
@@ -593,27 +623,20 @@ class VHShRenderer:
             if line.strip().startswith('uniform'):
                 try:
                     uniform = Uniform.from_def(self.shader_program, line)
-                    try:
-                        self._uniform_lock.acquire()
+                    with acquire_lock(self._uniform_lock):
                         if uniform.name not in self.uniforms:
                             self.uniforms[uniform.name] = uniform
-                    finally:
-                        self._uniform_lock.release()
                 except UniformIntializationError as e:
                     lineno = n - self._lineno_offset
                     raise ShaderCompileError(f"ERROR 0:{lineno} {e}")
 
-        try:
-            self._uniform_lock.acquire()
+        with acquire_lock(self._uniform_lock):
             self._midi_mapping = {}
             for uniform in self.uniforms.values():
                 print(uniform)
-                print(uniform.name, uniform.midi)
                 if uniform.midi is not None:
                     self._midi_mapping[uniform.midi] = uniform.name
             pprint(self._midi_mapping)
-        finally:
-            self._uniform_lock.release()
 
     def _print_error(self, e: Exception):
         try:
@@ -688,9 +711,20 @@ def main(argv: Optional[list[str]] = None):
         help="Watch for file changes and automatically reload shader")
     parser.add_argument('-m', '--midi', action='store_true',
         help="Listen to MIDI messages for uniform control")
+    parser.add_argument('-M', '--midi-mapping',
+        help="Path to TOML file with system MIDI mappings")
     args = parser.parse_args(argv)
 
-    vhsh_renderer = VHShRenderer(args.shader, watch=args.watch, midi=args.midi)
+
+    midi_mapping = {}
+    if args.midi_mapping:
+        with open(args.midi_mapping, 'rb') as f:
+            midi_mapping = tomllib.load(f)
+
+    vhsh_renderer = VHShRenderer(args.shader,
+                                 watch=args.watch,
+                                 midi=args.midi,
+                                 midi_mapping=midi_mapping)
     vhsh_renderer.run()
 
 

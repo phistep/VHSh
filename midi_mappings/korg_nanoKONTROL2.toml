@@ -1,0 +1,20 @@
+[scene]
+prev = 58
+next = 59
+auto_play = 46
+# record = 45
+
+[preset]
+prev = 61
+next = 62
+save = 60
+reset = 42
+
+[uniform]
+color_control_offset = [32, 48, 64]
+toggle_ui = 45
+
+[uniform.time]
+toggle = 41
+decrease_speed = 43
+increase_speed = 44
