@@ -7,6 +7,7 @@ import re
 import time
 import warnings
 import tomllib
+import signal
 from collections import defaultdict
 from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Callable, Any, Self
 from threading import Thread, Event, Lock
@@ -326,7 +327,7 @@ class VHShRenderer:
         with open(self._shader_path) as f:
             shader_src = f.read()
         try:
-            self.set_shader(shader_src)
+            self.set_shader(shader_src, verbose=False)
         except ShaderCompileError as e:
             self._print_error(e)
             sys.exit(1)
@@ -374,11 +375,12 @@ class VHShRenderer:
     def _midi_listen(self, system_mapping: dict):
         import mido
 
+        print("midi system mapping:")
         pprint(system_mapping)
         system_mapping = defaultdict(dict, system_mapping)
 
         with mido.open_input() as inport:
-            print(f"Listening for MIDI messages on '{inport.name}'...")
+            print(f"midi: listening for MIDI messages on '{inport.name}'...")
 
             while True:
                 if self._stop.is_set():
@@ -639,7 +641,7 @@ class VHShRenderer:
                       f" \x1b[2;37m{self._shader_path}"
                       "\x1b[0;0m")
 
-    def set_shader(self, shader_src: str):
+    def set_shader(self, shader_src: str, verbose: bool = True):
         shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
                                               shader_src)
@@ -650,19 +652,15 @@ class VHShRenderer:
 
         self.presets = [{'name': None, 'index': 0, 'uniforms': {}}]
         for n, line in enumerate(shader_src.split('\n')):
-            print("l:  ", line)
             line = line.strip()
-
 
             # uniforms
             if line.startswith('uniform'):
                 try:
                     uniform = Uniform.from_def(self.shader_program, line)
-                    print("u: ", uniform)
                     with acquire_lock(self._uniform_lock):
                         if uniform.name not in self.uniforms:  # TODO does this need to be preset uniforms now?
                             self.presets[0]['uniforms'][uniform.name] = uniform
-                            print(f"u+: {len(self.presets)=} {len(self.presets[0])=}")
 
                 except UniformIntializationError as e:
                     lineno = n - self._lineno_offset
@@ -670,11 +668,9 @@ class VHShRenderer:
             # presets
             elif line.startswith('///'):
                 line_content = line.lstrip('/')
-                print("p:  ", line_content)
                 if line.startswith('/// uniform'):
                     uniform = Uniform.from_def(self.shader_program, line_content)
                     self.presets[-1]['uniforms'][uniform.name] = uniform
-                    print(f"pu+: {len(self.presets[-1]['uniforms'])=}")
                 else:
                     #if len(self.presets) > 1 and not self.presets[-1]['uniforms']:
                     #    self.presets.pop()
@@ -682,35 +678,31 @@ class VHShRenderer:
                     self.presets.append({'name': line_content or str(index),
                                          'index': index,
                                          'uniforms': {}})
-                    print(f"pp+: {len(self.presets)=}")
             got_u = got_p = False
 
         if self._preset_index >= len(self.presets):
             self._preset_index = 0
-        print("presets:")
-        pprint([p['name'] for p in self.presets])
-        print("current:", self._preset_index, self.presets[self._preset_index].keys())
+        if verbose:
+            print("presets:", [p['name'] for p in self.presets])
 
         with acquire_lock(self._uniform_lock):
-            print()
-            print("uniforms b:")
-            pprint(self.uniforms)
-            print("presets b")
-            print(self.presets[self._preset_index]['uniforms'])
-
-            # TODO how to preserve system uniforms from preamble?
             # merge preset onto existing so that system uniforms are preserved
             self.uniforms = {**self.uniforms,
                              **self.presets[self._preset_index]['uniforms']}
-            print("uniforms a:")
-            pprint(self.uniforms)
 
+            if verbose:
+                print("uniforms:")
             self._midi_mapping = {}
             for uniform in self.uniforms.values():
-                print(uniform)
+                if verbose:
+                    print(" ", uniform)
+
                 if uniform.midi is not None:
                     self._midi_mapping[uniform.midi] = uniform.name
-            pprint(self._midi_mapping)
+
+            if verbose and self._midi_listener:
+                print("midi_mapping:")
+                pprint(self._midi_mapping)
 
     def prev_preset(self, n: int = 1):
         self._preset_index = (self._preset_index - n) % len(self.presets)
@@ -743,23 +735,28 @@ class VHShRenderer:
             print(e)
 
     def run(self):
-        if self._glfw_imgui_renderer is None:
-            raise RuntimeError("glfw imgui renderer not initialized!")
-        while not glfw.window_should_close(self._window):
-            glfw.poll_events()
-            self._glfw_imgui_renderer.process_inputs()
-            self.width, self.height = \
-                glfw.get_framebuffer_size(self._window)
+        try:
+            if self._glfw_imgui_renderer is None:
+                raise RuntimeError("glfw imgui renderer not initialized!")
+            while not glfw.window_should_close(self._window):
+                glfw.poll_events()
+                self._glfw_imgui_renderer.process_inputs()
+                self.width, self.height = \
+                    glfw.get_framebuffer_size(self._window)
 
-            self._reload_shader()
-            self._update_gui()
-            self._draw_shader()
-            self._draw_gui()
+                self._reload_shader()
+                self._update_gui()
+                self._draw_shader()
+                self._draw_gui()
 
-            self._glfw_imgui_renderer.render(imgui.get_draw_data())
-            glfw.swap_buffers(self._window)
+                self._glfw_imgui_renderer.render(imgui.get_draw_data())
+                glfw.swap_buffers(self._window)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.shutdown()
 
-    def __del__(self):
+    def shutdown(self):
         # TODO this keeps crashing if not initialized correctly,
         #      do we really need to do this?
         # if self.vao is not None:
@@ -781,6 +778,9 @@ class VHShRenderer:
         if self._midi_listener is not None:
             if self._midi_listener.is_alive():
                 self._midi_listener.join()
+
+    def __del__(self):
+        self.shutdown()
 
 
 def main(argv: Optional[list[str]] = None):

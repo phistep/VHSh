@@ -176,7 +176,6 @@ dir.z *= 5;
 - [ ] autosave and restore uniform values, have a reset button
 - [ ] remember window position
 - [ ] fix `t` as uniform name doesn't generate ui
-- [ ] fix threads stop
 - [ ] widget size and close button
 - [ ] re-parse metadata on reload
 - [ ] write current values to file
@@ -185,7 +184,7 @@ dir.z *= 5;
 - [ ] record mp4
 - [ ] imgui display shader compile errors
 - [ ] 60fps cap / fps counter
-- [ ] save and load different presets
+- [-] save and load different presets
   - comment section at top of file, `///`
   - shader metadata definitions as co
   - separate by `///// Name` (optional)
