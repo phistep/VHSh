@@ -144,7 +144,7 @@ class Uniform:
         return s
 
     def __repr__(self):
-        return (f'Uniform'
+        return (f'<Uniform'
                 f' type={self.type}'
                 f' name="{self.name}"'
                 f' value={self.value}'
@@ -299,6 +299,7 @@ class VHShRenderer:
         self._midi_listener = None
         self._glfw_imgui_renderer = None
         self._time_running = True
+        self._preset_index = 0
 
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
@@ -410,6 +411,7 @@ class VHShRenderer:
                         self._print_error(f"ERROR setting uniform '{uniform.name}': {e}")
                     finally:
                         self._uniform_lock.release()
+                time.sleep(1e-6)
 
     def _create_vertices(self, vertices: np.ndarray
                          ) -> tuple[VertexArrayObject, VertexBufferObject]:
@@ -646,24 +648,75 @@ class VHShRenderer:
                                                    fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
+        self.presets = [{'name': None, 'index': 0, 'uniforms': {}}]
         for n, line in enumerate(shader_src.split('\n')):
-            if line.strip().startswith('uniform'):
+            print("l:  ", line)
+            line = line.strip()
+
+
+            # uniforms
+            if line.startswith('uniform'):
                 try:
                     uniform = Uniform.from_def(self.shader_program, line)
+                    print("u: ", uniform)
                     with acquire_lock(self._uniform_lock):
-                        if uniform.name not in self.uniforms:
-                            self.uniforms[uniform.name] = uniform
+                        if uniform.name not in self.uniforms:  # TODO does this need to be preset uniforms now?
+                            self.presets[0]['uniforms'][uniform.name] = uniform
+                            print(f"u+: {len(self.presets)=} {len(self.presets[0])=}")
+
                 except UniformIntializationError as e:
                     lineno = n - self._lineno_offset
                     raise ShaderCompileError(f"ERROR 0:{lineno} {e}")
+            # presets
+            elif line.startswith('///'):
+                line_content = line.lstrip('/')
+                print("p:  ", line_content)
+                if line.startswith('/// uniform'):
+                    uniform = Uniform.from_def(self.shader_program, line_content)
+                    self.presets[-1]['uniforms'][uniform.name] = uniform
+                    print(f"pu+: {len(self.presets[-1]['uniforms'])=}")
+                else:
+                    #if len(self.presets) > 1 and not self.presets[-1]['uniforms']:
+                    #    self.presets.pop()
+                    index = len(self.presets)
+                    self.presets.append({'name': line_content or str(index),
+                                         'index': index,
+                                         'uniforms': {}})
+                    print(f"pp+: {len(self.presets)=}")
+            got_u = got_p = False
+
+        if self._preset_index >= len(self.presets):
+            self._preset_index = 0
+        print("presets:")
+        pprint([p['name'] for p in self.presets])
+        print("current:", self._preset_index, self.presets[self._preset_index].keys())
 
         with acquire_lock(self._uniform_lock):
+            print()
+            print("uniforms b:")
+            pprint(self.uniforms)
+            print("presets b")
+            print(self.presets[self._preset_index]['uniforms'])
+
+            # TODO how to preserve system uniforms from preamble?
+            # merge preset onto existing so that system uniforms are preserved
+            self.uniforms = {**self.uniforms,
+                             **self.presets[self._preset_index]['uniforms']}
+            print("uniforms a:")
+            pprint(self.uniforms)
+
             self._midi_mapping = {}
             for uniform in self.uniforms.values():
                 print(uniform)
                 if uniform.midi is not None:
                     self._midi_mapping[uniform.midi] = uniform.name
             pprint(self._midi_mapping)
+
+    def prev_preset(self, n: int = 1):
+        self._preset_index = (self._preset_index - n) % len(self.presets)
+
+    def next_preset(self, n: int = 1):
+        self._preset_index = (self._preset_index + n) % len(self.presets)
 
     def _print_error(self, e: Exception):
         try:
