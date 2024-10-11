@@ -673,18 +673,22 @@ class VHShRenderer:
 
     @preset_index.setter
     def preset_index(self, value):
-        if self._preset_index == 0:
-            self.presets[0]['uniforms'] = self.uniforms
-
-        self._preset_index = value % len(self.presets)
-        print()
-        print("current preset:", self.presets[self.preset_index]['name'])
-        for uniform in self.presets[self.preset_index]['uniforms'].values():
-            if uniform.name not in self.FRAGMENT_SHADER_PREAMBLE:
-                print(" ", uniform)
-
-        # merge preset onto existing so that system uniforms are preserved
         with acquire_lock(self._uniform_lock):
+            if self._preset_index == 0:
+                self.presets[0]['uniforms'] = self.uniforms
+
+            self._preset_index = value % len(self.presets)
+            print()
+            print("current preset:", self.presets[self.preset_index]['name'])
+
+            self._midi_mapping = {}
+            for uniform in self.presets[self.preset_index]['uniforms'].values():
+                if uniform.midi is not None:
+                    self._midi_mapping[uniform.midi] = uniform.name
+                if uniform.name not in self.FRAGMENT_SHADER_PREAMBLE:
+                    print(" ", uniform)
+
+            # merge preset onto existing so that system uniforms are preserved
             self.uniforms = {**self.uniforms,
                              **self.presets[self._preset_index]['uniforms']}
 

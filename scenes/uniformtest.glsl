@@ -1,5 +1,5 @@
 ///
-/// uniform float default_range; // =0. [-1.,1.]
+/// uniform float default_range; // =0. [-1.,1.] #16
 /// uniform float default_only; // =0.
 /// uniform float range_only; // [0.,1.]
 /// uniform vec4 widget_default_range; // =(0.,0.,0.,0.)
