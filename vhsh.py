@@ -397,6 +397,13 @@ class VHShRenderer:
                         self.next_shader()
                         continue
 
+                    if button_down and msg.control == system_mapping['preset'].get('prev'):
+                        self.prev_preset()
+                        continue
+                    if button_down and msg.control == system_mapping['preset'].get('next'):
+                        self.next_preset()
+                        continue
+
                     if msg.control == system_mapping['uniform'].get('time', {}).get('toggle'):
                         self._time_running = bool(msg.value)
                         continue
@@ -476,6 +483,7 @@ class VHShRenderer:
     @_shader_index.setter
     def _shader_index(self, value: int):
         self.__shader_index = value
+        self._preset_index = 0
         self._file_changed.set()
 
     def prev_shader(self, n=1):
@@ -516,7 +524,7 @@ class VHShRenderer:
         imgui.spacing()
 
         with imgui.begin_group():
-            if imgui.begin_combo("", get_shader_title(self._shader_path)):
+            if imgui.begin_combo("Scene", get_shader_title(self._shader_path)):
                 for idx, item in enumerate(
                         map(get_shader_title, self._shader_paths)):
                     is_selected = (idx == self._shader_index)
@@ -534,6 +542,24 @@ class VHShRenderer:
             imgui.same_line()
             imgui.text("Scene")
 
+        with imgui.begin_group():
+            # TODO begin_list_box?
+            if imgui.begin_combo("Preset", self.presets[self.preset_index]['name']):
+                for idx, item in [(p['index'], p['name']) for p in self.presets]:
+                    is_selected = (idx == self.preset_index)
+                    if imgui.selectable(item, is_selected)[0]:
+                        self.preset_index = idx
+                    if is_selected:
+                        imgui.set_item_default_focus()
+                imgui.end_combo()
+            imgui.same_line()
+            if imgui.arrow_button("Prev Preset", imgui.DIRECTION_LEFT):
+                self.prev_preset()
+            imgui.same_line()
+            if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
+                self.next_preset()
+            imgui.same_line()
+            imgui.text("Preset")
 
         imgui.spacing()
         imgui.separator()
@@ -641,6 +667,27 @@ class VHShRenderer:
                       f" \x1b[2;37m{self._shader_path}"
                       "\x1b[0;0m")
 
+    @property
+    def preset_index(self):
+        return self._preset_index
+
+    @preset_index.setter
+    def preset_index(self, value):
+        if self._preset_index == 0:
+            self.presets[0]['uniforms'] = self.uniforms
+
+        self._preset_index = value % len(self.presets)
+        print()
+        print("current preset:", self.presets[self.preset_index]['name'])
+        for uniform in self.presets[self.preset_index]['uniforms'].values():
+            if uniform.name not in self.FRAGMENT_SHADER_PREAMBLE:
+                print(" ", uniform)
+
+        # merge preset onto existing so that system uniforms are preserved
+        with acquire_lock(self._uniform_lock):
+            self.uniforms = {**self.uniforms,
+                             **self.presets[self._preset_index]['uniforms']}
+
     def set_shader(self, shader_src: str, verbose: bool = True):
         shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
@@ -650,7 +697,7 @@ class VHShRenderer:
                                                    fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
-        self.presets = [{'name': None, 'index': 0, 'uniforms': {}}]
+        self.presets = [{'name': "<current>", 'index': 0, 'uniforms': {}}]
         for n, line in enumerate(shader_src.split('\n')):
             line = line.strip()
 
@@ -667,7 +714,7 @@ class VHShRenderer:
                     raise ShaderCompileError(f"ERROR 0:{lineno} {e}")
             # presets
             elif line.startswith('///'):
-                line_content = line.lstrip('/')
+                line_content = line.lstrip('/').strip()
                 if line.startswith('/// uniform'):
                     uniform = Uniform.from_def(self.shader_program, line_content)
                     self.presets[-1]['uniforms'][uniform.name] = uniform
@@ -680,15 +727,16 @@ class VHShRenderer:
                                          'uniforms': {}})
             got_u = got_p = False
 
-        if self._preset_index >= len(self.presets):
-            self._preset_index = 0
         if verbose:
             print("presets:", [p['name'] for p in self.presets])
+            print("current preset:", self.presets[self.preset_index]['name'])
+
+
 
         with acquire_lock(self._uniform_lock):
             # merge preset onto existing so that system uniforms are preserved
             self.uniforms = {**self.uniforms,
-                             **self.presets[self._preset_index]['uniforms']}
+                             **self.presets[self.preset_index]['uniforms']}
 
             if verbose:
                 print("uniforms:")
@@ -705,10 +753,10 @@ class VHShRenderer:
                 pprint(self._midi_mapping)
 
     def prev_preset(self, n: int = 1):
-        self._preset_index = (self._preset_index - n) % len(self.presets)
+        self.preset_index = (self.preset_index - n) % len(self.presets)
 
     def next_preset(self, n: int = 1):
-        self._preset_index = (self._preset_index + n) % len(self.presets)
+        self.preset_index = (self.preset_index + n) % len(self.presets)
 
     def _print_error(self, e: Exception):
         try:
