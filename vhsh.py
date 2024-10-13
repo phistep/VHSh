@@ -43,15 +43,6 @@ T = TypeVar('T')
 UniformT = TypeVar('UniformT', GLSLBool, GLSLInt, GLSLVec2, GLSLVec3, GLSLVec4)
 
 
-@contextmanager
-def acquire_lock(lock):
-    try:
-        lock.acquire()
-        yield
-    finally:
-        lock.release()
-
-
 class ShaderCompileError(RuntimeError):
     """shader compile error."""
 
@@ -135,9 +126,10 @@ class Uniform:
         self.value = value if value is not None else self.default
 
     def __str__(self):
-        s = f"uniform {self.type} {self.name};  // ={self.value}"
+        s = (f"uniform {self.type} {self.name};"
+             f"  // ={str(self.value).replace(' ', '')}")
         if self.range is not None:
-            s += f' {list(self.range)}'
+            s += f' {str(list(self.range)).replace(' ', '')}'
         if self.widget is not None:
             s += f' <{self.widget}>'
         if self.midi is not None:
@@ -494,6 +486,7 @@ class VHShRenderer:
 
     def _update_gui(self):
 
+        # TODO move to Uniform @property range
         def get_range(value: Iterable[T],
                       min_default: T,
                       max_default: T,
@@ -527,7 +520,8 @@ class VHShRenderer:
             if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
                 self.next_shader()
             imgui.same_line()
-            imgui.text("Scene")
+            if imgui.button("Save"):
+                self.write_file(uniforms=True, presets=False)
 
         with imgui.begin_group():
             # TODO begin_list_box?
@@ -546,7 +540,8 @@ class VHShRenderer:
             if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
                 self.next_preset()
             imgui.same_line()
-            imgui.text("Preset")
+            if imgui.button("Save"):
+                self.write_file(uniforms=False, presets=True)
 
         imgui.spacing()
         imgui.separator()
@@ -654,7 +649,7 @@ class VHShRenderer:
             if self._shader_path != self.__shader_path:
                 # clear instead of update uniforms if this is a
                 # new file (vs just reload)
-                with acquire_lock(self._uniform_lock):
+                with self._uniform_lock:
                     self.uniforms = {}
                 self.__shader_path = self._shader_path
 
@@ -673,7 +668,7 @@ class VHShRenderer:
 
     @preset_index.setter
     def preset_index(self, value):
-        with acquire_lock(self._uniform_lock):
+        with self._uniform_lock:
             if self._preset_index == 0:
                 self.presets[0]['uniforms'] = self.uniforms
 
@@ -710,7 +705,7 @@ class VHShRenderer:
             if line.startswith('uniform'):
                 try:
                     uniform = Uniform.from_def(self.shader_program, line)
-                    with acquire_lock(self._uniform_lock):
+                    with self._uniform_lock:
                         if uniform.name not in self.uniforms:  # TODO does this need to be preset uniforms now?
                             self.presets[0]['uniforms'][uniform.name] = uniform
 
@@ -738,7 +733,7 @@ class VHShRenderer:
             print("presets:", [p['name'] for p in self.presets])
             print("current preset:", self.presets[self.preset_index]['name'])
 
-        with acquire_lock(self._uniform_lock):
+        with self._uniform_lock:
             # merge preset onto existing so that system uniforms are preserved
             self.uniforms = {**self.uniforms,
                              **self.presets[self.preset_index]['uniforms']}
@@ -762,6 +757,28 @@ class VHShRenderer:
 
     def next_preset(self, n: int = 1):
         self.preset_index = (self.preset_index + n) % len(self.presets)
+
+    def write_file(self, presets: bool = True, uniforms: bool = False):
+        with open(self._shader_path) as f:
+            shader_src = f.read()
+
+        if uniforms:
+            with self._uniform_lock:
+                for uniform in self.uniforms.values():
+                    if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
+                        continue
+                    uniform.default = uniform.value
+                    print(uniform)
+                    shader_src = re.sub(f'^uniform \w+ {uniform.name}.*$', str(uniform),
+                                        shader_src,
+                                        flags=re.MULTILINE)
+
+        if presets:
+            ...
+
+        with open(self._shader_path, 'w') as f:
+            f.write(shader_src)
+        print(f"wrote uniform values to '{self._shader_path}'")
 
     def _print_error(self, e: Exception):
         try:
