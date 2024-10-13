@@ -171,33 +171,50 @@ dir.z *= 5;
 - [x] define defaults and ranges in uniform definition as comment
 - [x] MIDI controller support
 - [x] select different shaders
-- [ ] `<log>` widget modifyer
-- [ ] "touchpad" widget for `vec2`
-- [ ] autosave and restore uniform values, have a reset button
-- [ ] remember window position
-- [ ] fix `t` as uniform name doesn't generate ui
-- [ ] widget size and close button
-- [ ] re-parse metadata on reload
-- [ ] write current values to file
-- [ ] play/pause/speed midi control for  `u_Time`
-- [ ] vec3 input method: select dim with S/M/R buttons, then use the slider
-- [ ] record mp4
-- [ ] imgui display shader compile errors
-- [ ] 60fps cap / fps counter
 - [-] save and load different presets
   - comment section at top of file, `///`
   - shader metadata definitions as co
   - separate by `///// Name` (optional)
-- [ ] split into runtime and imgui viewer
-  - maybe just have option to show or hide the controls as separate window
-  - https://github.com/ocornut/imgui/wiki/Multi-Viewports
-  - https://github.com/ocornut/imgui/blob/docking/examples/example_glfw_opengl2/main.cpp
-- uniforms
+- [ ] write current values to file
+- [ ] 60fps cap / fps counter
+- [ ] show or hide the controls
+- [ ] `<log>` widget modifyer
+- [ ] widget size and close button
+- [ ] remember window position
+- [ ] re-parse metadata on reload
+- [ ] imgui display shader compile errors
+- [ ] autosave and restore uniform values, have a reset button
+- [ ] vec3 input method: select dim with S/M/R buttons, then use the slider
+- [ ] fix `t` as uniform name doesn't generate ui
+- [ ] bug uniform parsing when float `=0.0`
+- [ ] limit resolution and upscale
+- [ ] "touchpad" widget for `vec2`
+- [ ] record mp4
+- [ ] uniforms
   - [x] time
   - [ ] mouse
   - [ ] prev frame
   - [ ] audio fft
   - [ ] video in
+- [ ] big refactoring
+  - one file? or full package with exe in PATH?
+  - docstrings
+  - ```
+    VideoHomeShader
+        context: all variables to consider
+      MidiManager
+        Thread
+        needs uniforms, system commands
+      GUIManager
+        needs uniforms, system commands
+      ShaderRenderer
+        scenes
+        needs system commands
+      FileWatcher
+        talks to Shader Renderer
+      UniformManager
+        presets
+    ```
 
 
 ## Resources

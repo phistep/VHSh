@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -165,9 +165,9 @@ class Uniform:
 
     def set_value_midi(self, value: int):
         assert 0 <= value <= 127
-        assert self.range
-        min_, max_ = self.range[:2]
-        interpolated = min_ + (value / 127.0) * (max_ - min_)
+        if self.range:
+            min_, max_ = self.range[:2]
+            interpolated = min_ + (value / 127.0) * (max_ - min_)
 
         match self.type:
             case 'bool':
@@ -184,7 +184,6 @@ class Uniform:
     def from_def(cls,
                 shader_program: ShaderProgram,
                 definition: str) -> 'Uniform':
-
         try:
             matches = re.search(
                 # TODO why ^(?!\/\/)\s* not working to ignore comments?
@@ -232,16 +231,13 @@ class Uniform:
                     f" '{name}': {e}: {midi!r}"
                 ) from e
 
-        uniform = Uniform(program=shader_program,
-                          type_=type_,
-                          name=name,
-                          default=default,
-                          range=range,
-                          widget=widget,
-                          midi=midi)
-
-
-        return uniform
+        return Uniform(program=shader_program,
+                       type_=type_,
+                       name=name,
+                       default=default,
+                       range=range,
+                       widget=widget,
+                       midi=midi)
 
 
 class VHShRenderer:
@@ -320,6 +316,7 @@ class VHShRenderer:
         self._midi_mapping: dict[int, str] = {}
         self._uniform_lock = Lock()
         self._shader_paths = shader_paths
+        print("scenes:", [self._get_shader_title(s) for s in self._shader_paths])
         self._shader_index = 0
         self.__shader_path = self._shader_path
         self._lineno_offset = \
@@ -492,6 +489,9 @@ class VHShRenderer:
     def next_shader(self, n=1):
         self._shader_index = (self._shader_index + n) % len(self._shader_paths)
 
+    def _get_shader_title(self, shader_path: str) -> str:
+        return os.path.splitext(os.path.basename(shader_path))[0]
+
     def _update_gui(self):
 
         def get_range(value: Iterable[T],
@@ -506,27 +506,14 @@ class VHShRenderer:
                 case _:
                     return min_default, max_default, step_default
 
-        def get_shader_title(shader_path: str) -> str:
-            return os.path.splitext(os.path.basename(shader_path))[0]
 
         imgui.new_frame()
         imgui.begin("Parameters", True)
 
         with imgui.begin_group():
-            imgui.input_float("u_Time", self.uniforms['u_Time'].value)
-            imgui.same_line()
-            _, self._time_running = imgui.checkbox(
-                'playing' if self._time_running else 'paused',
-                self._time_running
-            )
-        imgui.drag_float2('u_Resolution', *self.uniforms['u_Resolution'].value)
-
-        imgui.spacing()
-
-        with imgui.begin_group():
-            if imgui.begin_combo("Scene", get_shader_title(self._shader_path)):
+            if imgui.begin_combo("Scene", self._get_shader_title(self._shader_path)):
                 for idx, item in enumerate(
-                        map(get_shader_title, self._shader_paths)):
+                        map(self._get_shader_title, self._shader_paths)):
                     is_selected = (idx == self._shader_index)
                     if imgui.selectable(item, is_selected)[0]:
                         self._shader_index = idx
@@ -560,6 +547,19 @@ class VHShRenderer:
                 self.next_preset()
             imgui.same_line()
             imgui.text("Preset")
+
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        with imgui.begin_group():
+            imgui.input_float("u_Time", self.uniforms['u_Time'].value)
+            imgui.same_line()
+            _, self._time_running = imgui.checkbox(
+                'playing' if self._time_running else 'paused',
+                self._time_running
+            )
+        imgui.drag_float2('u_Resolution', *self.uniforms['u_Resolution'].value)
 
         imgui.spacing()
         imgui.separator()
@@ -701,6 +701,7 @@ class VHShRenderer:
                                                    fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
+        # todo get rid of index
         self.presets = [{'name': "<current>", 'index': 0, 'uniforms': {}}]
         for n, line in enumerate(shader_src.split('\n')):
             line = line.strip()
@@ -732,10 +733,10 @@ class VHShRenderer:
             got_u = got_p = False
 
         if verbose:
+            print()
+            print("scene:", self._get_shader_title(self._shader_paths[self._shader_index]))
             print("presets:", [p['name'] for p in self.presets])
             print("current preset:", self.presets[self.preset_index]['name'])
-
-
 
         with acquire_lock(self._uniform_lock):
             # merge preset onto existing so that system uniforms are preserved
