@@ -520,7 +520,7 @@ class VHShRenderer:
             if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
                 self.next_shader()
             imgui.same_line()
-            if imgui.button("Save"):
+            if imgui.button("Save current as default"):
                 self.write_file(uniforms=True, presets=False)
 
         with imgui.begin_group():
@@ -540,7 +540,7 @@ class VHShRenderer:
             if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
                 self.next_preset()
             imgui.same_line()
-            if imgui.button("Save"):
+            if imgui.button("Save current values"):
                 self.write_file(uniforms=False, presets=True)
 
         imgui.spacing()
@@ -774,7 +774,23 @@ class VHShRenderer:
                                         flags=re.MULTILINE)
 
         if presets:
-            ...
+            with self._uniform_lock:
+                for uniform in self.uniforms.values():
+                    # TODO copy() necessary?
+                    self.presets[self._preset_index]['uniforms'] = self.uniforms.copy()
+
+            presets_s = ""
+            for preset in self.presets[1:]:
+                presets_s += f"/// {preset['name']}\n"
+                presets_s += '\n'.join(
+                    f"/// {u}" for u in preset['uniforms'].values()
+                ) + '\n'
+
+            lines = [line for line in shader_src.splitlines()
+                        if not line.startswith('///')]
+            shader_src = '\n'.join(lines) + '\n'
+
+            shader_src = presets_s + shader_src
 
         with open(self._shader_path, 'w') as f:
             f.write(shader_src)
@@ -782,7 +798,7 @@ class VHShRenderer:
 
     def _print_error(self, e: Exception):
         try:
-            lines = str(e).strip().split('\n')
+            lines = str(e).strip().splitlines()
             if len(lines) == 2:
                 flex, error = lines
             else:
