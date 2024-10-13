@@ -289,6 +289,7 @@ class VHShRenderer:
         self._glfw_imgui_renderer = None
         self._time_running = True
         self._preset_index = 0
+        self._new_preset_name = ""
 
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
@@ -519,9 +520,8 @@ class VHShRenderer:
             imgui.same_line()
             if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
                 self.next_shader()
-            imgui.same_line()
-            if imgui.button("Save current as default"):
-                self.write_file(uniforms=True, presets=False)
+
+        imgui.spacing()
 
         with imgui.begin_group():
             # TODO begin_list_box?
@@ -539,9 +539,21 @@ class VHShRenderer:
             imgui.same_line()
             if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
                 self.next_preset()
+
+            if imgui.button("Save Uniform Values"):
+                self.write_file(uniforms=True, presets=False)
             imgui.same_line()
-            if imgui.button("Save current values"):
+            if imgui.button("Save Preset Values"):
                 self.write_file(uniforms=False, presets=True)
+
+
+            _, self._new_preset_name = imgui.input_text("Name",
+                                                        self._new_preset_name)
+            imgui.same_line()
+            if imgui.button("New Preset"):
+                self.write_file(uniforms=False, presets=True, new_preset=self._new_preset_name)
+                self._new_preset_name = ""
+
 
         imgui.spacing()
         imgui.separator()
@@ -758,7 +770,10 @@ class VHShRenderer:
     def next_preset(self, n: int = 1):
         self.preset_index = (self.preset_index + n) % len(self.presets)
 
-    def write_file(self, presets: bool = True, uniforms: bool = False):
+    def write_file(self,
+                   presets: bool = True,
+                   uniforms: bool = False,
+                   new_preset: str | None = None):
         with open(self._shader_path) as f:
             shader_src = f.read()
 
@@ -769,12 +784,17 @@ class VHShRenderer:
                         continue
                     uniform.default = uniform.value
                     print(uniform)
-                    shader_src = re.sub(f'^uniform \w+ {uniform.name}.*$', str(uniform),
+                    shader_src = re.sub(f'^uniform \\w+ {uniform.name}.*$', str(uniform),
                                         shader_src,
                                         flags=re.MULTILINE)
 
         if presets:
             with self._uniform_lock:
+                if new_preset is not None:
+                    self.presets.append({"name": new_preset,
+                                         "index": len(self.presets),
+                                         "uniforms": self.uniforms.copy()})  # copy needed?
+                    self._preset_index = len(self.presets) - 1
                 for uniform in self.uniforms.values():
                     # TODO copy() necessary?
                     self.presets[self._preset_index]['uniforms'] = self.uniforms.copy()
