@@ -8,6 +8,7 @@ import time
 import warnings
 import tomllib
 import signal
+from datetime import datetime
 from collections import defaultdict
 from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Callable, Any, Self
 from threading import Thread, Event, Lock
@@ -369,48 +370,65 @@ class VHShRenderer:
         pprint(system_mapping)
         system_mapping = defaultdict(dict, system_mapping)
 
-        with mido.open_input() as inport:
-            print(f"midi: listening for MIDI messages on '{inport.name}'...")
+        try:
+            with mido.open_input() as inport:
+                print(f"midi: listening for MIDI messages on '{inport.name}'...")
 
-            while True:
-                if self._stop.is_set():
-                    break
-                for msg in inport.iter_pending():
-                    # print(f"Received MIDI message: {msg}")
-                    # print(f"Received MIDI message: @{msg.control} = {msg.value}")
-                    button_down = bool(msg.value)
+                while True:
+                    if self._stop.is_set():
+                        break
+                    for msg in inport.iter_pending():
+                        # print(f"Received MIDI message: {msg}")
+                        # print(f"Received MIDI message: #{msg.control} = {msg.value}")
+                        button_down = bool(msg.value)
 
-                    if button_down and msg.control == system_mapping['scene'].get('prev'):
-                        self.prev_shader()
-                        continue
-                    if button_down and msg.control == system_mapping['scene'].get('next'):
-                        self.next_shader()
-                        continue
+                        if msg.control == system_mapping['scene'].get('prev'):
+                            if button_down:
+                                self.prev_shader()
+                            continue
+                        if msg.control == system_mapping['scene'].get('next'):
+                            if button_down:
+                                self.next_shader()
+                            continue
 
-                    if button_down and msg.control == system_mapping['preset'].get('prev'):
-                        self.prev_preset()
-                        continue
-                    if button_down and msg.control == system_mapping['preset'].get('next'):
-                        self.next_preset()
-                        continue
+                        if msg.control == system_mapping['preset'].get('prev'):
+                            if button_down:
+                                self.prev_preset()
+                            continue
+                        if msg.control == system_mapping['preset'].get('next'):
+                            if button_down:
+                                self.next_preset()
+                            continue
+                        if msg.control == system_mapping['preset'].get('save'):
+                            if button_down:
+                                self.write_file(uniforms=False, presets=True,
+                                                new_preset=f"MIDI {datetime.now()}")
+                            continue
 
-                    if msg.control == system_mapping['uniform'].get('time', {}).get('toggle'):
-                        self._time_running = bool(msg.value)
-                        continue
+                        if msg.control == system_mapping['preset'].get('next'):
+                            if button_down:
+                                self.next_preset()
+                            continue
 
-                    try:
-                        self._uniform_lock.acquire()
-                        uniform = self.uniforms[self._midi_mapping[msg.control]]
-                        uniform.set_value_midi(msg.value)
-                    except KeyError as e:
-                        print(f"MIDI mapping not found for: {msg.control}")
-                        # print(msg)
-                        pprint(self._midi_mapping)
-                    except NotImplementedError as e:
-                        self._print_error(f"ERROR setting uniform '{uniform.name}': {e}")
-                    finally:
-                        self._uniform_lock.release()
-                time.sleep(1e-6)
+                        if msg.control == system_mapping['uniform'].get('time', {}).get('toggle'):
+                            self._time_running = bool(msg.value)
+                            continue
+
+                        try:
+                            self._uniform_lock.acquire()
+                            uniform = self.uniforms[self._midi_mapping[msg.control]]
+                            uniform.set_value_midi(msg.value)
+                        except KeyError as e:
+                            print(f"MIDI mapping not found for: {msg.control}")
+                            # print(msg)
+                            pprint(self._midi_mapping)
+                        except NotImplementedError as e:
+                            self._print_error(f"ERROR setting uniform '{uniform.name}': {e}")
+                        finally:
+                            self._uniform_lock.release()
+                    time.sleep(1e-6)
+        except OSError:
+            print("No MIDI devices found!")
 
     def _create_vertices(self, vertices: np.ndarray
                          ) -> tuple[VertexArrayObject, VertexBufferObject]:
@@ -539,13 +557,9 @@ class VHShRenderer:
             imgui.same_line()
             if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
                 self.next_preset()
-
-            if imgui.button("Save Uniform Values"):
-                self.write_file(uniforms=True, presets=False)
             imgui.same_line()
-            if imgui.button("Save Preset Values"):
+            if imgui.button("Save"):
                 self.write_file(uniforms=False, presets=True)
-
 
             _, self._new_preset_name = imgui.input_text("Name",
                                                         self._new_preset_name)
@@ -777,17 +791,6 @@ class VHShRenderer:
         with open(self._shader_path) as f:
             shader_src = f.read()
 
-        if uniforms:
-            with self._uniform_lock:
-                for uniform in self.uniforms.values():
-                    if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
-                        continue
-                    uniform.default = uniform.value
-                    print(uniform)
-                    shader_src = re.sub(f'^uniform \\w+ {uniform.name}.*$', str(uniform),
-                                        shader_src,
-                                        flags=re.MULTILINE)
-
         if presets:
             with self._uniform_lock:
                 if new_preset is not None:
@@ -801,9 +804,10 @@ class VHShRenderer:
 
             presets_s = ""
             for preset in self.presets[1:]:
-                presets_s += f"/// {preset['name']}\n"
+                presets_s += f"/// // {preset['name']}\n"
                 presets_s += '\n'.join(
                     f"/// {u}" for u in preset['uniforms'].values()
+                    if u.name not in self.FRAGMENT_SHADER_PREAMBLE
                 ) + '\n'
 
             lines = [line for line in shader_src.splitlines()
@@ -812,9 +816,23 @@ class VHShRenderer:
 
             shader_src = presets_s + shader_src
 
+            if self._preset_index == 0:
+                uniforms = True
+
+        if uniforms:
+            with self._uniform_lock:
+                for uniform in self.uniforms.values():
+                    if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
+                        continue
+                    uniform.default = uniform.value
+                    print(uniform)
+                    shader_src = re.sub(f'^uniform \\w+ {uniform.name}.*$', str(uniform),
+                                        shader_src,
+                                        flags=re.MULTILINE)
+
         with open(self._shader_path, 'w') as f:
             f.write(shader_src)
-        print(f"wrote uniform values to '{self._shader_path}'")
+        print(f"wrote {'uniform values' if uniforms else ''}{'presets' if presets else ''} to '{self._shader_path}'")
 
     def _print_error(self, e: Exception):
         try:

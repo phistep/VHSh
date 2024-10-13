@@ -8,7 +8,6 @@ auto_play = 46
 prev = 61
 next = 62
 save = 60
-reset = 42
 
 [uniform]
 color_control_offset = [32, 48, 64]

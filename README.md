@@ -2,7 +2,7 @@
 
 _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
-![Screenshot of VHSh in action](vhsh.png)
+![Screenshot of VHSh in action](screenshot.png)
 
 
 ## Setup
@@ -57,6 +57,11 @@ passed via `--midi-mapping`.
 [scene]
 prev = 58  # switch to next scene
 next = 59  # switch to previous scene
+
+[preset]
+prev = 61  # switch to next preset
+next = 62  # switch to previous preset
+save = 60  # save current parameter values to a new preset
 
 [uniform.time]
 toggle = 41  # toggle u_Time running
@@ -161,6 +166,38 @@ dir.z *= 5;
 ```
 
 
+## Presets
+
+You can save the current uniform values as the new `=DEFAULT` parameter in your
+loaded shader source file by clicking `Save` when the currently selected preset.
+is `<current>`.
+
+Furthermore, you can store multiple sets of parameters (including different)
+default values, ranges, MIDI mappings etc.) as _presets_. To save a new preset,
+enter the name in the `Name` field and click `New Preset`. The shader source file
+will be modified by prepending the unform and metadata defintions with a special
+comment prefix (`/// `). Since all those lines will deleted and rewritten on save,
+be sure to not use triple-slashes for other reasons. Each preset is preceeded by
+its name.
+
+```glsl
+/// // My New Preset
+/// uniform bool override_red; // =False
+/// uniform int n_max; // =10 [1,200] #0
+/// uniform float scale; // =1. [0.,2.] #16
+/// uniform vec2 origin; // =(0.,0.) [-2.,-2.]
+/// uniform vec3 dir; // =(1.,0.,0.) [-1.,-1.]
+/// uniform vec4 base_color; // <color> =(1.,1.,0.,1.)
+```
+
+You can add, modify and delete these comment blocks with you're text editor as
+well.
+
+To update an existing preset, select it, adjust the parameter values and click
+`Save`. The current paremeter values will be written to the default values of the
+currently selected preset.
+
+
 ## TODO
 
 - [x] render fragment shader over the whole screen
@@ -171,20 +208,21 @@ dir.z *= 5;
 - [x] define defaults and ranges in uniform definition as comment
 - [x] MIDI controller support
 - [x] select different shaders
-- [-] save and load different presets
-  - comment section at top of file, `///`
-  - shader metadata definitions as co
-  - separate by `///// Name` (optional)
-- [ ] write current values to file
+- [x] save and load different presets
+- [x] write current values to file
+- [ ] re-parse metadata on reload
 - [ ] 60fps cap / fps counter
 - [ ] show or hide the controls
+- [ ] imgui display shader compile errors
 - [ ] `<log>` widget modifyer
 - [ ] widget size and close button
 - [ ] remember window position
-- [ ] re-parse metadata on reload
-- [ ] imgui display shader compile errors
-- [ ] autosave and restore uniform values, have a reset button
-- [ ] vec3 input method: select dim with S/M/R buttons, then use the slider
+- [ ] autosave and restore uniform values
+- [ ] `#include`s, or at least one stdlib in preamble, or pass libs
+- [ ] vec3 input method:
+      - select dim with S/M/R buttons, then use the slider
+      - auto assign n sucessor ids as well
+      - have the user assign multiple `#1,#2,#3
 - [ ] fix `t` as uniform name doesn't generate ui
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
@@ -202,7 +240,7 @@ dir.z *= 5;
   - ```
     VideoHomeShader
         context: all variables to consider
-      MidiManager
+      MIDIManager
         Thread
         needs uniforms, system commands
       GUIManager
@@ -212,7 +250,7 @@ dir.z *= 5;
         needs system commands
       FileWatcher
         talks to Shader Renderer
-      UniformManager
+      PresetManager
         presets
     ```
 

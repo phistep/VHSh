@@ -1,9 +1,16 @@
-uniform vec2 origin; // =(0.,0.) [-2.,-2.]
-uniform float scale; // =1. [0.,2.] #0
-uniform int n_max; // =10 [1,100] #16
-uniform vec4 base_color; // <color> =(1.,1.,0.,1.)
-uniform float intensity; // =0.5
-uniform bool animate; // =False
+/// // Violett
+/// uniform vec2 origin;  // =(0.0,0.0) [-2.0,-2.0]
+/// uniform float scale;  // =1.0 [0.0,2.0] #0
+/// uniform int n_max;  // =100 [1,100] #16
+/// uniform vec4 base_color;  // =(1.0,1.0,0.0,1.0) [0.0,1.0,0.01]
+/// uniform float intensity;  // =0.5 [0.0,1.0,0.01]
+/// uniform bool animate;  // =True
+uniform vec2 origin;  // =(0.0,0.0) [-2.0,-2.0]
+uniform float scale;  // =1.0 [0.0,2.0] #0
+uniform int n_max;  // =100 [1,100] #16
+uniform vec4 base_color;  // =(1.0,1.0,0.0,1.0) [0.0,1.0,0.01] <color>
+uniform float intensity;  // =0.5 [0.0,1.0,0.01]
+uniform bool animate;  // =True
 
 #define PI 3.14156
 
