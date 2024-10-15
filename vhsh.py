@@ -127,12 +127,12 @@ class Uniform:
         self.value = value if value is not None else self.default
 
     def __str__(self):
-        s = (f"uniform {self.type} {self.name};"
-             f"  // ={str(self.value).replace(' ', '')}")
-        if self.range is not None:
-            s += f' {str(list(self.range)).replace(' ', '')}'
+        s = f"uniform {self.type} {self.name};  //"
         if self.widget is not None:
             s += f' <{self.widget}>'
+        s += f" ={str(self.value).replace(' ', '')}"
+        if self.range is not None:
+            s += f' {str(list(self.range)).replace(' ', '')}'
         if self.midi is not None:
             s += f' #{self.midi}'
         return s
@@ -180,13 +180,13 @@ class Uniform:
         try:
             matches = re.search(
                 # TODO why ^(?!\/\/)\s* not working to ignore comments?
-                (r'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
-                 r'(?:\s*//\s*(?:'
-                 r'(?P<widget><\w+>)?\s*)?'
-                 r'(?P<default>=(?:\S+|\([^\)]+\)))?'
-                 r'\s*(?P<range>\[[^\]]+\])?'
-                 r'\s*(?P<midi>#\d+)?'
-                 r')?'),
+                (R'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
+                 R'(?:\s*//\s*(?:'
+                 R'(?P<widget><\w+>)?\s*)?'
+                 R'(?P<default>=(?:\S+|\([^\)]+\)))?'
+                 R'\s*(?P<range>\[[^\]]+\])?'
+                 R'\s*(?P<midi>#\d+)?'
+                 R')?'),
                 definition
             )
             type_, name, widget, default_s, range_s, midi = matches.groups()
