@@ -9,7 +9,8 @@ import warnings
 import tomllib
 import signal
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, deque
+from array import array
 from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Callable, Any, Self
 from threading import Thread, Event, Lock
 from pprint import pprint
@@ -296,10 +297,8 @@ class VHShRenderer:
         self._window = self._init_window(width, height, self.NAME)
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
 
-        self.imgui_state = {'system_section_expanded': True,
-                            'uniform_section_expanded': True}
-
         self._start_time = time.time()
+        self._frame_times = deque([1], maxlen=100)
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
@@ -523,7 +522,7 @@ class VHShRenderer:
         imgui.begin("Parameters", True)
 
         with imgui.begin_group():
-            if imgui.begin_combo("Scene", self._get_shader_title(self._shader_path)):
+            if imgui.begin_combo("##Scene", self._get_shader_title(self._shader_path)):
                 for idx, item in enumerate(
                         map(self._get_shader_title, self._shader_paths)):
                     is_selected = (idx == self._shader_index)
@@ -538,12 +537,14 @@ class VHShRenderer:
             imgui.same_line()
             if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
                 self.next_shader()
+            imgui.same_line()
+            imgui.text("Scene")
 
         imgui.spacing()
 
         with imgui.begin_group():
             # TODO begin_list_box?
-            if imgui.begin_combo("Preset", self.presets[self.preset_index]['name']):
+            if imgui.begin_combo("##Preset", self.presets[self.preset_index]['name']):
                 for idx, item in [(p['index'], p['name']) for p in self.presets]:
                     is_selected = (idx == self.preset_index)
                     if imgui.selectable(item, is_selected)[0]:
@@ -560,21 +561,32 @@ class VHShRenderer:
             imgui.same_line()
             if imgui.button("Save"):
                 self.write_file(uniforms=False, presets=True)
-
-            _, self._new_preset_name = imgui.input_text("Name",
-                                                        self._new_preset_name)
             imgui.same_line()
-            if imgui.button("New Preset"):
+            imgui.text("Preset")
+
+            _, self._new_preset_name = imgui.input_text_with_hint(
+                "##Name", "New Preset Name", self._new_preset_name)
+            imgui.same_line()
+            if imgui.button("Save New"):
                 self.write_file(uniforms=False, presets=True, new_preset=self._new_preset_name)
                 self._new_preset_name = ""
 
+        imgui.spacing()
+
+        with imgui.begin_group():
+            frame_times = array('f', self._frame_times)
+            imgui.plot_lines("Frame Time##Plot", frame_times,
+                overlay_text=f"{frame_times[-1]:5.2f} ms"
+                             f"  ({1000/frame_times[-1]:3.0f} fps)")
+            imgui.same_line()
 
         imgui.spacing()
         imgui.separator()
         imgui.spacing()
 
+        # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
         with imgui.begin_group():
-            imgui.input_float("u_Time", self.uniforms['u_Time'].value)
+            imgui.drag_float("u_Time", self.uniforms['u_Time'].value)
             imgui.same_line()
             _, self._time_running = imgui.checkbox(
                 'playing' if self._time_running else 'paused',
@@ -859,10 +871,19 @@ class VHShRenderer:
             print(e)
 
     def run(self):
+        last_time = glfw.get_time()  # TODO maybe time.monotonic_ns()
+        num_frames = 0
         try:
             if self._glfw_imgui_renderer is None:
                 raise RuntimeError("glfw imgui renderer not initialized!")
             while not glfw.window_should_close(self._window):
+                current_time = glfw.get_time()
+                num_frames += 1
+                if current_time - last_time >= 0.1:
+                    self._frame_times.append(100/num_frames)
+                    num_frames = 0
+                    last_time += 0.1
+
                 glfw.poll_events()
                 self._glfw_imgui_renderer.process_inputs()
                 self.width, self.height = \

@@ -210,8 +210,8 @@ currently selected preset.
 - [x] select different shaders
 - [x] save and load different presets
 - [x] write current values to file
+- [x] 60fps cap / fps counter
 - [ ] re-parse metadata on reload
-- [ ] 60fps cap / fps counter
 - [ ] show or hide the controls
 - [ ] imgui display shader compile errors
 - [ ] `<log>` widget modifyer
