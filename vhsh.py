@@ -293,6 +293,7 @@ class VHShRenderer:
         self._preset_index = 0
         self._new_preset_name = ""
         self._show_gui = True
+        self._error = None
 
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
@@ -664,6 +665,18 @@ class VHShRenderer:
                         change_speed=step
                     )
 
+        if self._error is not None:
+            imgui.open_popup("Error")
+        with imgui.begin_popup_modal("Error",
+            flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
+        ) as error_popup:
+            if error_popup.opened:
+                if self._error is None:
+                    imgui.close_current_popup()
+                else:
+                    # TODO colored
+                    imgui.text_wrapped(str(self._error))
+
         imgui.end()
         imgui.end_frame()
 
@@ -703,8 +716,10 @@ class VHShRenderer:
             try:
                 self.set_shader(shader_src)
             except ShaderCompileError as e:
+                self._error = e
                 self._print_error(e)
             else:
+                self._error = None
                 print("\x1b[2;32mOK:"
                       f" \x1b[2;37m{self._shader_path}"
                       "\x1b[0;0m")

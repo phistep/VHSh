@@ -216,9 +216,9 @@ currently selected preset.
 - [x] save and load different presets
 - [x] write current values to file
 - [x] 60fps cap / fps counter
+- [x] show or hide the controls
+- [x] imgui display shader compile errors
 - [ ] re-parse metadata on reload
-- [ ] show or hide the controls
-- [ ] imgui display shader compile errors
 - [ ] `<log>` widget modifyer
 - [ ] widget size and close button
 - [ ] write state to MIDI controler (uTime, UI toggle etc)
