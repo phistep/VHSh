@@ -30,6 +30,8 @@ To open all files in a given folder, use `my_shader_folder/*`.
 
 You can pass `--watch` to automatically reload the shader upon file change.
 
+To toggle the UI, press `<tab>`.
+
 If you're seeing a message like
 
 > 2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState:
@@ -62,6 +64,9 @@ next = 59  # switch to previous scene
 prev = 61  # switch to next preset
 next = 62  # switch to previous preset
 save = 60  # save current parameter values to a new preset
+
+[uniform]
+toggle_ui = 45  # toggle paramter tweaking window
 
 [uniform.time]
 toggle = 41  # toggle u_Time running
@@ -216,6 +221,7 @@ currently selected preset.
 - [ ] imgui display shader compile errors
 - [ ] `<log>` widget modifyer
 - [ ] widget size and close button
+- [ ] write state to MIDI controler (uTime, UI toggle etc)
 - [ ] remember window position
 - [ ] autosave and restore uniform values
 - [ ] `#include`s, or at least one stdlib in preamble, or pass libs

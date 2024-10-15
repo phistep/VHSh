@@ -292,6 +292,7 @@ class VHShRenderer:
         self._time_running = True
         self._preset_index = 0
         self._new_preset_name = ""
+        self._show_gui = True
 
         imgui.create_context()
         self._window = self._init_window(width, height, self.NAME)
@@ -413,6 +414,10 @@ class VHShRenderer:
                             self._time_running = bool(msg.value)
                             continue
 
+                        if msg.control == system_mapping['uniform'].get('toggle_ui'):
+                            self._show_gui = bool(msg.value)
+                            continue
+
                         try:
                             self._uniform_lock.acquire()
                             uniform = self.uniforms[self._midi_mapping[msg.control]]
@@ -517,9 +522,13 @@ class VHShRenderer:
                 case _:
                     return min_default, max_default, step_default
 
+        # TODO ctrl+tab? or ctrl+`
+        # TODO not while in input
+        if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_TAB)):
+            self._show_gui = not self._show_gui
 
         imgui.new_frame()
-        imgui.begin("Parameters", True)
+        imgui.begin("Parameters", closable=False)
 
         with imgui.begin_group():
             if imgui.begin_combo("##Scene", self._get_shader_title(self._shader_path)):
@@ -892,9 +901,10 @@ class VHShRenderer:
                 self._reload_shader()
                 self._update_gui()
                 self._draw_shader()
-                self._draw_gui()
 
-                self._glfw_imgui_renderer.render(imgui.get_draw_data())
+                if self._show_gui:
+                    self._draw_gui()
+                    self._glfw_imgui_renderer.render(imgui.get_draw_data())
                 glfw.swap_buffers(self._window)
         except KeyboardInterrupt:
             pass
