@@ -65,7 +65,7 @@ class Uniform:
                  name: str,
                  value: Optional[UniformT] = None,
                  default: Optional[UniformT] = None,
-                 range: Optional[list[UniformT]] = None,
+                 range: Optional[list[float]] = None,  # TODO GLSLFloat?
                  widget: Optional[str] = None,
                  midi: Optional[int] = None):
         self._location: int = gl.glGetUniformLocation(program, name)
@@ -509,20 +509,6 @@ class VHShRenderer:
         return os.path.splitext(os.path.basename(shader_path))[0]
 
     def _update_gui(self):
-
-        # TODO move to Uniform @property range
-        def get_range(value: Iterable[T],
-                      min_default: T,
-                      max_default: T,
-                      step_default: T = None):
-            match value:
-                case (min_, max_):
-                    return min_, max_, step_default
-                case (min_, max_, step):
-                    return min_, max_, step
-                case _:
-                    return min_default, max_default, step_default
-
         # TODO ctrl+tab? or ctrl+`
         # TODO not while in input
         if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_TAB)):
@@ -554,8 +540,11 @@ class VHShRenderer:
 
         with imgui.begin_group():
             # TODO begin_list_box?
-            if imgui.begin_combo("##Preset", self.presets[self.preset_index]['name']):
-                for idx, item in [(p['index'], p['name']) for p in self.presets]:
+            if imgui.begin_combo(
+                "##Preset", self.presets[self.preset_index]['name']
+            ):
+                for idx, item in  [(p['index'], p['name'])
+                                   for p in self.presets]:
                     is_selected = (idx == self.preset_index)
                     if imgui.selectable(item, is_selected)[0]:
                         self.preset_index = idx
@@ -577,9 +566,11 @@ class VHShRenderer:
             _, self._new_preset_name = imgui.input_text_with_hint(
                 "##Name", "New Preset Name", self._new_preset_name)
             imgui.same_line()
-            if imgui.button("Save New"):
+            if imgui.button("Save##Save New Preset"):
                 self.write_file(uniforms=False, presets=True, new_preset=self._new_preset_name)
                 self._new_preset_name = ""
+            imgui.same_line()
+            imgui.text("New Preset")
 
         imgui.spacing()
 
@@ -608,11 +599,24 @@ class VHShRenderer:
         imgui.separator()
         imgui.spacing()
 
+        # TODO move to Uniform @property range
+        def get_range(value: Iterable[T],
+                        min_default: T,
+                        max_default: T,
+                        step_default: T = None):
+            match value:
+                case (min_, max_):
+                    return min_, max_, step_default
+                case (min_, max_, step):
+                    return min_, max_, step
+                case _:
+                    return min_default, max_default, step_default
+
         for name, uniform in self.uniforms.items():
             if name in self.FRAGMENT_SHADER_PREAMBLE:
                 continue
 
-            # TODO move to Unifom.imgui
+            # TODO move to Unifom.imgui??
             match uniform.value, uniform.widget:
                 case bool(x), _:
                     _, uniform.value = imgui.checkbox(name, uniform.value)
@@ -625,6 +629,16 @@ class VHShRenderer:
                         max_value=max_,
                         change_speed=step
                     )
+                case float(x), 'log':
+                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
+                    _, uniform.value = imgui.slider_float(
+                        name,
+                        uniform.value,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=(imgui.SLIDER_FLAGS_LOGARITHMIC
+                               | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT)
+                    )  # pyright: ignore [reportCallIssue]
                 case float(x), _:
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float(

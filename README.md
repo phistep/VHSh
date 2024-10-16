@@ -132,10 +132,16 @@ uniform vec3 dir; // =(1.,0.,0.) [-1.,-1.]
 uniform vec4 base_color; // <color> =(1.,1.,0.,1.)
 ```
 
-Using a special syntax in a comment on the same line, you can define the
-default value `=VALUE` and a range `[MIN,MAX,STEP]` (where `STEP` is optional).
-With `<WIDGET>`, you can indicate a special UI widget  (`<color>` on `vec4` for
-RGBA color picker). To bind a MIDI control to a uniform, use `#MIDI` with the control ID.
+Using a special syntax in a comment on the same line, you can define the the
+following uniform control properties:
+
+- `=VALUE` default value
+- `[MIN,MAX,STEP]` range (where `STEP` is optional).
+- `<WIDGET>` special UI widget
+  - `<color>` on `vec4` for a RGBA color picker
+  - `<log>` on `float` for a logarithmic scale
+- `#MIDI` MIDI control ID. To bind a MIDI control to a uniform,
+  for example: `#16`.
 
 The have to be defined in the order
 
@@ -149,7 +155,7 @@ desired, as long as the order of appearance is correct. As generally with
 GLSL, it is also important to strictly match the types. Supplying a `float`
 as default value for an `int` will not work. There may be no other text in
 the comment. All vector types have to be supplied as a comma-separated list
-of floats, enclosed by parentheses (`(1.,2.,3.)`). One can only supply a
+of floats, enclosed by parentheses `(1.,2.,3.)`. One can only supply a
 scalar range that applies along all dimensions.
 
 ```glsl
@@ -219,7 +225,6 @@ currently selected preset.
 - [x] show or hide the controls
 - [x] imgui display shader compile errors
 - [ ] re-parse metadata on reload
-- [ ] `<log>` widget modifyer
 - [ ] widget size and close button
 - [ ] write state to MIDI controler (uTime, UI toggle etc)
 - [ ] remember window position
@@ -228,12 +233,16 @@ currently selected preset.
 - [ ] vec3 input method:
       - select dim with S/M/R buttons, then use the slider
       - auto assign n sucessor ids as well
-      - have the user assign multiple `#1,#2,#3
+      - have the user assign multiple `#1,#2,#3`
 - [ ] fix `t` as uniform name doesn't generate ui
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
 - [ ] "touchpad" widget for `vec2`
 - [ ] record mp4
+- [ ] widgets
+  - [x] `<log>`
+  - [ ] `<drag>` drag input, others sliders (for slider flags)
+  - [ ] `<hsv` and `<rgb>`
 - [ ] uniforms
   - [x] time
   - [ ] mouse
@@ -249,7 +258,7 @@ currently selected preset.
       MIDIManager
         Thread
         needs uniforms, system commands
-      GUIManager
+      GUI
         needs uniforms, system commands
       ShaderRenderer
         scenes
