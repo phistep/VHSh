@@ -74,7 +74,7 @@ class Uniform:
         self.name = name
         self.default = default
         self.range = range
-        self.widget = widget
+        self.widget = widget  # TODO enum
         self.midi = midi
 
         # TODO default step is dropped if not passed
@@ -616,11 +616,17 @@ class VHShRenderer:
             if name in self.FRAGMENT_SHADER_PREAMBLE:
                 continue
 
+            flags = 0
+            if uniform.widget == 'log':
+                flags |=  (imgui.SLIDER_FLAGS_LOGARITHMIC
+                           | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT)
+
             # TODO move to Unifom.imgui??
             match uniform.value, uniform.widget:
                 case bool(x), _:
                     _, uniform.value = imgui.checkbox(name, uniform.value)
-                case int(x), _:
+
+                case int(x), 'drag':
                     min_, max_, step = get_range(uniform.range, 0, 100, 1)
                     _, uniform.value = imgui.drag_int(
                         name,
@@ -629,35 +635,60 @@ class VHShRenderer:
                         max_value=max_,
                         change_speed=step
                     )
-                case float(x), 'log':
-                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float(
+                case int(x), _:
+                    min_, max_, step = get_range(uniform.range, 0, 100, 1)
+                    _, uniform.value = imgui.slider_int(
                         name,
                         uniform.value,
                         min_value=min_,
                         max_value=max_,
-                        flags=(imgui.SLIDER_FLAGS_LOGARITHMIC
-                               | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT)
-                    )  # pyright: ignore [reportCallIssue]
-                case float(x), _:
+                        flags=flags,
+                    )
+
+                case float(x), 'drag':
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float(
                         name,
                         uniform.value,
                         min_value=min_,
                         max_value=max_,
-                        change_speed=step
+                        change_speed=step,
+                        flags=flags,
                     )
-                case [float(x), float(y)], _:
+                case float(x), _:
+                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
+                    _, uniform.value = imgui.slider_float(
+                        name,
+                        uniform.value,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
+                    )
+
+                case [float(x), float(y)], 'drag':
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float2(
                         name,
                         *uniform.value,
                         min_value=min_,
                         max_value=max_,
-                        change_speed=step
+                        change_speed=step,
+                        flags=flags
                     )
-                case [float(x), float(y), float(z)], _:
+                case [float(x), float(y)], _:
+                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
+                    _, uniform.value = imgui.slider_float2(
+                        name,
+                        *uniform.value,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
+                    )
+
+                case [float(x), float(y), float(z)], 'color':
+                    _, uniform.value = imgui.color_edit3(name, *uniform.value,
+                                                            imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
+                case [float(x), float(y), float(z)], 'drag':
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float3(
                         name,
@@ -666,10 +697,20 @@ class VHShRenderer:
                         max_value=max_,
                         change_speed=step
                     )
+                case [float(x), float(y), float(z)], _:
+                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
+                    _, uniform.value = imgui.slider_float3(
+                        name,
+                        *uniform.value,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
+                    )
+
                 case [float(x), float(y), float(z), float(w)], 'color':
                     _, uniform.value = imgui.color_edit4(name, *uniform.value,
-                                                        imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
-                case [float(x), float(y), float(z), float(w)], _:
+                                                         imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
+                case [float(x), float(y), float(z), float(w)], 'drag':
                     min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
                     _, uniform.value = imgui.drag_float4(
                         name,
@@ -677,6 +718,15 @@ class VHShRenderer:
                         min_value=min_,
                         max_value=max_,
                         change_speed=step
+                    )
+                case [float(x), float(y), float(z), float(w)], _:
+                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
+                    _, uniform.value = imgui.slider_float4(
+                        name,
+                        *uniform.value,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
                     )
 
         if self._error is not None:

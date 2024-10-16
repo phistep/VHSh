@@ -122,7 +122,6 @@ You can define custom parameters to vary directly in the code, and the user
 interface to manipulate them will be generated automatically. Use the `uniform`
 keyword followed by a type (`bool`, `int`, `float`, `vec2`, `vec3`, `vec4`) and
 a name.
-
 ```glsl
 uniform bool override_red; // =False
 uniform int n_max; // =10 [1,200] #0
@@ -138,8 +137,9 @@ following uniform control properties:
 - `=VALUE` default value
 - `[MIN,MAX,STEP]` range (where `STEP` is optional).
 - `<WIDGET>` special UI widget
-  - `<color>` on `vec4` for a RGBA color picker
-  - `<log>` on `float` for a logarithmic scale
+  - `<color>` on `vec3` for a RGB and on `vec4` for a RGBA color picker
+  - `<log>` for a logarithmic scale
+  - `<drag>` for controling the UI widget with dragging (instead of slider)
 - `#MIDI` MIDI control ID. To bind a MIDI control to a uniform,
   for example: `#16`.
 
@@ -175,6 +175,9 @@ uniform vec3 dir; // [[0.,1.],[0.,1.],[0.,5.]]
 uniform vec3 dir; // [0.,1.]
 dir.z *= 5;
 ```
+
+By using `ctrl+click`, one can directly edit the values with keyboard
+input.
 
 
 ## Presets
@@ -239,10 +242,11 @@ currently selected preset.
 - [ ] limit resolution and upscale
 - [ ] "touchpad" widget for `vec2`
 - [ ] record mp4
-- [ ] widgets
+- [x] widgets
   - [x] `<log>`
-  - [ ] `<drag>` drag input, others sliders (for slider flags)
-  - [ ] `<hsv` and `<rgb>`
+  - [x] `<drag>` drag input, others sliders (for slider flags)
+  - [x] ~~~`<hsv` and `<rgb>`~~~
+  - [ ] MIDI vector control with button triplet
 - [ ] uniforms
   - [x] time
   - [ ] mouse
