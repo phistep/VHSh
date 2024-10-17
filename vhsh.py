@@ -517,6 +517,18 @@ class VHShRenderer:
         imgui.new_frame()
         imgui.begin("Parameters", closable=False)
 
+        if self._error is not None:
+            imgui.open_popup("Error")
+        with imgui.begin_popup_modal("Error",
+            flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
+        ) as error_popup:
+            if error_popup.opened:
+                if self._error is None:
+                    imgui.close_current_popup()
+                else:
+                    # TODO colored
+                    imgui.text_wrapped(str(self._error))
+
         with imgui.begin_group():
             if imgui.begin_combo("##Scene", self._get_shader_title(self._shader_path)):
                 for idx, item in enumerate(
@@ -612,7 +624,9 @@ class VHShRenderer:
                 case _:
                     return min_default, max_default, step_default
 
-        for name, uniform in self.uniforms.items():
+        uniforms = list(self.uniforms.items())
+        peaking_uniforms = zip(uniforms, uniforms[1:] + [(None, None)])
+        for (name, uniform), (next_name, _) in peaking_uniforms:
             if name in self.FRAGMENT_SHADER_PREAMBLE:
                 continue
 
@@ -729,17 +743,10 @@ class VHShRenderer:
                         flags=flags,
                     )
 
-        if self._error is not None:
-            imgui.open_popup("Error")
-        with imgui.begin_popup_modal("Error",
-            flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
-        ) as error_popup:
-            if error_popup.opened:
-                if self._error is None:
-                    imgui.close_current_popup()
-                else:
-                    # TODO colored
-                    imgui.text_wrapped(str(self._error))
+            # group prefixed uniforms
+            if next_name is not None:
+                if name.split('_')[0] != next_name.split('_')[0]:
+                    imgui.spacing()
 
         imgui.end()
         imgui.end_frame()

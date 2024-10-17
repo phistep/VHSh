@@ -179,6 +179,9 @@ dir.z *= 5;
 By using `ctrl+click`, one can directly edit the values with keyboard
 input.
 
+If two consecutive uniforms share a common prefix in their name (like
+`box_size` and `box_color`), they will be grouped together.
+
 
 ## Presets
 
