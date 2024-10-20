@@ -308,6 +308,7 @@ class VHShRenderer:
                                                  self.VERTEX_SHADER)
 
         self.uniforms: dict[str, Uniform] = {}
+        self._system_uniforms: dict[str, Uniform] = {}
         self._midi_mapping: dict[int, str] = {}
         self._uniform_lock = Lock()
         self._shader_paths = shader_paths
@@ -530,7 +531,8 @@ class VHShRenderer:
                     imgui.text_wrapped(str(self._error))
 
         with imgui.begin_group():
-            if imgui.begin_combo("##Scene", self._get_shader_title(self._shader_path)):
+            if imgui.begin_combo("##Scene",
+                                 self._get_shader_title(self._shader_path)):
                 for idx, item in enumerate(
                         map(self._get_shader_title, self._shader_paths)):
                     is_selected = (idx == self._shader_index)
@@ -816,8 +818,7 @@ class VHShRenderer:
                 if uniform.name not in self.FRAGMENT_SHADER_PREAMBLE:
                     print(" ", uniform)
 
-            # merge preset onto existing so that system uniforms are preserved
-            self.uniforms = {**self.uniforms,
+            self.uniforms = {**self._system_uniforms,
                              **self.presets[self._preset_index]['uniforms']}
 
     def set_shader(self, shader_src: str, verbose: bool = True):
@@ -829,36 +830,37 @@ class VHShRenderer:
                                                    fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
-        # todo get rid of index
-        self.presets = [{'name': "<current>", 'index': 0, 'uniforms': {}}]
+        self.presets = [{'name': "<current>", 'uniforms': {}}]
         for n, line in enumerate(shader_src.split('\n')):
             line = line.strip()
 
-            # uniforms
+            # <current> uniforms
             if line.startswith('uniform'):
                 try:
                     uniform = Uniform.from_def(self.shader_program, line)
                     with self._uniform_lock:
-                        if uniform.name not in self.uniforms:  # TODO does this need to be preset uniforms now?
-                            self.presets[0]['uniforms'][uniform.name] = uniform
-
+                        if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
+                            self._system_uniforms[uniform.name] = uniform
+                        if (self.preset_index == 0
+                                and uniform.name in self.uniforms):
+                            uniform.value = self.uniforms[uniform.name].value
+                        self.presets[0]['uniforms'][uniform.name] = uniform
                 except UniformIntializationError as e:
                     lineno = n - self._lineno_offset
                     raise ShaderCompileError(f"ERROR 0:{lineno} {e}")
             # presets
             elif line.startswith('///'):
-                line_content = line.lstrip('/').strip()
+                line_content = line.lstrip('/ ').strip()
                 if line.startswith('/// uniform'):
                     uniform = Uniform.from_def(self.shader_program, line_content)
+                    if self.preset_index == len(self.presets) - 1:
+                        with self._uniform_lock:
+                            uniform.value = self.uniforms[uniform.name].value
                     self.presets[-1]['uniforms'][uniform.name] = uniform
                 else:
-                    #if len(self.presets) > 1 and not self.presets[-1]['uniforms']:
-                    #    self.presets.pop()
                     index = len(self.presets)
                     self.presets.append({'name': line_content or str(index),
-                                         'index': index,
                                          'uniforms': {}})
-            got_u = got_p = False
 
         if verbose:
             print()
@@ -867,8 +869,7 @@ class VHShRenderer:
             print("current preset:", self.presets[self.preset_index]['name'])
 
         with self._uniform_lock:
-            # merge preset onto existing so that system uniforms are preserved
-            self.uniforms = {**self.uniforms,
+            self.uniforms = {**self._system_uniforms,
                              **self.presets[self.preset_index]['uniforms']}
 
             if verbose:
@@ -902,12 +903,11 @@ class VHShRenderer:
             with self._uniform_lock:
                 if new_preset is not None:
                     self.presets.append({"name": new_preset,
-                                         "index": len(self.presets),
-                                         "uniforms": self.uniforms.copy()})  # copy needed?
+                                         "uniforms": self.uniforms.copy()})
                     self._preset_index = len(self.presets) - 1
                 for uniform in self.uniforms.values():
-                    # TODO copy() necessary?
-                    self.presets[self._preset_index]['uniforms'] = self.uniforms.copy()
+                    self.presets[self._preset_index]['uniforms'] = \
+                        self.uniforms.copy()
 
             presets_s = ""
             for preset in self.presets[1:]:

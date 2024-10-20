@@ -230,8 +230,8 @@ currently selected preset.
 - [x] 60fps cap / fps counter
 - [x] show or hide the controls
 - [x] imgui display shader compile errors
-- [ ] re-parse metadata on reload
-- [ ] widget size and close button
+- [x] widget size and close button
+- [x] re-parse metadata on reload
 - [ ] write state to MIDI controler (uTime, UI toggle etc)
 - [ ] remember window position
 - [ ] autosave and restore uniform values
