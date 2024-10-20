@@ -299,7 +299,7 @@ class VHShRenderer:
         self._window = self._init_window(width, height, self.NAME)
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
 
-        self._start_time = time.time()
+        self._start_time = glfw.get_time()
         self._frame_times = deque([1], maxlen=100)
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
@@ -603,10 +603,16 @@ class VHShRenderer:
         with imgui.begin_group():
             imgui.drag_float("u_Time", self.uniforms['u_Time'].value)
             imgui.same_line()
-            _, self._time_running = imgui.checkbox(
+            changed, self._time_running = imgui.checkbox(
                 'playing' if self._time_running else 'paused',
                 self._time_running
             )
+            if changed:
+                if self._time_running:
+                    glfw.set_time(self._start_time)
+                else:
+                    self._start_time = glfw.get_time()
+
         imgui.drag_float2('u_Resolution', *self.uniforms['u_Resolution'].value)
 
         imgui.spacing()
@@ -764,9 +770,9 @@ class VHShRenderer:
         self.uniforms['u_Resolution'].value = [float(self.width),
                                                float(self.height)]
         # regular `time.time()` is too big for f32, so we just return
-        # seconds from program start
+        # seconds from program start, glwf does this
         if self._time_running:
-            self.uniforms['u_Time'].value = time.time() - self._start_time
+            self.uniforms['u_Time'].value = glfw.get_time()
         for uniform in self.uniforms.values():
             uniform.update()
 
