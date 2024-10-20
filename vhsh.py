@@ -296,7 +296,7 @@ class VHShRenderer:
         self._error = None
 
         imgui.create_context()
-        self._window = self._init_window(width, height, self.NAME)
+        self._window = self._init_window(self.NAME, width, height)
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
 
         self._start_time = glfw.get_time()
@@ -338,16 +338,19 @@ class VHShRenderer:
             self._midi_listener.start()
 
     @staticmethod
-    def _init_window(width, height, name):
+    def _init_window(name: str, width: int, height: int):
         if not glfw.init():
             RuntimeError("GLFW could not initialize OpenGL context")
+
+        # Needed for restoring the window posision
+        glfw.window_hint_string(glfw.COCOA_FRAME_NAME, name)
 
         # OS X supports only forward-compatible core profiles from 3.2
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 
-        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
+        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
 
         window = glfw.create_window(int(width), int(height), name, None, None)
         glfw.make_context_current(window)

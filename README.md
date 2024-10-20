@@ -232,19 +232,22 @@ currently selected preset.
 - [x] imgui display shader compile errors
 - [x] widget size and close button
 - [x] re-parse metadata on reload
+- [x] remember window position
+- [ ] fix `t` as uniform name doesn't generate ui
+- [ ] bug uniform parsing when float `=0.0`
+- [ ] limit resolution and upscale
 - [ ] write state to MIDI controler (uTime, UI toggle etc)
-- [ ] remember window position
 - [ ] autosave and restore uniform values
+      `atexit` and `pickle`
 - [ ] `#include`s, or at least one stdlib in preamble, or pass libs
 - [ ] vec3 input method:
       - select dim with S/M/R buttons, then use the slider
       - auto assign n sucessor ids as well
       - have the user assign multiple `#1,#2,#3`
-- [ ] fix `t` as uniform name doesn't generate ui
-- [ ] bug uniform parsing when float `=0.0`
-- [ ] limit resolution and upscale
 - [ ] "touchpad" widget for `vec2`
 - [ ] record mp4
+- [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
+      maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
 - [x] widgets
   - [x] `<log>`
   - [x] `<drag>` drag input, others sliders (for slider flags)
@@ -256,6 +259,10 @@ currently selected preset.
   - [ ] prev frame
   - [ ] audio fft
   - [ ] video in
+- [ ] Gamma Correctio
+    - [_Monitor Guide: Gamma ramp_](https://www.glfw.org/docs/latest/monitor_guide.html)
+    - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)
+    - [`GLFWgammarramp`](https://www.glfw.org/docs/latest/group__monitor.html#ga939cf093cb0af0498b7b54dc2e181404)
 - [ ] big refactoring
   - one file? or full package with exe in PATH?
   - docstrings
@@ -275,7 +282,9 @@ currently selected preset.
       PresetManager
         presets
     ```
-
+- switch to SDL?
+  - native macos fullscreen
+  - mic input https://www.lazyfoo.net/tutorials/SDL/34_audio_recording/index.php
 
 ## Resources
 
