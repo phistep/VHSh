@@ -85,7 +85,7 @@ it's color.
 Berfore your shader file is run, a preamble is prepended to the source code.
 It defines
 
-> OpenGL Version 330 core
+> OpenGL Version 410 core
 
 so you just need to supply a `main` function and set the output color `FragColor`
 as an RGBA `vec4` with floats between 0 and 1 (`0., 0., 0., 1.)` being black).
@@ -259,6 +259,8 @@ currently selected preset.
   - [ ] prev frame
   - [ ] audio fft
   - [ ] video in
+  - [ ] buffer objects (arrays, for eg prime number dump)
+        https://www.khronos.org/opengl/wiki/Uniform_Buffer_Object
 - [ ] Gamma Correctio
     - [_Monitor Guide: Gamma ramp_](https://www.glfw.org/docs/latest/monitor_guide.html)
     - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)
@@ -297,6 +299,7 @@ currently selected preset.
 - https://www.youtube.com/watch?v=f4s1h2YETNY
 - http://dev.thi.ng/gradients/
 - https://mido.readthedocs.io/en/stable/intro.html
+- https://github.com/srmalins/primelists/
 
 
 [imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364

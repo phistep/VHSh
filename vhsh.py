@@ -18,7 +18,6 @@ from textwrap import dedent
 from itertools import cycle
 from contextlib import contextmanager
 
-from OpenGL.raw.GL.VERSION.GL_4_0 import glUniform1d
 from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
 import glfw
@@ -245,7 +244,7 @@ class VHShRenderer:
                         dtype=np.float32)
 
     VERTEX_SHADER = dedent("""\
-        #version 330 core
+        #version 410 core
 
         layout(location = 0) in vec3 VertexPos;
 
@@ -256,12 +255,11 @@ class VHShRenderer:
     )
 
     FRAGMENT_SHADER_PREAMBLE = dedent("""\
-        #version 330 core
+        #version 410 core
 
         out vec4 FragColor;
         uniform vec2 u_Resolution;
         uniform float u_Time;
-        #line 1
         """
     )
 
@@ -279,7 +277,8 @@ class VHShRenderer:
                  height: int = 720,
                  watch: bool = False,
                  midi: bool = False,
-                 midi_mapping: dict = {}):
+                 midi_mapping: dict = {},
+                 data: dict[str, list[int | float]] = {}):
         # need to be defined for __del__() before glfw/imgui init can fail
         self.vao = None
         self.vbo = None
@@ -311,6 +310,14 @@ class VHShRenderer:
         self._system_uniforms: dict[str, Uniform] = {}
         self._midi_mapping: dict[int, str] = {}
         self._uniform_lock = Lock()
+        self.data = data
+        # TODO Buffer Obejcts
+        # data_uniforms = [f"uniform {type(dataset[0]).__name__}"
+        #                  f" {name}[{len(dataset)}];"
+        #                  for name, dataset in self.data.items()]
+        # self.FRAGMENT_SHADER_PREAMBLE += '\n'.join(data_uniforms) + '\n'
+        self.FRAGMENT_SHADER_PREAMBLE += '#line 1\n'
+
         self._shader_paths = shader_paths
         print("scenes:", [self._get_shader_title(s) for s in self._shader_paths])
         self._shader_index = 0
@@ -346,8 +353,8 @@ class VHShRenderer:
         glfw.window_hint_string(glfw.COCOA_FRAME_NAME, name)
 
         # OS X supports only forward-compatible core profiles from 3.2
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
@@ -1043,18 +1050,32 @@ def main(argv: Optional[list[str]] = None):
         help="Listen to MIDI messages for uniform control")
     parser.add_argument('-M', '--midi-mapping',
         help="Path to TOML file with system MIDI mappings")
+    parser.add_argument('-d', '--data', type=str, action='append',
+        help="Path to file with uniform data, one array elemet per line. Filename must be valid GLSL identifier")
     args = parser.parse_args(argv)
-
 
     midi_mapping = {}
     if args.midi_mapping:
         with open(args.midi_mapping, 'rb') as f:
             midi_mapping = tomllib.load(f)
 
+    data = {}
+    for data_path in args.data:
+        with open(data_path) as f:
+            dataset = [eval(line) for line in f.readlines()]
+        if dataset:
+            print(f"read data from '{data_path}':"
+                  f" {type(dataset[0]).__name__}[{len(dataset)}]")
+            print(" ", ', '.join(str(x) for x in dataset[:10]+['…']))
+            print()
+            dataset_name = os.path.splitext(os.path.basename(data_path))[0]
+            data[dataset_name] = dataset
+
     vhsh_renderer = VHShRenderer(args.shader,
                                  watch=args.watch,
                                  midi=args.midi,
-                                 midi_mapping=midi_mapping)
+                                 midi_mapping=midi_mapping,
+                                 data=data)
     vhsh_renderer.run()
 
 
