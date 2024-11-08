@@ -233,6 +233,12 @@ currently selected preset.
 - [x] widget size and close button
 - [x] re-parse metadata on reload
 - [x] remember window position
+- [ ] fix dropdown crashes when no presets available
+      ```
+      File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
+      for idx, item in  [(p['index'], p['name'])
+                        ~^^^^^^^^^
+      ```
 - [ ] fix `t` as uniform name doesn't generate ui
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
