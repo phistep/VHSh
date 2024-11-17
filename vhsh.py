@@ -133,7 +133,7 @@ class Uniform:
             s += f' <{self.widget}>'
         s += f" ={str(self.value).replace(' ', '')}"
         if self.range is not None:
-            s += f' {str(list(self.range)).replace(' ', '')}'
+            s += f" {str(list(self.range)).replace(' ', '')}"
         if self.midi is not None:
             s += f' #{self.midi}'
         return s
