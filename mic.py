@@ -1,8 +1,17 @@
+# TODO
+# normalize correctly, maybe use float audio input type
+# running average normalization
+# fix crash on shutdown/thread not stopping
+# fix frame drops
+
 import pyaudio
 import numpy as np
 from time import sleep
 import threading
 from queue import Queue, Full as QueueFull
+
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
@@ -44,9 +53,6 @@ recording_thread = threading.Thread(name="record", target=record,
                              args=(audio_frames, stop_recording, FORMAT, CHANNELS, RATE, CHUNK))
 recording_thread.start()
 
-
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 
 plt.ion()  # Enable interactive mode
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
@@ -113,84 +119,3 @@ except KeyboardInterrupt:
     plt.close()
     stop_recording.set()
     recording_thread.join()
-
-
-
-# TODO
-# normalize correctly, maybe use float audio input type
-# matplotlib interactive
-# fixed bins for wide audio range -> rescale input
-
-# RUMBLE – 0-60HZ: The frequencies in this range represent sound that is below human hearing, or are perceived as low-end rumble. You typically would not boost these frequencies, but you can cut them with a high pass filter if you need to reduce low-end rumble on any given track.
-# LOW END – 60-250HZ: These frequencies are primarily where your kick drum, bass, and the low end of instruments will live. If a track needs more thump, you can boost this range. If you need to reduce muddiness, cut out some of this range.
-# LOW MIDS – 250-500HZ: Low mids provide warmth and body to instruments and vocals. Boosting in this range can add thickness, while cutting can reduce boxiness or muddiness.
-# MIDS – 500-2KHZ: The midrange is where most of the musical content resides. Vocals, guitars, and many other instruments are prominent here. Boost for clarity and presence, cut to reduce harshness or to make room for other elements.
-# HIGH MIDS – 2-6KHZ: High mids add definition and attack to instruments and vocals. Boost to make elements cut through the mix, cut to reduce sharpness or to create space for other sounds.
-# HIGHS – 6-8KHZ: The high frequencies provide brilliance and sparkle. Boosting in this range can add airiness and detail to vocals and instruments. Cutting can reduce sibilance or excessive brightness.
-# AIR – 8KHZ AND ABOVE: Air frequencies are the highest range of audible frequencies. Boosting here can add a sense of openness and sheen to your mix, especially on vocals and cymbals. Be subtle with boosts in this range to avoid harshness.
-
-"""
-
-import matplotlib.pyplot as plt
-for frame in frames[-1:]:
-    sp = np.fft.fft(frame)
-    freq = np.fft.fftfreq(frame.shape[-1])
-
-    print(f"{sp.shape=}")
-    # Reduce sp to 10 frequency bins
-    num_bins = 10
-    bin_size = len(sp) // num_bins
-    sp_reduced = np.array([np.mean(abs(sp[i:i+bin_size])) for i in range(0, len(sp), bin_size)])
-    sp_reduced = sp_reduced[:num_bins]  # Ensure we have exactly 10 bins
-    freq_reduced = np.linspace(freq.min(), freq.max(), num_bins)
-
-    plt.figure()
-    plt.plot(freq, sp.real, label="real")
-    plt.plot(freq, sp.imag, label="imag")
-    plt.plot(freq, abs(sp), label="abs")
-    plt.legend()
-
-    plt.figure()
-    plt.hist(abs(sp))
-
-    plt.figure()
-    print(f"{sp_reduced/(8**2 *bin_size)}")
-    print(freq_reduced)
-    plt.plot(freq_reduced/(8**2 *bin_size), sp_reduced)
-
-    # Create a bar chart that can be updated
-    fig, ax = plt.subplots()
-    bars = ax.bar(freq_reduced, sp_reduced)
-    ax.set_xticks(range(num_bins))
-    ax.set_xticklabels([f'{f:.2f}' for f in freq_reduced])
-    ax.set_xlabel('Frequency')
-    ax.set_ylabel('Magnitude')
-    ax.set_title('Frequency Spectrum')
-    plt.tight_layout()
-
-    bars.datavalues
-
-    def update_bars(new_data):
-        for bar, height in zip(bars, new_data):
-            bar.set_height(height)
-        fig.canvas.draw()
-
-
-    def update():
-        while True:
-            for bar in bars:
-                bar.set_height(bar.get_height()*1.1)
-                print(bar, bar.get_height())
-                sleep(0.5)
-            fig.canvas.draw()
-    th = threading.Thread(name="update", target=update)
-    th.start()
-
-    plt.show()
-    while True:
-        plt.clf()
-        fig.canvas.draw()
-        sleep(0.01)
-
-    print()
-"""
