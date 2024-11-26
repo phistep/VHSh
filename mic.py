@@ -56,6 +56,8 @@ line, = ax1.plot([], [])
 ax1.set_xlabel('Frequency (Hz)')
 ax1.set_ylabel('Magnitude')
 ax1.set_title('Frequency Spectrum')
+ax1.set_xlim(0, 8000)
+#ax1.set_xlim(0, RATE/2)  # Nyquist frequency
 ax1.grid(True)
 
 # Histogram plot
@@ -67,6 +69,7 @@ ax2.set_xticks(x_pos)
 ax2.set_xticklabels(labels)
 ax2.set_ylabel('Magnitude')
 ax2.set_title('Frequency Bands')
+ax2.set_ylim(0, 1)
 
 plt.tight_layout()
 
@@ -88,7 +91,6 @@ try:
 
         # Update spectrum plot
         line.set_data(frequencies, spectrum)
-        ax1.set_xlim(0, RATE/2)  # Nyquist frequency
         ax1.set_ylim(0, max(ax1.get_ylim()[1], np.max(spectrum) * 1.1))
 
         # Calculate and update histogram
@@ -96,18 +98,19 @@ try:
         levels = [np.sum(spectrum[(frequencies >= min_) & (frequencies < max_)])
                  for min_, max_ in zip(edges, edges[1:])]
         levels.append(np.sum(spectrum[frequencies >= edges[-1]]))
-        levels = np.array(levels) / (CHUNK * (2**16-1))
+        levels = np.array(levels)
 
         # Update histogram bars
         for bar, level in zip(bars, levels):
             bar.set_height(level)
-        ax2.set_ylim(0, max(levels) * 1.1)
+        #ax2.set_ylim(0, max(levels) * 1.1)
 
         fig.canvas.draw()
         fig.canvas.flush_events()
 
         audio_frames.task_done()
 except KeyboardInterrupt:
+    plt.close()
     stop_recording.set()
     recording_thread.join()
 
