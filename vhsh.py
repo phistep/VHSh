@@ -11,12 +11,14 @@ import signal
 from datetime import datetime
 from collections import defaultdict, deque
 from array import array
-from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Callable, Any, Self
+from typing import (Optional, TypeVar, TypeAlias, Iterable, get_args, Literal,
+                    Callable, Any, Self, TYPE_CHECKING)
 from threading import Thread, Event, Lock
 from pprint import pprint
 from textwrap import dedent
 from itertools import cycle
 from contextlib import contextmanager
+from time import sleep
 
 from OpenGL.raw.GL.VERSION.GL_4_0 import glUniform1d
 from imgui.integrations.glfw import GlfwRenderer
@@ -27,6 +29,8 @@ import imgui
 
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 # `mido` imported conditionally in VHShRenderer._midi_listen()
+if TYPE_CHECKING:
+    import pyaudio
 
 
 VertexArrayObject: TypeAlias = np.uint32
@@ -55,6 +59,88 @@ class UniformIntializationError(ShaderCompileError):
 
 class ProgramLinkError(RuntimeError):
     """program link error."""
+
+class Microphone(Thread):
+
+    def __init__(self,
+                 rate: int = 44100,
+                 chunk: int = 1024,
+                 buffer_size_s: float = 5.0,
+                 format: int | None = None,
+                 intervals = [0, 60, 250, 500, 2_000, 6_000, 8_000]):
+        super().__init__()
+
+        import pyaudio
+
+        self.rate = rate
+        self.chunk = chunk
+        self.format = pyaudio.paInt16 if format is None else format
+        self.channels = 1  # TODO configurable?
+        self._bins = list(zip(intervals, intervals[1:]))
+        self._levels = len(intervals) * (0.0,)  # last interval is open
+
+        self._frame_buffer = deque(maxlen=int(rate / chunk * buffer_size_s))
+        self._stop_stream = Event()
+        self._output_lock = Lock()
+
+    @property
+    def levels(self) -> tuple[float, ...]:
+        with self._output_lock:
+            return self._levels
+
+    @levels.setter
+    def levels(self, levels: tuple[float, ...]):
+        with self._output_lock:
+            if len(levels) != len(self._levels):
+                raise ValueError(f"levels tuple needs to have {len(self._levels)} elements")
+            self._levels = levels
+
+    def run(self):
+        import pyaudio
+
+        def _record(in_data, frame_count, time_info, status):
+            self._frame_buffer.appendleft(in_data)
+            return (in_data, pyaudio.paContinue)
+
+        audio = pyaudio.PyAudio()
+        stream = audio.open(input=True,
+                            format=self.format,
+                            channels=self.channels,
+                            rate=self.rate,
+                            frames_per_buffer=self.chunk,
+                            stream_callback=_record)
+
+        try:
+            while stream.is_active() and not self._stop_stream.is_set():
+                if not self._frame_buffer:
+                    sleep(0.1)
+                    continue
+
+                raw_frame = self._frame_buffer.pop()
+                frame = np.frombuffer(raw_frame, dtype=np.uint16)
+                # vol = frame.sum() / ( CHUNK * (2**16-1) )
+
+                spect = np.fft.fft(frame)
+                # Scale frequencies to Hz
+                freq = np.fft.fftfreq(frame.shape[-1], 1/self.rate)
+                # only positive frequencies (first half of the spectrum)
+                positive_freqs = freq >= 0
+                spectrum = abs(spect[positive_freqs])
+                frequencies = freq[positive_freqs]
+
+                levels = [np.sum(spectrum[(frequencies >= min_) & (frequencies < max_)])
+                          for min_, max_ in self._bins]
+                levels.append(np.sum(spectrum[frequencies >= self._bins[-1][1]]))
+                # TODO running average normalization
+                self.levels = tuple(levels)
+
+        finally:
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+
+    def stop(self):
+        self._stop_stream.set()
 
 
 class Uniform:
@@ -279,7 +365,8 @@ class VHShRenderer:
                  height: int = 720,
                  watch: bool = False,
                  midi: bool = False,
-                 midi_mapping: dict = {}):
+                 midi_mapping: dict = {},
+                 microphone: bool = False):
         # need to be defined for __del__() before glfw/imgui init can fail
         self.vao = None
         self.vbo = None
@@ -288,6 +375,7 @@ class VHShRenderer:
         self._stop = Event()
         self._file_watcher = None
         self._midi_listener = None
+        self._microphone = None
         self._glfw_imgui_renderer = None
         self._time_running = True
         self._preset_index = 0
@@ -300,7 +388,7 @@ class VHShRenderer:
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
 
         self._start_time = glfw.get_time()
-        self._frame_times = deque([1], maxlen=100)
+        self._frame_times = deque([1.0], maxlen=100)
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
@@ -336,6 +424,10 @@ class VHShRenderer:
                                          name="VHSh.midi_listener",
                                          args=(midi_mapping,))
             self._midi_listener.start()
+
+        if microphone:
+            self._microphone = Microphone()
+            self._microphone.start()
 
     @staticmethod
     def _init_window(name: str, width: int, height: int):
@@ -1001,6 +1093,10 @@ class VHShRenderer:
                     self._draw_gui()
                     self._glfw_imgui_renderer.render(imgui.get_draw_data())
                 glfw.swap_buffers(self._window)
+
+                if self._microphone:
+                    levels = self._microphone.levels
+                    print('  '.join(f"{l:5.2f}" for l in levels))
         except KeyboardInterrupt:
             pass
         finally:
@@ -1029,6 +1125,11 @@ class VHShRenderer:
             if self._midi_listener.is_alive():
                 self._midi_listener.join()
 
+        if self._microphone is not None:
+            if self._microphone.is_alive():
+                self._microphone.stop()
+                self._microphone.join()
+
     def __del__(self):
         self.shutdown()
 
@@ -1043,6 +1144,8 @@ def main(argv: Optional[list[str]] = None):
         help="Listen to MIDI messages for uniform control")
     parser.add_argument('-M', '--midi-mapping',
         help="Path to TOML file with system MIDI mappings")
+    parser.add_argument('-t', '--mic',
+        help="Make microphone levels available as uniform.")
     args = parser.parse_args(argv)
 
 
@@ -1054,7 +1157,8 @@ def main(argv: Optional[list[str]] = None):
     vhsh_renderer = VHShRenderer(args.shader,
                                  watch=args.watch,
                                  midi=args.midi,
-                                 midi_mapping=midi_mapping)
+                                 midi_mapping=midi_mapping,
+                                 microphone=args.mic)
     vhsh_renderer.run()
 
 
