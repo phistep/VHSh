@@ -257,8 +257,16 @@ currently selected preset.
   - [x] time
   - [ ] mouse
   - [ ] prev frame
-  - [ ] audio fft
+  - [-] audio fft
+    - [x] listen
+    - [x] fft
+    - [x] array uniforms
+    - [ ] normalization
+    - [ ] gui bar plot
+    - [ ] docs, demo scene
   - [ ] video in
+  - [ ] image/video file in with `uniform sampler2D foo; // @assets/foo.mp4`
+  - [ ] arbitrary data as buffer object
 - [ ] Gamma Correctio
     - [_Monitor Guide: Gamma ramp_](https://www.glfw.org/docs/latest/monitor_guide.html)
     - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)

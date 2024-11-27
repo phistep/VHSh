@@ -62,6 +62,8 @@ class ProgramLinkError(RuntimeError):
 
 class Microphone(Thread):
 
+    NUM_LEVELS = 7
+
     def __init__(self,
                  rate: int = 44100,
                  chunk: int = 1024,
@@ -181,6 +183,18 @@ class Uniform:
                 self._glUniform = gl.glUniform1f
                 self.default = self.default or 1.0
                 self.range = self.range or (0.0, 1.0, 0.01)
+            case str() as t if t.startswith('float['):
+                try:
+                    m = re.match(r'float\[(\d+)\]', type_)
+                    len = int(m.group(1))
+                except (AttributeError, ValueError) as e:
+                    raise UniformIntializationError(
+                        f"Unable to parse float array type '{type_}': {e}"
+                    ) from e
+                self._type = (float,) * len
+                self._glUniform = gl.glUniform1fv
+                self.default = self.default or (0.0,) * len
+                self.range = None
             case 'vec2':
                 self._type = GLSLVec2
                 self._glUniform = gl.glUniform2f
@@ -241,7 +255,10 @@ class Uniform:
         args = self.value
         if not isinstance(args, Iterable):
             args = [args]
-        self._glUniform(self._location, *args)
+        if self._glUniform.__name__.endswith('v'):
+            self._glUniform(self._location, len(args), args)
+        else:
+            self._glUniform(self._location, *args)
 
     def set_value_midi(self, value: int):
         assert 0 <= value <= 127
@@ -267,7 +284,7 @@ class Uniform:
         try:
             matches = re.search(
                 # TODO why ^(?!\/\/)\s* not working to ignore comments?
-                (R'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
+                (R'uniform\s+(?P<type>[\w\[\]]+)\s+(?P<name>\w+)\s*;'
                  R'(?:\s*//\s*(?:'
                  R'(?P<widget><\w+>)?\s*)?'
                  R'(?P<default>=(?:\S+|\([^\)]+\)))?'
@@ -347,6 +364,7 @@ class VHShRenderer:
         out vec4 FragColor;
         uniform vec2 u_Resolution;
         uniform float u_Time;
+        uniform float[{num_levels}] u_Microphone;
         #line 1
         """
     )
@@ -858,16 +876,20 @@ class VHShRenderer:
         imgui.render()
 
     def _draw_shader(self):
-
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
         gl.glUseProgram(self.shader_program)
+
         self.uniforms['u_Resolution'].value = [float(self.width),
                                                float(self.height)]
+
         # regular `time.time()` is too big for f32, so we just return
         # seconds from program start, glwf does this
         if self._time_running:
             self.uniforms['u_Time'].value = glfw.get_time()
+
+        if self._microphone:
+            self.uniforms['u_Microphone'].value = self._microphone.levels
+
         for uniform in self.uniforms.values():
             uniform.update()
 
@@ -923,7 +945,11 @@ class VHShRenderer:
                              **self.presets[self._preset_index]['uniforms']}
 
     def set_shader(self, shader_src: str, verbose: bool = True):
-        shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
+        preamble = self.FRAGMENT_SHADER_PREAMBLE
+        num_levels = (len(self._microphone.levels) if self._microphone
+                      else Microphone.NUM_LEVELS)
+        preamble = preamble.format(num_levels=num_levels)
+        shader_src = preamble + shader_src
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
                                               shader_src)
 
@@ -1093,10 +1119,6 @@ class VHShRenderer:
                     self._draw_gui()
                     self._glfw_imgui_renderer.render(imgui.get_draw_data())
                 glfw.swap_buffers(self._window)
-
-                if self._microphone:
-                    levels = self._microphone.levels
-                    print('  '.join(f"{l:5.2f}" for l in levels))
         except KeyboardInterrupt:
             pass
         finally:
@@ -1144,7 +1166,8 @@ def main(argv: Optional[list[str]] = None):
         help="Listen to MIDI messages for uniform control")
     parser.add_argument('-M', '--midi-mapping',
         help="Path to TOML file with system MIDI mappings")
-    parser.add_argument('-t', '--mic',
+    # TODO support seelction the microphone
+    parser.add_argument('-t', '--mic', action="store_true",
         help="Make microphone levels available as uniform.")
     args = parser.parse_args(argv)
 
