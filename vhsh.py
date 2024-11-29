@@ -69,7 +69,8 @@ class Microphone(Thread):
                  chunk: int = 1024,
                  buffer_size_s: float = 5.0,
                  format: int | None = None,
-                 intervals = [0, 60, 250, 500, 2_000, 6_000, 8_000]):
+                 intervals: Iterable[int] =
+                    [0, 60, 250, 500, 2_000, 6_000, 8_000]):
         super().__init__()
 
         import pyaudio
@@ -78,8 +79,14 @@ class Microphone(Thread):
         self.chunk = chunk
         self.format = pyaudio.paInt16 if format is None else format
         self.channels = 1  # TODO configurable?
+
         self._bins = list(zip(intervals, intervals[1:]))
         self._levels = len(intervals) * (0.0,)  # last interval is open
+
+        self._max_vol = chunk * (2**16-1)  # dynamic
+        self._max = deque(len(intervals) * [self._max_vol],  # last interval is open
+                          maxlen=int(buffer_size_s))
+        self.max = self._max_vol
 
         self._frame_buffer = deque(maxlen=int(rate / chunk * buffer_size_s))
         self._stop_stream = Event()
@@ -93,8 +100,8 @@ class Microphone(Thread):
     @levels.setter
     def levels(self, levels: tuple[float, ...]):
         with self._output_lock:
-            if len(levels) != len(self._levels):
-                raise ValueError(f"levels tuple needs to have {len(self._levels)} elements")
+            if not isinstance(levels, tuple) or len(levels) != len(self._levels):
+                raise ValueError(f"levels needs to be a tuple of length {len(self._levels)}")
             self._levels = levels
 
     def run(self):
@@ -120,7 +127,6 @@ class Microphone(Thread):
 
                 raw_frame = self._frame_buffer.pop()
                 frame = np.frombuffer(raw_frame, dtype=np.uint16)
-                # vol = frame.sum() / ( CHUNK * (2**16-1) )
 
                 spect = np.fft.fft(frame)
                 # Scale frequencies to Hz
@@ -134,7 +140,10 @@ class Microphone(Thread):
                           for min_, max_ in self._bins]
                 levels.append(np.sum(spectrum[frequencies >= self._bins[-1][1]]))
                 # TODO running average normalization
-                self.levels = tuple(levels)
+                self._max.append(max(levels))
+                self.max = max(self._max)
+                self.levels = tuple(float(l/(min(self.max, self._max_vol)))
+                                    for l in levels)
 
         finally:
             stream.stop_stream()
@@ -727,6 +736,10 @@ class VHShRenderer:
                     self._start_time = glfw.get_time()
 
         imgui.drag_float2('u_Resolution', *self.uniforms['u_Resolution'].value)
+
+        if self._microphone:
+            imgui.plot_histogram("u_Microphone",
+                                 array('f', self.uniforms['u_Microphone'].value))
 
         imgui.spacing()
         imgui.separator()
