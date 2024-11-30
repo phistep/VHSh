@@ -30,6 +30,9 @@ To open all files in a given folder, use `my_shader_folder/*`.
 
 You can pass `--watch` to automatically reload the shader upon file change.
 
+You can pass `--mic` to enable microphone input. See
+[_Builin Parameters_](#builtin-parameters).
+
 To toggle the UI, press `<tab>`.
 
 If you're seeing a message like
@@ -114,7 +117,18 @@ preamble:
   vec4 color = vec4((sin(2. * 3.14 * u_Time * ) + 1.) / 2., 0., 0., 1.);
   ```
   will create a red pulsing effect with one pulse per second.
+- `float[8] u_Microphone`: If started with `--mic`, this is an 8 element float
+  array that gives you volume per frequency band normalized over the last 5s.
 
+  | Index             | Range   |        | Description |
+  | ----------------- | ------- | ------ | ----------- |
+  | `u_Microphone[0]` | 0 Hz    | 60 Hz  | Rumble      |
+  | `u_Microphone[1]` | 60 Hz   | 250 Hz | Low End     |
+  | `u_Microphone[2]` | 250 Hz  | 500 Hz | Low Mids    |
+  | `u_Microphone[3]` | 500 Hz  | 2 kHz  | Mids        |
+  | `u_Microphone[4]` | 2 KHz   | 6 kHz  | High Mids   |
+  | `u_Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
+  | `u_Microphone[7]` | > 8 KHz |        | Air         |
 
 ### Custom Parameters
 
@@ -245,6 +259,7 @@ currently selected preset.
       - auto assign n sucessor ids as well
       - have the user assign multiple `#1,#2,#3`
 - [ ] "touchpad" widget for `vec2`
+- [ ] test image when started without any shader files
 - [ ] record mp4
 - [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
@@ -264,6 +279,7 @@ currently selected preset.
     - [ ] normalization
     - [ ] gui bar plot
     - [ ] docs, demo scene
+    - [ ] selecting microphone
   - [ ] video in
   - [ ] image/video file in with `uniform sampler2D foo; // @assets/foo.mp4`
   - [ ] arbitrary data as buffer object
