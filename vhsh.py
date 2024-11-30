@@ -411,6 +411,12 @@ class VHShRenderer:
         self._error = None
 
         imgui.create_context()
+        imgui_style = imgui.get_style()
+        imgui.style_colors_dark(imgui_style)
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM] = \
+            imgui_style.colors[imgui.COLOR_PLOT_LINES]
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = \
+            imgui_style.colors[imgui.COLOR_BUTTON_HOVERED]
         self._window = self._init_window(self.NAME, width, height)
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
 
