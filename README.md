@@ -4,8 +4,40 @@ _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
 ![Screenshot of VHSh in action](screenshot.png)
 
-
 ## Setup
+
+- macOS
+  ```sh
+  brew install pipx
+  ```
+- ubuntu
+  ```sh
+  sudo apt install pipx
+  # for audio support
+  sudo apt install portaudio19-dev
+  ```
+
+```sh
+pipx ensurepath
+pipx install 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh'
+# you might need to open a new terminal
+vhsh -h
+```
+
+- MIDI support
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[midi]'
+  ```
+- audio support
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[audio]'
+  ```
+- everyting
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[all]'
+  ```
+
+### Development
 
 Create a virtual environmenet and install the dependencies
 
