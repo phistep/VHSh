@@ -1,3 +1,22 @@
+[project]
+name = "vhsh"
+dynamic = ["version"]
+requires-python = ">= 3.12"
+dependencies = ["PyOpenGL", "glfw", "imgui[glfw]", "numpy", "watchfiles"]
+
+[project.optional-dependencies]
+all = ["vhsh[midi,audio]"]
+dev = ["ruff", "pyright", "pyimgui-stubs"]
+midi = ["mido[ports-rtmidi]"]
+audio = ["PyAudio"]
+
+[project.scripts]
+vhsh = "vhsh.__main__:main"
+
+[tool.setuptools]
+packages = ["vhsh", "midi_mappings"]
+dynamic = { "version" = { attr = "vhsh.__version__" } }
+
 [tool.pyright]
 venvPath = "."
 venv = ".venv"

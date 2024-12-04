@@ -1,7 +1,0 @@
-numpy
-glfw
-imgui[glfw]
-pyimgui-stubs
-watchfiles
-mido[ports-rtmidi]
-pyaudio
