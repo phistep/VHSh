@@ -301,7 +301,27 @@ currently selected preset.
 - [ ] record mp4
 - [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
-- [x] widgets
+- [ ] TODO.md
+- [ ] pypi
+- [ ] pass scene dir with scenes, midi mapping and other assets
+- [ ] shadertoy import
+- [ ] rename uniforms to just capitalized: `Time`, etc.
+- [ ] simplify parser: split on `" "`, then `match` on first char
+- [ ] make named midi ccs in toml via #defines
+     ```toml
+     [uniform.inputs]
+     slider = [1, 2, 3, 4]
+     knob = [10, 11, 12, 13]
+     button = [20, 21, 22, 23]
+     master_button = 42
+     ```
+     ```glsl
+     uniform float zoom; // #slider1
+     uniform bool debug; // <toggle> #button1
+     uniform bool flash; // #master_button
+     ```
+- [ ] view midi mappings in imgui
+- [ ] widgets
   - [x] `<log>`
   - [x] `<drag>` drag input, others sliders (for slider flags)
   - [x] ~~~`<hsv` and `<rgb>`~~~
