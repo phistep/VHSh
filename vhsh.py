@@ -281,7 +281,8 @@ class Uniform:
     @classmethod
     def from_def(cls,
                 shader_program: ShaderProgram,
-                definition: str) -> 'Uniform':
+                definition: str,
+                midi_mapping: dict) -> 'Uniform':
         try:
             matches = re.search(
                 # TODO why ^(?!\/\/)\s* not working to ignore comments?
@@ -290,7 +291,7 @@ class Uniform:
                  R'(?P<widget><\w+>)?\s*)?'
                  R'(?P<default>=(?:\S+|\([^\)]+\)))?'
                  R'\s*(?P<range>\[[^\]]+\])?'
-                 R'\s*(?P<midi>#\d+)?'
+                 R'\s*(?P<midi>#\w+)?'
                  R')?'),
                 definition
             )
@@ -320,14 +321,35 @@ class Uniform:
                 f" '{name}': {e}: {range_s!r}"
             ) from e
 
+        cc = None
         if midi is not None:
+
+            # TODO do this elsewhere
+            # TODO call it 'flatten'
+            cc_mapping: dict[str, int] = {}
+            for mapping_name, mapping_ccs in midi_mapping.get('uniform', {}).get('inputs', {}).items():
+                print(type(mapping_ccs))
+                match mapping_ccs:
+                    case int():
+                        cc_mapping[mapping_name] = mapping_ccs
+                    case list() if all(isinstance(cc, int) for cc in mapping_ccs):
+                        for idx, mapping_cc in enumerate(mapping_ccs):
+                            cc_mapping[mapping_name + str(idx)] = mapping_cc
+                    case _:
+                        raise ValueError(f"Invalid mapping for '{mapping_name}'")
+
+            midi = midi.removeprefix('#')
             try:
-                midi = int(midi.removeprefix('#'))
+                cc = int(midi)
             except ValueError as e:
-                raise UniformIntializationError(
-                    f"Invalid 'midi' metadata for uniform"
-                    f" '{name}': {e}: {midi!r}"
-                ) from e
+                # `midi` is not a cc, so it's a named mapping
+                try:
+                    cc = int(cc_mapping[midi])
+                except (ValueError, IndexError) as e:
+                    raise UniformIntializationError(
+                        f"Invalid 'midi' metadata for uniform"
+                        f" '{name}': {e}: {midi!r}"
+                    ) from e
 
         return Uniform(program=shader_program,
                        type_=type_,
@@ -335,7 +357,7 @@ class Uniform:
                        default=default,
                        range=range,
                        widget=widget,
-                       midi=midi)
+                       midi=cc)
 
 
 class VHShRenderer:
@@ -401,6 +423,7 @@ class VHShRenderer:
         self._new_preset_name = ""
         self._show_gui = True
         self._error = None
+        self._system_mapping = midi_mapping
 
         imgui.create_context()
         imgui_style = imgui.get_style()
@@ -447,7 +470,7 @@ class VHShRenderer:
         if midi:
             self._midi_listener = Thread(target=self._midi_listen,
                                          name="VHSh.midi_listener",
-                                         args=(midi_mapping,))
+                                         args=(self._system_mapping,))
             self._midi_listener.start()
 
         if microphone:
@@ -975,7 +998,7 @@ class VHShRenderer:
             # <current> uniforms
             if line.startswith('uniform'):
                 try:
-                    uniform = Uniform.from_def(self.shader_program, line)
+                    uniform = Uniform.from_def(self.shader_program, line, midi_mapping=self._system_mapping)
                     with self._uniform_lock:
                         if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
                             self._system_uniforms[uniform.name] = uniform
@@ -990,7 +1013,7 @@ class VHShRenderer:
             elif line.startswith('///'):
                 line_content = line.lstrip('/ ').strip()
                 if line.startswith('/// uniform'):
-                    uniform = Uniform.from_def(self.shader_program, line_content)
+                    uniform = Uniform.from_def(self.shader_program, line_content, midi_mapping=self._system_mapping)
                     if self.preset_index == len(self.presets) - 1:
                         with self._uniform_lock:
                             uniform.value = self.uniforms[uniform.name].value
