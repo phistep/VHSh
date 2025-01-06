@@ -454,8 +454,7 @@ class VHShRenderer:
             self._microphone = Microphone()
             self._microphone.start()
 
-    @staticmethod
-    def _init_window(name: str, width: int, height: int):
+    def _init_window(self, name: str, width: int, height: int):
         if not glfw.init():
             RuntimeError("GLFW could not initialize OpenGL context")
 
@@ -1106,6 +1105,10 @@ class VHShRenderer:
     def run(self):
         last_time = glfw.get_time()  # TODO maybe time.monotonic_ns()
         num_frames = 0
+
+        # TODO move
+        self._fullscreen = False
+
         try:
             if self._glfw_imgui_renderer is None:
                 raise RuntimeError("glfw imgui renderer not initialized!")
@@ -1121,6 +1124,18 @@ class VHShRenderer:
                 self._glfw_imgui_renderer.process_inputs()
                 self.width, self.height = \
                     glfw.get_framebuffer_size(self._window)
+                # TODO fullscren: f
+                # TODO time pause: space
+                if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_ENTER)):
+                    self._fullscreen = not self._fullscreen
+
+                # TODO proper toggle debounce
+                if self._fullscreen:
+                    glfw.set_window_monitor(self._window,
+                                            glfw.get_primary_monitor(),
+                                            0,0,1,1,60)
+                if self._fullscreen:
+                    glfw.set_window_monitor(self._window, None, 0,0,1,1,60)
 
                 self._reload_shader()
                 self._update_gui()
