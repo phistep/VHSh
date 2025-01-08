@@ -35,7 +35,7 @@ from .gl_types import (
     VertexArrayObject, VertexBufferObject,
     Shader, ShaderProgram,
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
-    UniformT,
+    UniformValue, UniformT,
 )
 from .shader import (
     ShaderCompileError,
@@ -43,12 +43,14 @@ from .shader import (
     ProgramLinkError,
     Uniform,
 )
+from .midi import MIDIManager
+from .common import Actions
 
 
 T = TypeVar('T')
 
 
-class VHShRenderer:
+class VHShRenderer(Actions):
 
     NAME = "Video Home Shader"
 
@@ -155,9 +157,8 @@ class VHShRenderer:
             self._file_watcher.start()
 
         if midi:
-            self._midi_listener = Thread(target=self._midi_listen,
-                                         name="VHSh.midi_listener",
-                                         args=(midi_mapping,))
+            self._midi_listener = MIDIManager(actions=self,
+                                              system_mapping=midi_mapping,)
             self._midi_listener.start()
 
         if microphone:
@@ -194,77 +195,6 @@ class VHShRenderer:
         for _ in watch(filename, stop_event=self._stop):
             # print(f"'{filename}' changed!")
             self._file_changed.set()
-
-    def _midi_listen(self, system_mapping: dict):
-        import mido
-
-        print("midi system mapping:")
-        pprint(system_mapping)
-        system_mapping = defaultdict(dict, system_mapping)
-
-        try:
-            with mido.open_input() as inport:
-                print(f"midi: listening for MIDI messages on '{inport.name}'...")
-
-                while True:
-                    if self._stop.is_set():
-                        break
-                    for msg in inport.iter_pending():
-                        # print(f"Received MIDI message: {msg}")
-                        # print(f"Received MIDI message: #{msg.control} = {msg.value}")
-                        button_down = bool(msg.value)
-
-                        if msg.control == system_mapping['scene'].get('prev'):
-                            if button_down:
-                                self.prev_shader()
-                            continue
-                        if msg.control == system_mapping['scene'].get('next'):
-                            if button_down:
-                                self.next_shader()
-                            continue
-
-                        if msg.control == system_mapping['preset'].get('prev'):
-                            if button_down:
-                                self.prev_preset()
-                            continue
-                        if msg.control == system_mapping['preset'].get('next'):
-                            if button_down:
-                                self.next_preset()
-                            continue
-                        if msg.control == system_mapping['preset'].get('save'):
-                            if button_down:
-                                self.write_file(uniforms=False, presets=True,
-                                                new_preset=f"MIDI {datetime.now()}")
-                            continue
-
-                        if msg.control == system_mapping['preset'].get('next'):
-                            if button_down:
-                                self.next_preset()
-                            continue
-
-                        if msg.control == system_mapping['uniform'].get('time', {}).get('toggle'):
-                            self._time_running = bool(msg.value)
-                            continue
-
-                        if msg.control == system_mapping['uniform'].get('toggle_ui'):
-                            self._show_gui = bool(msg.value)
-                            continue
-
-                        try:
-                            self._uniform_lock.acquire()
-                            uniform = self.uniforms[self._midi_mapping[msg.control]]
-                            uniform.set_value_midi(msg.value)
-                        except KeyError as e:
-                            print(f"MIDI mapping not found for: {msg.control}")
-                            # print(msg)
-                            pprint(self._midi_mapping)
-                        except NotImplementedError as e:
-                            self._print_error(f"ERROR setting uniform '{uniform.name}': {e}")
-                        finally:
-                            self._uniform_lock.release()
-                    time.sleep(1e-6)
-        except OSError:
-            print("No MIDI devices found!")
 
     def _create_vertices(self, vertices: np.ndarray
                          ) -> tuple[VertexArrayObject, VertexBufferObject]:
@@ -338,6 +268,37 @@ class VHShRenderer:
 
     def _get_shader_title(self, shader_path: str) -> str:
         return os.path.splitext(os.path.basename(shader_path))[0]
+
+    def set_time_running(self, value: bool):
+        self._time_running = value
+
+    def set_show_gui(self, value: bool):
+        self._show_gui = value
+
+    def set_uniform_value(self,
+                          name: str,
+                          value: UniformValue,
+                          normalized: bool = False):
+        with self._uniform_lock:
+            uniform = self.uniforms[name]
+
+            if uniform.range and normalized:
+                min_, max_ = uniform.range[:2]
+                value = min_ + value * (max_ - min_)
+
+            match uniform.type:
+                case 'bool':
+                    uniform.value = bool(value)
+                case 'int':
+                    uniform.value = int(value)
+                case 'float':
+                    uniform.value = float(value)
+                case _:
+                    raise NotImplementedError(
+                        f"MIDI update not implemented for Uniform type '{uniform.type}'")
+
+    def get_midi_mapping(self, cc: int) -> str:
+        return self._midi_mapping[cc]
 
     def _update_gui(self):
         # TODO ctrl+tab? or ctrl+`
@@ -789,7 +750,7 @@ class VHShRenderer:
             f.write(shader_src)
         print(f"wrote {'uniform values' if uniforms else ''}{'presets' if presets else ''} to '{self._shader_path}'")
 
-    def _print_error(self, e: Exception):
+    def _print_error(self, e: Exception | str):
         try:
             lines = str(e).strip().splitlines()
             if len(lines) == 2:
@@ -866,6 +827,7 @@ class VHShRenderer:
 
         if self._midi_listener is not None:
             if self._midi_listener.is_alive():
+                self._midi_listener.stop()
                 self._midi_listener.join()
 
         if self._microphone is not None:

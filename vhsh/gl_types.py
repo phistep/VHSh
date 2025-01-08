@@ -1,4 +1,4 @@
-from typing import TypeAlias, TypeVar
+from typing import TypeAlias, TypeVar, Union
 
 import numpy as np
 
@@ -14,4 +14,5 @@ GLSLVec2: TypeAlias = tuple[float, float]
 GLSLVec3: TypeAlias = tuple[float, float, float]
 GLSLVec4: TypeAlias = tuple[float, float, float, float]
 
-UniformT = TypeVar('UniformT', GLSLBool, GLSLInt, GLSLVec2, GLSLVec3, GLSLVec4)
+UniformValue: TypeAlias = Union[GLSLBool, GLSLInt, GLSLVec2, GLSLVec3, GLSLVec4]
+UniformT = TypeVar('UniformT', bound=UniformValue)

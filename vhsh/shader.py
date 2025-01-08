@@ -137,23 +137,6 @@ class Uniform:
         else:
             self._glUniform(self._location, *args)
 
-    def set_value_midi(self, value: int):
-        assert 0 <= value <= 127
-        if self.range:
-            min_, max_ = self.range[:2]
-            interpolated = min_ + (value / 127.0) * (max_ - min_)
-
-        match self.type:
-            case 'bool':
-                self.value = bool(value)
-            case 'int':
-                self.value = int(interpolated)
-            case 'float':
-                self.value = float(interpolated)
-            case _:
-                raise NotImplementedError(
-                    f"MIDI update not implemented for Uniform type '{self.type}'")
-
     @classmethod
     def from_def(cls,
                 shader_program: ShaderProgram,
