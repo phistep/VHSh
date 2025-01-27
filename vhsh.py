@@ -399,7 +399,7 @@ class VHShRenderer:
         self._time_running = True
         self._preset_index = 0
         self._new_preset_name = ""
-        self._show_gui = True
+        self._show_gui = False
         self._error = None
 
         imgui.create_context()
@@ -469,7 +469,9 @@ class VHShRenderer:
 
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
 
-        window = glfw.create_window(int(width), int(height), name, None, None)
+        window = glfw.create_window(1920, 1080, name, None, None)
+        glfw.set_window_monitor(window, glfw.get_primary_monitor(),
+                                0, 0, 1, 1, 60)
         glfw.make_context_current(window)
 
         if not window:
@@ -493,7 +495,7 @@ class VHShRenderer:
         system_mapping = defaultdict(dict, system_mapping)
 
         try:
-            with mido.open_input() as inport:
+            with mido.open_input("SparkFun Pro Micro MIDI 1") as inport:
                 print(f"midi: listening for MIDI messages on '{inport.name}'...")
 
                 while True:
