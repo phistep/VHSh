@@ -1,29 +1,19 @@
 __version__ = "0.1.0"
 
-import os
 import sys
 import re
 import time
-import warnings
-import signal
-from datetime import datetime
-from collections import defaultdict, deque
-from array import array
-from typing import (Optional, TypeVar, TypeAlias, Iterable, Literal,
-                    Callable, Any, Self, TYPE_CHECKING)
+from collections import deque
+from typing import TYPE_CHECKING
 from threading import Thread, Event, Lock
 from pprint import pprint
 from textwrap import dedent
-from itertools import cycle
-from contextlib import contextmanager
 from time import sleep
 
 from OpenGL.raw.GL.VERSION.GL_4_0 import glUniform1d
-from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
 import glfw
 import numpy as np
-import imgui
 
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 # `mido` imported conditionally in VHShRenderer._midi_listen()
@@ -44,16 +34,15 @@ from .shader import (
     Uniform,
 )
 from .midi import MIDIManager
-from .common import Actions
-
-
-T = TypeVar('T')
+from .common import Actions, get_shader_title
+from .gui import GUI
 
 
 class VHShRenderer(Actions):
 
     NAME = "Video Home Shader"
 
+    # TODO use stdlib arrays, make np optional for mic input
     VERTICES = np.array([[-1.0,  1.0, 0.0],
                          [-1.0, -1.0, 0.0],
                          [ 1.0,  1.0, 0.0],
@@ -114,15 +103,8 @@ class VHShRenderer(Actions):
         self._show_gui = True
         self._error = None
 
-        imgui.create_context()
-        imgui_style = imgui.get_style()
-        imgui.style_colors_dark(imgui_style)
-        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM] = \
-            imgui_style.colors[imgui.COLOR_PLOT_LINES]
-        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = \
-            imgui_style.colors[imgui.COLOR_BUTTON_HOVERED]
         self._window = self._init_window(self.NAME, width, height)
-        self._glfw_imgui_renderer = GlfwRenderer(self._window)
+        self.gui = GUI(self)
 
         self._start_time = glfw.get_time()
         self._frame_times = deque([1.0], maxlen=100)
@@ -137,7 +119,7 @@ class VHShRenderer(Actions):
         self._midi_mapping: dict[int, str] = {}
         self._uniform_lock = Lock()
         self._shader_paths = shader_paths
-        print("scenes:", [self._get_shader_title(s) for s in self._shader_paths])
+        print("scenes:", [get_shader_title(s) for s in self._shader_paths])
         self._shader_index = 0
         self.__shader_path = self._shader_path
         self._lineno_offset = \
@@ -266,9 +248,6 @@ class VHShRenderer(Actions):
     def next_shader(self, n=1):
         self._shader_index = (self._shader_index + n) % len(self._shader_paths)
 
-    def _get_shader_title(self, shader_path: str) -> str:
-        return os.path.splitext(os.path.basename(shader_path))[0]
-
     def set_time_running(self, value: bool):
         self._time_running = value
 
@@ -299,263 +278,6 @@ class VHShRenderer(Actions):
 
     def get_midi_mapping(self, cc: int) -> str:
         return self._midi_mapping[cc]
-
-    def _update_gui(self):
-        # TODO ctrl+tab? or ctrl+`
-        # TODO not while in input
-        if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_TAB)):
-            self._show_gui = not self._show_gui
-
-        imgui.new_frame()
-        imgui.begin("Parameters", closable=False)
-
-        if self._error is not None:
-            imgui.open_popup("Error")
-        with imgui.begin_popup_modal("Error",
-            flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
-        ) as error_popup:
-            if error_popup.opened:
-                if self._error is None:
-                    imgui.close_current_popup()
-                else:
-                    # TODO colored
-                    imgui.text_wrapped(str(self._error))
-
-        with imgui.begin_group():
-            if imgui.begin_combo("##Scene",
-                                 self._get_shader_title(self._shader_path)):
-                for idx, item in enumerate(
-                        map(self._get_shader_title, self._shader_paths)):
-                    is_selected = (idx == self._shader_index)
-                    if imgui.selectable(item, is_selected)[0]:
-                        self._shader_index = idx
-                    if is_selected:
-                        imgui.set_item_default_focus()
-                imgui.end_combo()
-            imgui.same_line()
-            if imgui.arrow_button("Prev Scene", imgui.DIRECTION_LEFT):
-                self.prev_shader()
-            imgui.same_line()
-            if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
-                self.next_shader()
-            imgui.same_line()
-            imgui.text("Scene")
-
-        imgui.spacing()
-
-        with imgui.begin_group():
-            # TODO begin_list_box?
-            if imgui.begin_combo(
-                "##Preset", self.presets[self.preset_index]['name']
-            ):
-                for idx, item in  [(p['index'], p['name'])
-                                   for p in self.presets]:
-                    is_selected = (idx == self.preset_index)
-                    if imgui.selectable(item, is_selected)[0]:
-                        self.preset_index = idx
-                    if is_selected:
-                        imgui.set_item_default_focus()
-                imgui.end_combo()
-            imgui.same_line()
-            if imgui.arrow_button("Prev Preset", imgui.DIRECTION_LEFT):
-                self.prev_preset()
-            imgui.same_line()
-            if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
-                self.next_preset()
-            imgui.same_line()
-            if imgui.button("Save"):
-                self.write_file(uniforms=False, presets=True)
-            imgui.same_line()
-            imgui.text("Preset")
-
-            _, self._new_preset_name = imgui.input_text_with_hint(
-                "##Name", "New Preset Name", self._new_preset_name)
-            imgui.same_line()
-            if imgui.button("Save##Save New Preset"):
-                self.write_file(uniforms=False, presets=True, new_preset=self._new_preset_name)
-                self._new_preset_name = ""
-            imgui.same_line()
-            imgui.text("New Preset")
-
-        imgui.spacing()
-
-        with imgui.begin_group():
-            frame_times = array('f', self._frame_times)
-            imgui.plot_lines("Frame Time##Plot", frame_times,
-                overlay_text=f"{frame_times[-1]:5.2f} ms"
-                             f"  ({1000/frame_times[-1]:3.0f} fps)")
-            imgui.same_line()
-
-        imgui.spacing()
-        imgui.separator()
-        imgui.spacing()
-
-        # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
-        with imgui.begin_group():
-            imgui.drag_float("u_Time", self.uniforms['u_Time'].value)
-            imgui.same_line()
-            changed, self._time_running = imgui.checkbox(
-                'playing' if self._time_running else 'paused',
-                self._time_running
-            )
-            if changed:
-                if self._time_running:
-                    glfw.set_time(self._start_time)
-                else:
-                    self._start_time = glfw.get_time()
-
-        imgui.drag_float2('u_Resolution', *self.uniforms['u_Resolution'].value)
-
-        if self._microphone:
-            imgui.plot_histogram("u_Microphone",
-                                 array('f', self.uniforms['u_Microphone'].value))
-
-        imgui.spacing()
-        imgui.separator()
-        imgui.spacing()
-
-        # TODO move to Uniform @property range
-        def get_range(value: Iterable[T],
-                        min_default: T,
-                        max_default: T,
-                        step_default: T = None):
-            match value:
-                case (min_, max_):
-                    return min_, max_, step_default
-                case (min_, max_, step):
-                    return min_, max_, step
-                case _:
-                    return min_default, max_default, step_default
-
-        uniforms = list(self.uniforms.items())
-        peaking_uniforms = zip(uniforms, uniforms[1:] + [(None, None)])
-        for (name, uniform), (next_name, _) in peaking_uniforms:
-            if name in self.FRAGMENT_SHADER_PREAMBLE:
-                continue
-
-            flags = 0
-            if uniform.widget == 'log':
-                flags |=  (imgui.SLIDER_FLAGS_LOGARITHMIC
-                           | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT)
-
-            # TODO move to Unifom.imgui??
-            match uniform.value, uniform.widget:
-                case bool(x), _:
-                    _, uniform.value = imgui.checkbox(name, uniform.value)
-
-                case int(x), 'drag':
-                    min_, max_, step = get_range(uniform.range, 0, 100, 1)
-                    _, uniform.value = imgui.drag_int(
-                        name,
-                        uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        change_speed=step
-                    )
-                case int(x), _:
-                    min_, max_, step = get_range(uniform.range, 0, 100, 1)
-                    _, uniform.value = imgui.slider_int(
-                        name,
-                        uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        flags=flags,
-                    )
-
-                case float(x), 'drag':
-                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float(
-                        name,
-                        uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        change_speed=step,
-                        flags=flags,
-                    )
-                case float(x), _:
-                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float(
-                        name,
-                        uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        flags=flags,
-                    )
-
-                case [float(x), float(y)], 'drag':
-                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float2(
-                        name,
-                        *uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        change_speed=step,
-                        flags=flags
-                    )
-                case [float(x), float(y)], _:
-                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float2(
-                        name,
-                        *uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        flags=flags,
-                    )
-
-                case [float(x), float(y), float(z)], 'color':
-                    _, uniform.value = imgui.color_edit3(name, *uniform.value,
-                                                            imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
-                case [float(x), float(y), float(z)], 'drag':
-                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float3(
-                        name,
-                        *uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        change_speed=step
-                    )
-                case [float(x), float(y), float(z)], _:
-                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float3(
-                        name,
-                        *uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        flags=flags,
-                    )
-
-                case [float(x), float(y), float(z), float(w)], 'color':
-                    _, uniform.value = imgui.color_edit4(name, *uniform.value,
-                                                         imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
-                case [float(x), float(y), float(z), float(w)], 'drag':
-                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float4(
-                        name,
-                        *uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        change_speed=step
-                    )
-                case [float(x), float(y), float(z), float(w)], _:
-                    min_, max_, _ = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float4(
-                        name,
-                        *uniform.value,
-                        min_value=min_,
-                        max_value=max_,
-                        flags=flags,
-                    )
-
-            # group prefixed uniforms
-            if next_name is not None:
-                if name.split('_')[0] != next_name.split('_')[0]:
-                    imgui.spacing()
-
-        imgui.end()
-        imgui.end_frame()
-
-    def _draw_gui(self):
-        imgui.render()
 
     def _draw_shader(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -673,7 +395,7 @@ class VHShRenderer(Actions):
 
         if verbose:
             print()
-            print("scene:", self._get_shader_title(self._shader_paths[self._shader_index]))
+            print("scene:", get_shader_title(self._shader_paths[self._shader_index]))
             print("presets:", [p['name'] for p in self.presets])
             print("current preset:", self.presets[self.preset_index]['name'])
 
@@ -778,7 +500,8 @@ class VHShRenderer(Actions):
         last_time = glfw.get_time()  # TODO maybe time.monotonic_ns()
         num_frames = 0
         try:
-            if self._glfw_imgui_renderer is None:
+            # TODO why is this needed
+            if self.gui._glfw_imgui_renderer is None:
                 raise RuntimeError("glfw imgui renderer not initialized!")
             while not glfw.window_should_close(self._window):
                 current_time = glfw.get_time()
@@ -789,17 +512,15 @@ class VHShRenderer(Actions):
                     last_time += 0.1
 
                 glfw.poll_events()
-                self._glfw_imgui_renderer.process_inputs()
+                self.gui.process_inputs()
                 self.width, self.height = \
                     glfw.get_framebuffer_size(self._window)
 
                 self._reload_shader()
-                self._update_gui()
+                self.gui.update()
                 self._draw_shader()
 
-                if self._show_gui:
-                    self._draw_gui()
-                    self._glfw_imgui_renderer.render(imgui.get_draw_data())
+                self.gui.render()
                 glfw.swap_buffers(self._window)
         except KeyboardInterrupt:
             pass
