@@ -10,10 +10,7 @@ from pprint import pprint
 from textwrap import dedent
 from time import sleep
 
-from OpenGL.raw.GL.VERSION.GL_4_0 import glUniform1d
-import OpenGL.GL as gl
 import glfw
-import numpy as np
 
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 # `mido` imported conditionally in VHShRenderer._midi_listen()
@@ -22,7 +19,6 @@ if TYPE_CHECKING:
 
 from .microphone import Microphone
 from .gl_types import (
-    VertexArrayObject, VertexBufferObject,
     Shader, ShaderProgram,
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
     UniformValue, UniformT,
@@ -32,6 +28,7 @@ from .shader import (
     UniformIntializationError,
     ProgramLinkError,
     Uniform,
+    Renderer
 )
 from .midi import MIDIManager
 from .common import Actions, get_shader_title
@@ -41,24 +38,6 @@ from .gui import GUI
 class VHShRenderer(Actions):
 
     NAME = "Video Home Shader"
-
-    # TODO use stdlib arrays, make np optional for mic input
-    VERTICES = np.array([[-1.0,  1.0, 0.0],
-                         [-1.0, -1.0, 0.0],
-                         [ 1.0,  1.0, 0.0],
-                         [ 1.0, -1.0, 0.0]],
-                        dtype=np.float32)
-
-    VERTEX_SHADER = dedent("""\
-        #version 330 core
-
-        layout(location = 0) in vec3 VertexPos;
-
-        void main() {
-            gl_Position = vec4(VertexPos, 1.0);
-        }
-        """
-    )
 
     FRAGMENT_SHADER_PREAMBLE = dedent("""\
         #version 330 core
@@ -88,32 +67,27 @@ class VHShRenderer(Actions):
                  midi_mapping: dict = {},
                  microphone: bool = False):
         # need to be defined for __del__() before glfw/imgui init can fail
-        self.vao = None
-        self.vbo = None
-        self.shader_program = None
-        self._file_changed = Event()
-        self._stop = Event()
+        self.renderer = None
+        self.gui = None
         self._file_watcher = None
         self._midi_listener = None
         self._microphone = None
         self._glfw_imgui_renderer = None
+
+        self._start_time = glfw.get_time()
         self._time_running = True
+        self._frame_times = deque([1.0], maxlen=100)
+        self._file_changed = Event()
+        self._stop = Event()
         self._preset_index = 0
         self._new_preset_name = ""
-        self._show_gui = True
         self._error = None
 
         self._window = self._init_window(self.NAME, width, height)
         self.gui = GUI(self)
+        self._show_gui = True
 
-        self._start_time = glfw.get_time()
-        self._frame_times = deque([1.0], maxlen=100)
-
-        self.vao, self.vbo = self._create_vertices(self.VERTICES)
-
-        self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
-                                                 self.VERTEX_SHADER)
-
+        self.renderer = Renderer()
         self.uniforms: dict[str, Uniform] = {}
         self._system_uniforms: dict[str, Uniform] = {}
         self._midi_mapping: dict[int, str] = {}
@@ -178,56 +152,6 @@ class VHShRenderer(Actions):
             # print(f"'{filename}' changed!")
             self._file_changed.set()
 
-    def _create_vertices(self, vertices: np.ndarray
-                         ) -> tuple[VertexArrayObject, VertexBufferObject]:
-        vao = gl.glGenVertexArrays(1)
-        vbo = gl.glGenBuffers(1)
-
-        gl.glBindVertexArray(vao)
-
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
-        gl.glBufferData(target=gl.GL_ARRAY_BUFFER,
-                        size=vertices.nbytes,
-                        data=vertices,
-                        usage=gl.GL_STATIC_DRAW)
-
-        # Specify the layout of the vertex data
-        vertex_attrib_idx = 0
-        gl.glVertexAttribPointer(index=vertex_attrib_idx,
-                                size=3, # len(x, y, z)
-                                type=gl.GL_FLOAT,
-                                normalized=gl.GL_FALSE,
-                                stride=3 * 4,  # (x, y, z) * sizeof(GL_FLOAT)  # TODO
-                                pointer=gl.ctypes.c_void_p(0))
-        gl.glEnableVertexAttribArray(vertex_attrib_idx)
-
-        # Unbind the VAO
-        gl.glBindVertexArray(vertex_attrib_idx)
-
-        return vao, vbo
-
-    def _create_shader(self, shader_type, shader_source: str) -> Shader:
-        """creates a shader from its source & type."""
-        shader = gl.glCreateShader(shader_type)
-        gl.glShaderSource(shader, shader_source)
-        gl.glCompileShader(shader)
-        if gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
-            raise ShaderCompileError(
-                gl.glGetShaderInfoLog(shader).decode('utf-8'))
-        return shader  # pyright: ignore [reportReturnType]
-
-    def _create_program(self, *shaders) -> ShaderProgram:
-
-        """creates a program from its vertex & fragment shader sources."""
-        program = gl.glCreateProgram()
-        for shader in shaders:
-            gl.glAttachShader(program, shader)
-        gl.glLinkProgram(program)
-        if gl.glGetProgramiv(program, gl.GL_LINK_STATUS) != gl.GL_TRUE:
-            raise ProgramLinkError(
-                gl.glGetProgramInfoLog(program).decode('utf-8'))
-        return program  # pyright: ignore [reportReturnType]
-
     @property
     def _shader_path(self) -> str:
         return self._shader_paths[self._shader_index]
@@ -279,10 +203,7 @@ class VHShRenderer(Actions):
     def get_midi_mapping(self, cc: int) -> str:
         return self._midi_mapping[cc]
 
-    def _draw_shader(self):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        gl.glUseProgram(self.shader_program)
-
+    def _update_uniforms(self):
         self.uniforms['u_Resolution'].value = [float(self.width),
                                                float(self.height)]
 
@@ -293,12 +214,6 @@ class VHShRenderer(Actions):
 
         if self._microphone:
             self.uniforms['u_Microphone'].value = self._microphone.levels
-
-        for uniform in self.uniforms.values():
-            uniform.update()
-
-        gl.glBindVertexArray(self.vao)
-        gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(self.VERTICES))
 
     def _reload_shader(self):
         if self._file_changed.is_set():
@@ -354,12 +269,7 @@ class VHShRenderer(Actions):
                       else Microphone.NUM_LEVELS)
         preamble = preamble.format(num_levels=num_levels)
         shader_src = preamble + shader_src
-        fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
-                                              shader_src)
-
-        self.shader_program = self._create_program(self.vertex_shader,
-                                                   fragment_shader)
-        gl.glDeleteShader(fragment_shader)
+        self.renderer.create_shader_program(shader_src)
 
         self.presets = [{'name': "<current>", 'uniforms': {}}]
         for n, line in enumerate(shader_src.split('\n')):
@@ -368,7 +278,7 @@ class VHShRenderer(Actions):
             # <current> uniforms
             if line.startswith('uniform'):
                 try:
-                    uniform = Uniform.from_def(self.shader_program, line)
+                    uniform = Uniform.from_def(self.renderer.shader_program, line)
                     with self._uniform_lock:
                         if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
                             self._system_uniforms[uniform.name] = uniform
@@ -383,7 +293,7 @@ class VHShRenderer(Actions):
             elif line.startswith('///'):
                 line_content = line.lstrip('/ ').strip()
                 if line.startswith('/// uniform'):
-                    uniform = Uniform.from_def(self.shader_program, line_content)
+                    uniform = Uniform.from_def(self.renderer.shader_program, line_content)
                     if self.preset_index == len(self.presets) - 1:
                         with self._uniform_lock:
                             uniform.value = self.uniforms[uniform.name].value
@@ -501,7 +411,7 @@ class VHShRenderer(Actions):
         num_frames = 0
         try:
             # TODO why is this needed
-            if self.gui._glfw_imgui_renderer is None:
+            if self.gui._glfw_imgui_renderer is None or not self.renderer or not self.gui:
                 raise RuntimeError("glfw imgui renderer not initialized!")
             while not glfw.window_should_close(self._window):
                 current_time = glfw.get_time()
@@ -518,8 +428,9 @@ class VHShRenderer(Actions):
 
                 self._reload_shader()
                 self.gui.update()
-                self._draw_shader()
+                self._update_uniforms()
 
+                self.renderer.render(self.uniforms.values())
                 self.gui.render()
                 glfw.swap_buffers(self._window)
         except KeyboardInterrupt:
@@ -528,16 +439,10 @@ class VHShRenderer(Actions):
             self.shutdown()
 
     def shutdown(self):
-        # TODO this keeps crashing if not initialized correctly,
-        #      do we really need to do this?
-        # if self.vao is not None:
-        #     gl.glDeleteVertexArrays(1, [self.vao])
-        # if self.vbo is not None:
-        #     gl.glDeleteBuffers(1, [self.vbo])
-        # if self.shader_program is not None:
-        #     gl.glDeleteProgram(self.shader_program)
-        # if self._glfw_imgui_renderer is not None:
-        #     self._glfw_imgui_renderer.shutdown()
+        if self.renderer is not None:
+            self.renderer.shutdown()
+        if self.gui is not None:
+            self.gui.shutdown()
         glfw.terminate()
 
         self._stop.set()

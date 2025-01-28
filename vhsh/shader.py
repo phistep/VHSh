@@ -1,7 +1,9 @@
 import re
 from typing import Optional, Any, Callable, Iterable, get_args
+from textwrap import dedent
 
 import OpenGL.GL as gl
+import numpy as np
 
 from .gl_types import (
     VertexArrayObject, VertexBufferObject,
@@ -195,3 +197,112 @@ class Uniform:
                        range=range,
                        widget=widget,
                        midi=midi)
+
+
+class Renderer:
+
+    # TODO use stdlib arrays, make np optional for mic input
+    VERTICES = np.array([[-1.0,  1.0, 0.0],
+                         [-1.0, -1.0, 0.0],
+                         [ 1.0,  1.0, 0.0],
+                         [ 1.0, -1.0, 0.0]],
+                        dtype=np.float32)
+
+    VERTEX_SHADER = dedent("""\
+        #version 330 core
+
+        layout(location = 0) in vec3 VertexPos;
+
+        void main() {
+            gl_Position = vec4(VertexPos, 1.0);
+        }
+        """
+    )
+
+    def __init__(self):
+        self.vao, self.vbo = self._create_vertices(self.VERTICES)
+        self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
+                                                 self.VERTEX_SHADER)
+
+    @staticmethod
+    def _create_vertices(vertices: np.ndarray) -> tuple[VertexArrayObject,
+                                                        VertexBufferObject]:
+        vao = gl.glGenVertexArrays(1)
+        vbo = gl.glGenBuffers(1)
+
+        gl.glBindVertexArray(vao)
+
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
+        gl.glBufferData(target=gl.GL_ARRAY_BUFFER,
+                        size=vertices.nbytes,
+                        data=vertices,
+                        usage=gl.GL_STATIC_DRAW)
+
+        # Specify the layout of the vertex data
+        vertex_attrib_idx = 0
+        gl.glVertexAttribPointer(index=vertex_attrib_idx,
+                                size=3, # len(x, y, z)
+                                type=gl.GL_FLOAT,
+                                normalized=gl.GL_FALSE,
+                                stride=3 * 4,  # (x, y, z) * sizeof(GL_FLOAT)  # TODO
+                                pointer=gl.ctypes.c_void_p(0))
+        gl.glEnableVertexAttribArray(vertex_attrib_idx)
+
+        # Unbind the VAO
+        gl.glBindVertexArray(vertex_attrib_idx)
+
+        return vao, vbo
+
+    @staticmethod
+    def _create_shader(shader_type, shader_source: str) -> Shader:
+        """creates a shader from its source & type."""
+        shader = gl.glCreateShader(shader_type)
+        gl.glShaderSource(shader, shader_source)
+        gl.glCompileShader(shader)
+        if gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
+            raise ShaderCompileError(
+                gl.glGetShaderInfoLog(shader).decode('utf-8'))
+        return shader  # pyright: ignore [reportReturnType]
+
+    @staticmethod
+    def _create_program(*shaders) -> ShaderProgram:
+        """creates a program from its vertex & fragment shader sources."""
+        program = gl.glCreateProgram()
+        for shader in shaders:
+            gl.glAttachShader(program, shader)
+        gl.glLinkProgram(program)
+        if gl.glGetProgramiv(program, gl.GL_LINK_STATUS) != gl.GL_TRUE:
+            raise ProgramLinkError(
+                gl.glGetProgramInfoLog(program).decode('utf-8'))
+        return program  # pyright: ignore [reportReturnType]
+
+    def create_shader_program(self, shader_src: str):
+        fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
+                                              shader_src)
+        self.shader_program = self._create_program(self.vertex_shader,
+                                              fragment_shader)
+        gl.glDeleteShader(fragment_shader)
+
+    def render(self, uniforms: Iterable[Uniform]):
+        gl.glUseProgram(self.shader_program)
+        for uniform in uniforms:
+            uniform.update()
+
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        gl.glBindVertexArray(self.vao)
+        gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(self.VERTICES))
+
+    def shutdown(self):
+        gl.glDeleteVertexArrays(1, [self.vao])
+        gl.glDeleteBuffers(1, [self.vbo])
+        gl.glDeleteProgram(self.shader_program)
+
+# TODO
+# Uniform.from_def should not be dependent on the program...
+# maybe
+# Renderer should own the uniforms, offer create_uniform  wrapper, lock management, ...
+# clearer separation between Uniforms and Parameters?
+#   - Uniforms: location/program, type, name, value
+#   - Paramter: name, type, default, range, widget, midi_mapping
+#   then, Renderer.render({name: value}) only takes values, from Parameters and
+#   updates own Uniforms

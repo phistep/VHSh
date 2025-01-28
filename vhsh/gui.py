@@ -292,3 +292,6 @@ class GUI:
 
         imgui.render()
         self._glfw_imgui_renderer.render(imgui.get_draw_data())
+
+    def shutdown(self):
+        self._glfw_imgui_renderer.shutdown()
