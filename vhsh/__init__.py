@@ -18,17 +18,10 @@ if TYPE_CHECKING:
     import pyaudio
 
 from .microphone import Microphone
-from .gl_types import (
-    Shader, ShaderProgram,
-    GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
-    UniformValue, UniformT,
-)
+from .gl_types import UniformValue, UniformT
 from .shader import (
-    ShaderCompileError,
-    UniformIntializationError,
-    ProgramLinkError,
-    Uniform,
-    Renderer
+    ShaderCompileError, UniformIntializationError, ProgramLinkError,
+    Uniform, Renderer
 )
 from .midi import MIDIManager
 from .common import Actions, get_shader_title
@@ -78,7 +71,7 @@ class VHShRenderer(Actions):
         self._time_running = True
         self._frame_times = deque([1.0], maxlen=100)
         self._file_changed = Event()
-        self._stop = Event()
+        self._file_watcher_stop = Event()
         self._preset_index = 0
         self._new_preset_name = ""
         self._error = None
@@ -87,6 +80,7 @@ class VHShRenderer(Actions):
         self.gui = GUI(self)
         self._show_gui = True
 
+        # move uniform handling into renderer, but leave shader_paths and _index out
         self.renderer = Renderer()
         self.uniforms: dict[str, Uniform] = {}
         self._system_uniforms: dict[str, Uniform] = {}
@@ -94,7 +88,7 @@ class VHShRenderer(Actions):
         self._uniform_lock = Lock()
         self._shader_paths = shader_paths
         print("scenes:", [get_shader_title(s) for s in self._shader_paths])
-        self._shader_index = 0
+        self._shader_index = 0  # initializes @property ._shader_path
         self.__shader_path = self._shader_path
         self._lineno_offset = \
             len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
@@ -148,7 +142,7 @@ class VHShRenderer(Actions):
     def _watch_file(self, filename: str):
         from watchfiles import watch
         print(f"Watching for changes in '{filename}'...")
-        for _ in watch(filename, stop_event=self._stop):
+        for _ in watch(filename, stop_event=self._file_watcher_stop):
             # print(f"'{filename}' changed!")
             self._file_changed.set()
 
@@ -203,7 +197,7 @@ class VHShRenderer(Actions):
     def get_midi_mapping(self, cc: int) -> str:
         return self._midi_mapping[cc]
 
-    def _update_uniforms(self):
+    def _update_system_uniforms(self):
         self.uniforms['u_Resolution'].value = [float(self.width),
                                                float(self.height)]
 
@@ -216,7 +210,6 @@ class VHShRenderer(Actions):
             self.uniforms['u_Microphone'].value = self._microphone.levels
 
     def _reload_shader(self):
-        if self._file_changed.is_set():
             with open(self._shader_path) as f:
                 shader_src = f.read()
             self._file_changed.clear()
@@ -410,8 +403,7 @@ class VHShRenderer(Actions):
         last_time = glfw.get_time()  # TODO maybe time.monotonic_ns()
         num_frames = 0
         try:
-            # TODO why is this needed
-            if self.gui._glfw_imgui_renderer is None or not self.renderer or not self.gui:
+            if not self.renderer or not self.gui or self.gui._glfw_imgui_renderer is None:
                 raise RuntimeError("glfw imgui renderer not initialized!")
             while not glfw.window_should_close(self._window):
                 current_time = glfw.get_time()
@@ -426,9 +418,10 @@ class VHShRenderer(Actions):
                 self.width, self.height = \
                     glfw.get_framebuffer_size(self._window)
 
-                self._reload_shader()
+                if self._file_changed.is_set():
+                    self._reload_shader()
+                self._update_system_uniforms()
                 self.gui.update()
-                self._update_uniforms()
 
                 self.renderer.render(self.uniforms.values())
                 self.gui.render()
@@ -445,10 +438,10 @@ class VHShRenderer(Actions):
             self.gui.shutdown()
         glfw.terminate()
 
-        self._stop.set()
 
         if self._file_watcher is not None:
             if self._file_watcher.is_alive():
+                self._file_watcher_stop.set()
                 self._file_watcher.join()
 
         if self._midi_listener is not None:

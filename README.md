@@ -247,6 +247,8 @@ currently selected preset.
 - [x] widget size and close button
 - [x] re-parse metadata on reload
 - [x] remember window position
+- [ ] file watcher always reads first file.
+      change to watch all files, ignore if not current scene index
 - [ ] fix dropdown crashes when no presets available
       ```
       File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
@@ -256,6 +258,7 @@ currently selected preset.
 - [ ] fix `t` as uniform name doesn't generate ui
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
+- [ ] transparency, floating/allways-on-top
 - [ ] write state to MIDI controler (uTime, UI toggle etc)
 - [ ] autosave and restore uniform values
       `atexit` and `pickle`
