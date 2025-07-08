@@ -60,6 +60,20 @@ class GUI:
                     imgui.text_wrapped(str(self._app._error))
 
         with imgui.begin_group():
+            _, self._app.floating = imgui.checkbox('Floating' ,
+                                                              self._app.floating)
+
+            imgui.same_line()
+            _, self._app.opacity = imgui.slider_float("Opacity",
+                                                      self._app.opacity,
+                                                      min_value=0.,
+                                                      max_value=1.)
+
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        with imgui.begin_group():
             if imgui.begin_combo("##Scene",
                                  get_shader_title(self._app._shader_path)):
                 for idx, item in enumerate(

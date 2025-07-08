@@ -37,6 +37,8 @@ class App(Protocol):
     _shader_path: str
     _shader_paths: list[str]
     _shader_index: int
+    opacity: float
+    floating: bool
     def prev_shader(self, n=1): ...
     def next_shader(self, n=1): ...
     presets: list[dict]

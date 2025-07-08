@@ -270,6 +270,7 @@ currently selected preset.
 - [ ] "touchpad" widget for `vec2`
 - [ ] test image when started without any shader files
 - [ ] record mp4
+- [ ] use logger
 - [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
 - [x] widgets

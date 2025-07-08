@@ -77,6 +77,8 @@ class VHShRenderer(Actions):
         self._error = None
 
         self._window = self._init_window(self.NAME, width, height)
+        self._opacity = 1.0
+        self._floating = False
         self.gui = GUI(self)
         self._show_gui = True
 
@@ -127,7 +129,6 @@ class VHShRenderer(Actions):
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
 
         window = glfw.create_window(int(width), int(height), name, None, None)
@@ -138,6 +139,30 @@ class VHShRenderer(Actions):
             raise RuntimeError("GLFW could not initialize Window")
 
         return window
+
+    @property
+    def opacity(self) -> float:
+        return self._opacity
+
+    @opacity.setter
+    def opacity(self, opacity: float):
+        if self._opacity == opacity:
+            return
+        self._opacity = opacity
+        glfw.set_window_opacity(self._window, opacity)
+
+    @property
+    def floating(self) -> bool:
+        return self._floating
+
+    @floating.setter
+    def floating(self, floating: bool):
+        if self._floating == floating:
+            return
+        self._floating = floating
+        glfw.set_window_attrib(self._window,
+                               glfw.FLOATING,
+                               glfw.TRUE if floating else glfw.FALSE)
 
     def _watch_file(self, filename: str):
         from watchfiles import watch
