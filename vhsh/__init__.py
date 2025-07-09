@@ -9,6 +9,7 @@ from threading import Thread, Event, Lock
 from pprint import pprint
 from textwrap import dedent
 from time import sleep
+from pathlib import Path
 
 import glfw
 
@@ -23,6 +24,7 @@ from .shader import (
     ShaderCompileError, UniformIntializationError, ProgramLinkError,
     Uniform, Renderer
 )
+from .scene import ParameterParserError, Scene, Parameter
 from .midi import MIDIManager
 from .common import Actions, get_shader_title
 from .gui import GUI
@@ -52,7 +54,7 @@ class VHShRenderer(Actions):
     )
 
     def __init__(self,
-                 shader_paths: list[str],
+                 shader_paths: list[Path],
                  width: int = 1280,
                  height: int = 720,
                  watch: bool = False,
@@ -85,6 +87,7 @@ class VHShRenderer(Actions):
         # move uniform handling into renderer, but leave shader_paths and _index out
         self.renderer = Renderer()
         self.uniforms: dict[str, Uniform] = {}
+        self.parameters: dict[str, Parameter] = {}
         self._system_uniforms: dict[str, Uniform] = {}
         self._midi_mapping: dict[int, str] = {}
         self._uniform_lock = Lock()
@@ -94,11 +97,10 @@ class VHShRenderer(Actions):
         self.__shader_path = self._shader_path
         self._lineno_offset = \
             len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
-        with open(self._shader_path) as f:
-            shader_src = f.read()
         try:
-            self.set_shader(shader_src, verbose=False)
-        except ShaderCompileError as e:
+            scene = Scene(self._shader_path)
+            self.set_shader(scene, verbose=False)
+        except (ParameterParserError, ShaderCompileError) as e:
             self._print_error(e)
             sys.exit(1)
 
@@ -172,7 +174,7 @@ class VHShRenderer(Actions):
             self._file_changed.set()
 
     @property
-    def _shader_path(self) -> str:
+    def _shader_path(self) -> Path:
         return self._shader_paths[self._shader_index]
 
     @property
@@ -235,8 +237,7 @@ class VHShRenderer(Actions):
             self.uniforms['u_Microphone'].value = self._microphone.levels
 
     def _reload_shader(self):
-            with open(self._shader_path) as f:
-                shader_src = f.read()
+            scene = Scene(self._shader_path)
             self._file_changed.clear()
 
             if self._shader_path != self.__shader_path:
@@ -247,7 +248,7 @@ class VHShRenderer(Actions):
                 self.__shader_path = self._shader_path
 
             try:
-                self.set_shader(shader_src)
+                self.set_shader(scene)
             except ShaderCompileError as e:
                 self._error = e
                 self._print_error(e)
@@ -265,6 +266,7 @@ class VHShRenderer(Actions):
     def preset_index(self, value):
         with self._uniform_lock:
             if self._preset_index == 0:
+                # TODO abstract uniform from parameters and add here
                 self.presets[0]['uniforms'] = self.uniforms
 
             self._preset_index = value % len(self.presets)
@@ -281,55 +283,61 @@ class VHShRenderer(Actions):
             self.uniforms = {**self._system_uniforms,
                              **self.presets[self._preset_index]['uniforms']}
 
-    def set_shader(self, shader_src: str, verbose: bool = True):
+    def set_shader(self, scene: Scene, verbose: bool = True):
         preamble = self.FRAGMENT_SHADER_PREAMBLE
         num_levels = (len(self._microphone.levels) if self._microphone
                       else Microphone.NUM_LEVELS)
         preamble = preamble.format(num_levels=num_levels)
-        shader_src = preamble + shader_src
+        shader_src = preamble + scene.source
         self.renderer.create_shader_program(shader_src)
 
-        self.presets = [{'name': "<current>", 'uniforms': {}}]
-        for n, line in enumerate(shader_src.split('\n')):
-            line = line.strip()
+        self.presets = scene.presets
 
-            # <current> uniforms
+        # TODO handle differently, remove Uniform.from_def
+        for n, line in enumerate(preamble.split('\n')):
+            line = line.strip()
             if line.startswith('uniform'):
-                try:
-                    uniform = Uniform.from_def(self.renderer.shader_program, line)
+                uniform = Uniform.from_def(self.renderer.shader_program, line)
+                if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
                     with self._uniform_lock:
-                        if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
-                            self._system_uniforms[uniform.name] = uniform
-                        if (self.preset_index == 0
-                                and uniform.name in self.uniforms):
-                            uniform.value = self.uniforms[uniform.name].value
-                        self.presets[0]['uniforms'][uniform.name] = uniform
-                except UniformIntializationError as e:
-                    lineno = n - self._lineno_offset
-                    raise ShaderCompileError(f"ERROR 0:{lineno} {e}")
-            # presets
-            elif line.startswith('///'):
-                line_content = line.lstrip('/ ').strip()
-                if line.startswith('/// uniform'):
-                    uniform = Uniform.from_def(self.renderer.shader_program, line_content)
-                    if self.preset_index == len(self.presets) - 1:
-                        with self._uniform_lock:
-                            uniform.value = self.uniforms[uniform.name].value
-                    self.presets[-1]['uniforms'][uniform.name] = uniform
-                else:
-                    index = len(self.presets)
-                    self.presets.append({'name': line_content or str(index),
-                                         'uniforms': {}})
+                        self._system_uniforms[uniform.name] = uniform
+
+        # TODO @propert
+        current_preset = self.presets[self.preset_index]
 
         if verbose:
             print()
             print("scene:", get_shader_title(self._shader_paths[self._shader_index]))
-            print("presets:", [p['name'] for p in self.presets])
-            print("current preset:", self.presets[self.preset_index]['name'])
+            print("presets:", [p.name for p in self.presets])
+            print("current preset:", current_preset.name)
 
+        # TODO handle updating with current value correctly
+        for parameter in current_preset.parameters.values():
+            if parameter.name in self.uniforms:
+                parameter.value = self.uniforms[parameter.name].value
+            # # <current>
+            # if (self.preset_index == 0 and uniform.name in self.uniforms):
+            #     uniform.value = self.uniforms[uniform.name].value
+            # # presets
+            # if self.preset_index == len(self.presets) - 1:
+            #         uniform.value = self.uniforms[uniform.name].value
+
+
+        # TODO here now should only get type and value
+        uniforms = {parameter.name: Uniform(self.renderer.shader_program,
+                                            type_=parameter.type,
+                                            name=parameter.name,
+                                            value=parameter.value,
+                                            default=parameter.default,
+                                            range=parameter.range,
+                                            widget=parameter.widget,
+                                            midi=parameter.midi)
+                    for parameter in current_preset.parameters.values()}
+
+
+        # TODO API boundary uniforms/parameters
         with self._uniform_lock:
-            self.uniforms = {**self._system_uniforms,
-                             **self.presets[self.preset_index]['uniforms']}
+            self.uniforms = {**self._system_uniforms, **uniforms}
 
             if verbose:
                 print("uniforms:")
@@ -361,8 +369,10 @@ class VHShRenderer(Actions):
         if presets:
             with self._uniform_lock:
                 if new_preset is not None:
-                    self.presets.append({"name": new_preset,
-                                         "uniforms": self.uniforms.copy()})
+                    # TODO proper convertion
+                    parameters = {name: Parameter(**uniform.__dict__)
+                                  for name, uniform in self.uniforms.items()}
+                    self.presets.append(Preset(name=new_preset, parameters=parameters))
                     self._preset_index = len(self.presets) - 1
                 for uniform in self.uniforms.values():
                     self.presets[self._preset_index]['uniforms'] = \

@@ -1,5 +1,6 @@
 import argparse
 import tomllib
+from pathlib import Path
 from typing import Optional
 
 from . import VHShRenderer
@@ -8,7 +9,7 @@ from . import VHShRenderer
 def main(argv: Optional[list[str]] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument('shader', nargs='+',
-        help='Path to GLSL fragment shader')
+        help='Path to GLSL fragment shader', type=Path)
     parser.add_argument('-w', '--watch', action='store_true',
         help="Watch for file changes and automatically reload shader")
     parser.add_argument('-m', '--midi', action='store_true',

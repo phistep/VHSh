@@ -98,9 +98,9 @@ class GUI:
         with imgui.begin_group():
             # TODO begin_list_box?
             if imgui.begin_combo(
-                "##Preset", self._app.presets[self._app.preset_index]['name']
+                "##Preset", self._app.presets[self._app.preset_index].name
             ):
-                for idx, item in  [(p['index'], p['name'])
+                for idx, item in  [(p.index, p.name)
                                    for p in self._app.presets]:
                     is_selected = (idx == self.preset_index)
                     if imgui.selectable(item, is_selected)[0]:

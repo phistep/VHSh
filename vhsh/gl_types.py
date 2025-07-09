@@ -14,5 +14,11 @@ GLSLVec2: TypeAlias = tuple[float, float]
 GLSLVec3: TypeAlias = tuple[float, float, float]
 GLSLVec4: TypeAlias = tuple[float, float, float, float]
 
-UniformValue: TypeAlias = Union[GLSLBool, GLSLInt, GLSLVec2, GLSLVec3, GLSLVec4]
+UniformValue: TypeAlias = Union[GLSLBool,
+                                GLSLInt,
+                                GLSLFloat,
+                                GLSLVec2,
+                                GLSLVec3,
+                                GLSLVec4,
+                                list["UniformValue"]]
 UniformT = TypeVar('UniformT', bound=UniformValue)

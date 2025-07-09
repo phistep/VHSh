@@ -1,9 +1,9 @@
 import os
-from typing import Protocol
+from typing import Protocol, Mapping
 from dataclasses import dataclass
 
 from .shader import ShaderCompileError
-from .gl_types import UniformValue
+from .gl_types import UniformValue, GLSLVec2, GLSLFloat
 
 
 class Actions(Protocol):
@@ -41,7 +41,7 @@ class App(Protocol):
     floating: bool
     def prev_shader(self, n=1): ...
     def next_shader(self, n=1): ...
-    presets: list[dict]
+    presets: list["Preset"]
     preset_index: int
     def prev_preset(self, n: int = 1): ...
     def next_preset(self, n: int = 1): ...
