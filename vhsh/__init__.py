@@ -2,48 +2,30 @@ __version__ = "0.1.0"
 
 import sys
 import re
-import time
 from collections import deque
 from typing import TYPE_CHECKING
-from threading import Thread, Event, Lock
+from threading import Thread, Event
 from pprint import pprint
 from textwrap import dedent
-from time import sleep
 from pathlib import Path
 
 import glfw
-
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
-# `mido` imported conditionally in VHShRenderer._midi_listen()
-if TYPE_CHECKING:
-    import pyaudio
 
 from .microphone import Microphone
-from .gl_types import UniformValue, UniformT
-from .shader import (
-    ShaderCompileError, UniformIntializationError, ProgramLinkError,
-    Uniform, Renderer
-)
-from .scene import ParameterParserError, Scene, Parameter
+from .renderer import ShaderCompileError, Renderer
+from .scene import ParameterParserError, Scene, Preset, Parameter, SystemParameter
+from .types import UniformValue, Actions, get_shader_title
 from .midi import MIDIManager
-from .common import Actions, get_shader_title
 from .gui import GUI
+
+if TYPE_CHECKING:
+    import pyaudio
 
 
 class VHShRenderer(Actions):
 
     NAME = "Video Home Shader"
-
-    FRAGMENT_SHADER_PREAMBLE = dedent("""\
-        #version 330 core
-
-        out vec4 FragColor;
-        uniform vec2 u_Resolution;
-        uniform float u_Time;
-        uniform float[{num_levels}] u_Microphone;
-        #line 1
-        """
-    )
 
     FRAGMENT_SHADER = dedent("""\
         void main() {
@@ -61,63 +43,84 @@ class VHShRenderer(Actions):
                  midi: bool = False,
                  midi_mapping: dict = {},
                  microphone: bool = False):
-        # need to be defined for __del__() before glfw/imgui init can fail
-        self.renderer = None
-        self.gui = None
-        self._file_watcher = None
-        self._midi_listener = None
-        self._microphone = None
+        # need to be defined upfront for __del__() before glfw/imgui init can fail
+        self.renderer: Renderer = None  # type: ignore
+        self.gui: GUI = None  # type: ignore
+        self._file_watcher: Thread = None  # type: ignore
+        self._midi_listener: MIDIManager = None  # type: ignore
+        self._microphone: Microphone = None  # type: ignore
         self._glfw_imgui_renderer = None
 
         self._start_time = glfw.get_time()
         self._time_running = True
         self._frame_times = deque([1.0], maxlen=100)
-        self._file_changed = Event()
-        self._file_watcher_stop = Event()
-        self._preset_index = 0
-        self._new_preset_name = ""
-        self._error = None
 
         self._window = self._init_window(self.NAME, width, height)
         self._opacity = 1.0
         self._floating = False
+
         self.gui = GUI(self)
         self._show_gui = True
 
-        # move uniform handling into renderer, but leave shader_paths and _index out
-        self.renderer = Renderer()
-        self.uniforms: dict[str, Uniform] = {}
-        self.parameters: dict[str, Parameter] = {}
-        self._system_uniforms: dict[str, Uniform] = {}
-        self._midi_mapping: dict[int, str] = {}
-        self._uniform_lock = Lock()
+        self._file_changed = Event()
+        # TODO handle Scenes not shader_paths
         self._shader_paths = shader_paths
-        print("scenes:", [get_shader_title(s) for s in self._shader_paths])
         self._shader_index = 0  # initializes @property ._shader_path
         self.__shader_path = self._shader_path
-        self._lineno_offset = \
-            len(self.FRAGMENT_SHADER_PREAMBLE.splitlines()) + 1
-        try:
-            scene = Scene(self._shader_path)
-            self.set_shader(scene, verbose=False)
-        except (ParameterParserError, ShaderCompileError) as e:
-            self._print_error(e)
-            sys.exit(1)
+        self.presets: list[Preset] = []
+        self._preset_index = 0
+        self._new_preset_name = ""
+        self.parameters: dict[str, Parameter] = {}
+        self.system_parameters: dict[str, SystemParameter] = dict(
+            u_Resolution=SystemParameter(
+                "u_Resolution", type="vec2", value=(0., .0),
+                update=lambda self: glfw.get_framebuffer_size(self._window)
+            ),
+            u_Time=SystemParameter(
+                "u_Time", type="float", value=0.,
+                update=lambda app: (glfw.get_time() if self._time_running
+                                    else None)
+            ),
+        )
 
+        self._file_watcher_stop = Event()
         if watch:
             self._file_watcher = Thread(target=self._watch_file,
                                         name="VHSh.file_watcher",
                                         args=(self._shader_path,))
             self._file_watcher.start()
 
+        self._midi_mapping: dict[int, str] = {}
         if midi:
             self._midi_listener = MIDIManager(actions=self,
                                               system_mapping=midi_mapping,)
             self._midi_listener.start()
 
+        num_levels = Microphone.NUM_LEVELS
         if microphone:
             self._microphone = Microphone()
             self._microphone.start()
+
+            num_levels = len(self._microphone.levels)
+        self.system_parameters["u_Microphone"] = SystemParameter(
+            "u_Microphone",
+            type=f"float[{num_levels}]",
+            value=(0.) * num_levels,
+            update=lambda app=self: (app._microphone.levels
+                                        if app._microphone else None)
+        )
+
+        self.renderer = Renderer(list(self.system_parameters.values()))
+        self._error = None
+
+        print("scenes:", [get_shader_title(s) for s in self._shader_paths])
+
+        try:
+            scene = Scene(self._shader_path)
+            self.set_scene(scene, verbose=False)
+        except (ParameterParserError, ShaderCompileError) as e:
+            self._print_error(e)
+            sys.exit(1)
 
     @staticmethod
     def _init_window(name: str, width: int, height: int):
@@ -199,56 +202,25 @@ class VHShRenderer(Actions):
     def set_show_gui(self, value: bool):
         self._show_gui = value
 
-    def set_uniform_value(self,
-                          name: str,
-                          value: UniformValue,
-                          normalized: bool = False):
-        with self._uniform_lock:
-            uniform = self.uniforms[name]
-
-            if uniform.range and normalized:
-                min_, max_ = uniform.range[:2]
-                value = min_ + value * (max_ - min_)
-
-            match uniform.type:
-                case 'bool':
-                    uniform.value = bool(value)
-                case 'int':
-                    uniform.value = int(value)
-                case 'float':
-                    uniform.value = float(value)
-                case _:
-                    raise NotImplementedError(
-                        f"MIDI update not implemented for Uniform type '{uniform.type}'")
+    # TODO replace with self.parameters with magic?
+    def set_parameter_value(self,
+                            name: str,
+                            value: UniformValue,
+                            normalized: bool = False):
+        self.renderer.update_uniform(name, value, normalized=normalized)
 
     def get_midi_mapping(self, cc: int) -> str:
         return self._midi_mapping[cc]
 
-    def _update_system_uniforms(self):
-        self.uniforms['u_Resolution'].value = [float(self.width),
-                                               float(self.height)]
-
-        # regular `time.time()` is too big for f32, so we just return
-        # seconds from program start, glwf does this
-        if self._time_running:
-            self.uniforms['u_Time'].value = glfw.get_time()
-
-        if self._microphone:
-            self.uniforms['u_Microphone'].value = self._microphone.levels
-
-    def _reload_shader(self):
+    def _reload_scene(self):
             scene = Scene(self._shader_path)
-            self._file_changed.clear()
 
-            if self._shader_path != self.__shader_path:
-                # clear instead of update uniforms if this is a
-                # new file (vs just reload)
-                with self._uniform_lock:
-                    self.uniforms = {}
+            self._file_changed.clear()
+            if (clear := self._shader_path != self.__shader_path):
                 self.__shader_path = self._shader_path
 
             try:
-                self.set_shader(scene)
+                self.set_scene(scene, clear=clear)
             except ShaderCompileError as e:
                 self._error = e
                 self._print_error(e)
@@ -264,94 +236,62 @@ class VHShRenderer(Actions):
 
     @preset_index.setter
     def preset_index(self, value):
-        with self._uniform_lock:
-            if self._preset_index == 0:
-                # TODO abstract uniform from parameters and add here
-                self.presets[0]['uniforms'] = self.uniforms
+        if self._preset_index == 0:
+            # TODO abstract uniform from parameters and add here
+            self.presets[0].parameters = self.parameters
 
-            self._preset_index = value % len(self.presets)
-            print()
-            print("current preset:", self.presets[self.preset_index]['name'])
+        self._preset_index = value % len(self.presets)
+        print()
+        print("current preset:", self.presets[self.preset_index].name)
 
-            self._midi_mapping = {}
-            for uniform in self.presets[self.preset_index]['uniforms'].values():
-                if uniform.midi is not None:
-                    self._midi_mapping[uniform.midi] = uniform.name
-                if uniform.name not in self.FRAGMENT_SHADER_PREAMBLE:
-                    print(" ", uniform)
+        self._midi_mapping = {}
+        for parameter in self.presets[self.preset_index].parameters.values():
+            if parameter.midi is not None:
+                self._midi_mapping[parameter.midi] = parameter.name
+            print(" ", parameter)
 
-            self.uniforms = {**self._system_uniforms,
-                             **self.presets[self._preset_index]['uniforms']}
+        self.uniforms = {**self.system_parameters,
+                         **self.presets[self._preset_index].parameters}
 
-    def set_shader(self, scene: Scene, verbose: bool = True):
-        preamble = self.FRAGMENT_SHADER_PREAMBLE
-        num_levels = (len(self._microphone.levels) if self._microphone
-                      else Microphone.NUM_LEVELS)
-        preamble = preamble.format(num_levels=num_levels)
-        shader_src = preamble + scene.source
-        self.renderer.create_shader_program(shader_src)
-
+    def set_scene(self, scene: Scene, verbose: bool = True, clear: bool = False):
         self.presets = scene.presets
-
-        # TODO handle differently, remove Uniform.from_def
-        for n, line in enumerate(preamble.split('\n')):
-            line = line.strip()
-            if line.startswith('uniform'):
-                uniform = Uniform.from_def(self.renderer.shader_program, line)
-                if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
-                    with self._uniform_lock:
-                        self._system_uniforms[uniform.name] = uniform
-
-        # TODO @propert
+        # TODO @property?
         current_preset = self.presets[self.preset_index]
 
         if verbose:
             print()
-            print("scene:", get_shader_title(self._shader_paths[self._shader_index]))
+            print("scene:", scene.name)
             print("presets:", [p.name for p in self.presets])
             print("current preset:", current_preset.name)
 
         # TODO handle updating with current value correctly
+        # for parameter in current_preset.parameters.values():
+        #     if parameter.name in self.uniforms:
+        #         parameter.value = self.uniforms[parameter.name].value
+        #     # <current>
+        #     if (self.preset_index == 0 and uniform.name in self.uniforms):
+        #         uniform.value = self.uniforms[uniform.name].value
+        #     # presets
+        #     if self.preset_index == len(self.presets) - 1:
+        #             uniform.value = self.uniforms[uniform.name].value
+
+        self._midi_mapping = {}
+        if verbose:
+            print("parameters:")
         for parameter in current_preset.parameters.values():
-            if parameter.name in self.uniforms:
-                parameter.value = self.uniforms[parameter.name].value
-            # # <current>
-            # if (self.preset_index == 0 and uniform.name in self.uniforms):
-            #     uniform.value = self.uniforms[uniform.name].value
-            # # presets
-            # if self.preset_index == len(self.presets) - 1:
-            #         uniform.value = self.uniforms[uniform.name].value
-
-
-        # TODO here now should only get type and value
-        uniforms = {parameter.name: Uniform(self.renderer.shader_program,
-                                            type_=parameter.type,
-                                            name=parameter.name,
-                                            value=parameter.value,
-                                            default=parameter.default,
-                                            range=parameter.range,
-                                            widget=parameter.widget,
-                                            midi=parameter.midi)
-                    for parameter in current_preset.parameters.values()}
-
-
-        # TODO API boundary uniforms/parameters
-        with self._uniform_lock:
-            self.uniforms = {**self._system_uniforms, **uniforms}
-
             if verbose:
-                print("uniforms:")
-            self._midi_mapping = {}
-            for uniform in self.uniforms.values():
-                if verbose:
-                    print(" ", uniform)
+                print(" ", parameter)
 
-                if uniform.midi is not None:
-                    self._midi_mapping[uniform.midi] = uniform.name
+            if parameter.midi is not None:
+                self._midi_mapping[parameter.midi] = parameter.name
 
-            if verbose and self._midi_listener:
-                print("midi_mapping:")
-                pprint(self._midi_mapping)
+        if verbose and self._midi_listener:
+            print("midi_mapping:")
+            pprint(self._midi_mapping)
+
+        parameters = [*self.system_parameters.values(),
+                      *current_preset.parameters.values()]
+        self.renderer.set_shader(scene.source, parameters)
 
     def prev_preset(self, n: int = 1):
         self.preset_index = (self.preset_index - n) % len(self.presets)
@@ -359,6 +299,7 @@ class VHShRenderer(Actions):
     def next_preset(self, n: int = 1):
         self.preset_index = (self.preset_index + n) % len(self.presets)
 
+    # TODO move to scenes.Scene
     def write_file(self,
                    presets: bool = True,
                    uniforms: bool = False,
@@ -438,29 +379,35 @@ class VHShRenderer(Actions):
         last_time = glfw.get_time()  # TODO maybe time.monotonic_ns()
         num_frames = 0
         try:
-            if not self.renderer or not self.gui or self.gui._glfw_imgui_renderer is None:
+            if (not self.renderer
+                    or not self.gui
+                    or self.gui._glfw_imgui_renderer is None):
                 raise RuntimeError("glfw imgui renderer not initialized!")
+
             while not glfw.window_should_close(self._window):
+                # TODO split int system_update, update(), render() ?
+
                 current_time = glfw.get_time()
                 num_frames += 1
                 if current_time - last_time >= 0.1:
                     self._frame_times.append(100/num_frames)
                     num_frames = 0
                     last_time += 0.1
-
                 glfw.poll_events()
                 self.gui.process_inputs()
                 self.width, self.height = \
                     glfw.get_framebuffer_size(self._window)
 
                 if self._file_changed.is_set():
-                    self._reload_shader()
-                self._update_system_uniforms()
+                    self._reload_scene()
+                for system_parameter in self.system_parameters.values():
+                    system_parameter.update(self)
                 self.gui.update()
 
-                self.renderer.render(self.uniforms.values())
+                self.renderer.render()
                 self.gui.render()
                 glfw.swap_buffers(self._window)
+
         except KeyboardInterrupt:
             pass
         finally:

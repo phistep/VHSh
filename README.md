@@ -247,6 +247,7 @@ currently selected preset.
 - [x] widget size and close button
 - [x] re-parse metadata on reload
 - [x] remember window position
+- [x] transparency, floating/allways-on-top
 - [ ] file watcher always reads first file.
       change to watch all files, ignore if not current scene index
 - [ ] fix dropdown crashes when no presets available
@@ -258,7 +259,6 @@ currently selected preset.
 - [ ] fix `t` as uniform name doesn't generate ui
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
-- [ ] transparency, floating/allways-on-top
 - [ ] write state to MIDI controler (uTime, UI toggle etc)
 - [ ] autosave and restore uniform values
       `atexit` and `pickle`
@@ -298,24 +298,22 @@ currently selected preset.
     - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)
     - [`GLFWgammarramp`](https://www.glfw.org/docs/latest/group__monitor.html#ga939cf093cb0af0498b7b54dc2e181404)
 - [ ] big refactoring
-  - one file? or full package with exe in PATH?
-  - docstrings
-  - ```
-    VideoHomeShader
-        context: all variables to consider
-      MIDIManager
-        Thread
-        needs uniforms, system commands
-      GUI
-        needs uniforms, system commands
-      ShaderRenderer
-        scenes
-        needs system commands
-      FileWatcher
-        talks to Shader Renderer
-      PresetManager
-        presets
-    ```
+  - [-] modules
+    - [-] MIDIManager -> MIDIContoller
+    - [x] Renderer -> ShaderRenderer
+    - [x] Microphone
+    - [ ] FileWatcher
+    - [?] PresetManager
+    - [x] Scene, Preset, Parameter
+    - [-] State(Protocol), Actions(Protocol)
+    - [ ] app.py class VHSh
+    - [ ] Windowing glwf
+  - [ ] docstrings
+  - [-] logger: cli args, configure logging, replace print
+  - [ ] worker add SystemParameter metaclass registry hook
+  - [ ] threadsafe parameters, locking
+  - [ ] update vs setup of uniforms
+
 - switch to SDL?
   - native macos fullscreen
   - mic input https://www.lazyfoo.net/tutorials/SDL/34_audio_recording/index.php

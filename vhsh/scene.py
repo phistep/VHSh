@@ -1,15 +1,41 @@
 import re
+from typing import get_args, Generic, Callable, Mapping, Iterable
 from pathlib import Path
-from typing import Type
 from enum import StrEnum
 from dataclasses import dataclass
 
-from .gl_types import UniformValue
-from .common import SYSTEM_UNIFORMS
+from .types import (
+    GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
+    UniformT, UniformLike,
+    App, ParameterParserError,
+)
 
 
-class ParameterParserError(ValueError):
-    pass
+
+@dataclass
+class SystemParameter(UniformLike, Generic[UniformT]):
+    """Pass a function that returns a value to update the Parameter with.
+
+    Pass None if value should be kept constant.
+    """
+    name: str
+    type: str
+    value: UniformT
+    update: Callable[[App], UniformT | None]
+
+    def __post_init__(self):
+        # wrap `.update()` so that it sets .value,
+        # but can be passed as `update=`
+
+        self._update = self.update
+
+        def update(app: App):
+            value = self._update(app)
+            if value is not None:
+                self.value = value
+            return value
+
+        self.update = update
 
 
 class Widget(StrEnum):
@@ -19,14 +45,82 @@ class Widget(StrEnum):
 
 
 @dataclass
-class Parameter:
+class Parameter(UniformLike, Generic[UniformT]):
     name: str
-    type: Type[UniformValue]
-    value: UniformValue
-    default: UniformValue
-    range: tuple[float, float]
-    widget: Widget
-    midi: int
+    type: str
+    value: UniformT  # annotate optional param, but always set
+    default: UniformT
+    range: tuple[float, float, float] | None
+    widget: Widget | None
+    midi: int | None  # TODO -> controls: list[int]
+
+    # delete everything but the default setting at the bottom? _type not needed
+    def __post_init__(self):
+        # TODO default step is dropped if not passed
+        match self.type:
+            case 'bool':
+                _type = GLSLBool
+                self.default = self.default or True
+                self.range = None
+            case 'int':
+                _type = GLSLInt
+                self.default = self.default or 1
+                self.range = self.range or (0, 10, 1)
+            case 'float':
+                _type = GLSLFloat
+                self.default = self.default or 1.0
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case str() as t if t.startswith('float['):
+                try:
+                    m = re.match(r'float\[(\d+)\]', self.type)
+                    len = int(m.group(1))  # pyright: ignore[reportOptionalMemberAccess]
+                except (AttributeError, ValueError) as e:
+                    raise ParameterParserError(
+                        f"Unable to parse float array type '{self.type}': {e}"
+                    ) from e
+                _type = (float,) * len
+                self.default = self.default or (0.0,) * len  # type: ignore
+                self.range = None
+            case 'vec2':
+                _type = GLSLVec2
+                self.default = self.default or (1.,)*2  # type: ignore
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case 'vec3':
+                _type = GLSLVec3
+                self.default = self.default or (1.,)*3  # type: ignore
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case 'vec4':
+                _type = GLSLVec4
+                self.default = self.default or (1.,)*4  # type: ignore
+                self.range = self.range or (0.0, 1.0, 0.01)
+            case _:
+                raise NotImplementedError(
+                    f"Uniform type '{self.type}' not implemented:"
+                    f" {self.name} ({self.value})")
+
+        uniform_type = get_args(_type) or _type
+        value_type = (tuple(type(elem) for elem in self.default)
+                      if isinstance(self.default, Iterable)
+                      else type(self.default))
+        if  value_type != uniform_type:
+            raise ParameterParserError(
+                f"Uniform '{self.name}' defined as"
+                f" '{self.type}' ({uniform_type}), but provided value"
+                f" has type '{value_type}': {self.default!r}")
+
+        if self.value is None:
+            self.value = self.default
+
+    def __str__(self) -> str:
+        s = f"uniform {self.type} {self.name};  //"
+        if self.widget is not None:
+            s += f' <{self.widget}>'
+        s += f" ={str(self.value).replace(' ', '')}"
+        if self.range is not None:
+            s += f" {str(list(self.range)).replace(' ', '')}"
+        if self.midi is not None:
+            s += f' #{self.midi}'
+        return s
 
     @classmethod
     def from_def(cls, definition: str) -> "Parameter":
@@ -51,6 +145,7 @@ class Parameter:
             widget = widget.strip('<>')
 
         try:
+            # TODO ast.literal_eval
             default = (eval(default_s.removeprefix('='))
                         if default_s
                         else None)
@@ -90,13 +185,14 @@ class Parameter:
 class Preset:
     name: str
     index: int
-    parameters: dict[str, Parameter]
+    parameters: Mapping[str, Parameter]
 
 
 class Scene:
 
     def __init__(self, path: Path):
         self.path = path
+        self.name = self.path.stem.replace('_', ' ').replace('-', ' ').title()
 
         self.source = self._read_file(path)
         self.presets = self._load_presets(self.source)

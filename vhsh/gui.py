@@ -4,7 +4,7 @@ from array import array
 import imgui
 from imgui.integrations.glfw import GlfwRenderer
 
-from .common import App, get_shader_title
+from .types import App, get_shader_title
 
 
 T = TypeVar('T')
@@ -144,7 +144,7 @@ class GUI:
 
         # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
         with imgui.begin_group():
-            imgui.drag_float("u_Time", self._app.uniforms['u_Time'].value)
+            imgui.drag_float("u_Time", self._app.system_parameters['u_Time'].value)
             imgui.same_line()
             changed, self._app._time_running = imgui.checkbox(
                 'playing' if self._app._time_running else 'paused',
@@ -159,131 +159,127 @@ class GUI:
                     # self._start_time = glfw.get_time()
                     pass
 
-        imgui.drag_float2('u_Resolution', *self._app.uniforms['u_Resolution'].value)
+        imgui.drag_float2('u_Resolution', *self._app.system_parameters['u_Resolution'].value, format="%.0f")
 
         if self._app._microphone:
             imgui.plot_histogram("u_Microphone",
-                                 array('f', self._app.uniforms['u_Microphone'].value))
+                                 array('f', self._app.system_uniforms['u_Microphone'].value))
 
         imgui.spacing()
         imgui.separator()
         imgui.spacing()
 
-
-        uniforms = list(self._app.uniforms.items())
-        peaking_uniforms = zip(uniforms, uniforms[1:] + [(None, None)])
-        for (name, uniform), (next_name, _) in peaking_uniforms:
-            # TODO system_uniforms?
-            if name in self._app.FRAGMENT_SHADER_PREAMBLE:
-                continue
-
+        current_preset = self._app.presets[self._app.preset_index]
+        parameters = list(current_preset.parameters.items())
+        peaking_parameters = zip(parameters, parameters[1:] + [(None, None)])
+        for (name, parameter), (next_name, _) in peaking_parameters:
             flags = 0
-            if uniform.widget == 'log':
+            if parameter.widget == 'log':
                 flags |=  (imgui.SLIDER_FLAGS_LOGARITHMIC
                            | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT)
 
-            match uniform.value, uniform.widget:
+            match parameter.value, parameter.widget:
                 case bool(x), _:
-                    _, uniform.value = imgui.checkbox(name, uniform.value)
+                    _, parameter.value = imgui.checkbox(name, parameter.value)
 
                 case int(x), 'drag':
-                    min_, max_, step = _get_range(uniform.range, 0, 100, 1)
-                    _, uniform.value = imgui.drag_int(
+                    min_, max_, step = _get_range(parameter.range, 0, 100, 1)
+                    _, parameter.value = imgui.drag_int(
                         name,
-                        uniform.value,
+                        parameter.value,
                         min_value=min_,
                         max_value=max_,
                         change_speed=step
                     )
                 case int(x), _:
-                    min_, max_, step = _get_range(uniform.range, 0, 100, 1)
-                    _, uniform.value = imgui.slider_int(
+                    min_, max_, step = _get_range(parameter.range, 0, 100, 1)
+                    _, parameter.value = imgui.slider_int(
                         name,
-                        uniform.value,
+                        parameter.value,
                         min_value=min_,
                         max_value=max_,
                         flags=flags,
                     )
 
                 case float(x), 'drag':
-                    min_, max_, step = _get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float(
+                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.drag_float(
                         name,
-                        uniform.value,
+                        parameter.value,
                         min_value=min_,
                         max_value=max_,
                         change_speed=step,
                         flags=flags,
                     )
                 case float(x), _:
-                    min_, max_, _ = _get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float(
+                    min_, max_, _ = _get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.slider_float(
                         name,
-                        uniform.value,
+                        parameter.value,
                         min_value=min_,
                         max_value=max_,
                         flags=flags,
                     )
 
                 case [float(x), float(y)], 'drag':
-                    min_, max_, step = _get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float2(
+                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.drag_float2(
                         name,
-                        *uniform.value,
+                        *parameter.value,
                         min_value=min_,
                         max_value=max_,
                         change_speed=step,
                         flags=flags
                     )
                 case [float(x), float(y)], _:
-                    min_, max_, step = _get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float2(
+                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.slider_float2(
                         name,
-                        *uniform.value,
+                        *parameter.value,
                         min_value=min_,
                         max_value=max_,
                         flags=flags,
                     )
 
                 case [float(x), float(y), float(z)], 'color':
-                    _, uniform.value = imgui.color_edit3(name, *uniform.value,
+                    _, parameter.value = imgui.color_edit3(name, *parameter.value,
                                                             imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z)], 'drag':
-                    min_, max_, step = _get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float3(
+                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.drag_float3(
                         name,
-                        *uniform.value,
+                        *parameter.value,
                         min_value=min_,
                         max_value=max_,
                         change_speed=step
                     )
                 case [float(x), float(y), float(z)], _:
-                    min_, max_, _ = _get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float3(
+                    min_, max_, _ = _get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.slider_float3(
                         name,
-                        *uniform.value,
+                        *parameter.value,
                         min_value=min_,
                         max_value=max_,
                         flags=flags,
                     )
 
                 case [float(x), float(y), float(z), float(w)], 'color':
-                    _, uniform.value = imgui.color_edit4(name, *uniform.value,
+                    _, parameter.value = imgui.color_edit4(name, *parameter.value,
                                                          imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z), float(w)], 'drag':
-                    min_, max_, step = get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.drag_float4(
+                    min_, max_, step = get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.drag_float4(
                         name,
-                        *uniform.value,
+                        *parameter.value,
                         min_value=min_,
                         max_value=max_,
                         change_speed=step
                     )
                 case [float(x), float(y), float(z), float(w)], _:
-                    min_, max_, _ = _get_range(uniform.range, 0., 1., 0.01)
-                    _, uniform.value = imgui.slider_float4(
+                    min_, max_, _ = _get_range(parameter.range, 0., 1., 0.01)
+                    _, parameter.value = imgui.slider_float4(
                         name,
-                        *uniform.value,
+                        *parameter.value,
                         min_value=min_,
                         max_value=max_,
                         flags=flags,

@@ -1,10 +1,46 @@
 import os
-from typing import Protocol, Mapping
+from typing import Protocol, TypeAlias, TypeVar, Union
 from dataclasses import dataclass
 
-from .shader import ShaderCompileError
-from .gl_types import UniformValue, GLSLVec2, GLSLFloat
+import numpy as np
 
+### Exceptions
+
+class ParameterParserError(ValueError): ...
+class ShaderCompileError(RuntimeError): ...
+class UniformIntializationError(ShaderCompileError): ...
+class ProgramLinkError(RuntimeError): ...
+
+
+### GLSL
+
+VertexArrayObject: TypeAlias = np.uint32
+VertexBufferObject: TypeAlias = np.uint32
+Shader: TypeAlias = int
+ShaderProgram: TypeAlias = int
+
+GLSLBool: TypeAlias = bool
+GLSLInt: TypeAlias = int
+GLSLFloat: TypeAlias = float
+GLSLVec2: TypeAlias = tuple[float, float]
+GLSLVec3: TypeAlias = tuple[float, float, float]
+GLSLVec4: TypeAlias = tuple[float, float, float, float]
+
+UniformValue: TypeAlias = Union[GLSLBool, GLSLInt, GLSLFloat,
+                                GLSLVec2, GLSLVec3, GLSLVec4,
+                                list["UniformValue"]]
+UniformT = TypeVar('UniformT', bound=UniformValue)
+
+class UniformLike(Protocol):
+    name: str
+    type: str
+    value: UniformValue
+
+    def __str__(self) -> str:
+        return f"uniform {self.type} {self.name};"
+
+
+### App Protocols
 
 class Actions(Protocol):
     def prev_shader(self): ...
@@ -19,7 +55,7 @@ class Actions(Protocol):
     def set_time_running(self, value: bool): ...
     def set_show_gui(self, value: bool): ...
     def get_midi_mapping(self, cc: int) -> str: ...
-    def set_uniform_value(self,
+    def set_parameter_value(self,
                           name: str,
                           value: UniformValue,
                           normalized: bool = False): ...
@@ -33,10 +69,12 @@ class Actions(Protocol):
 class App(Protocol):
     _show_gui: bool
     _window: int  # TODO ?? GLFW Window
-    _error: ShaderCompileError | None
+    _error: ShaderCompileError | ParameterParserError | None
     _shader_path: str
     _shader_paths: list[str]
     _shader_index: int
+    parameters: dict[str, "Parameter"]
+    system_parameters: dict[str, "SystemParameter"]
     opacity: float
     floating: bool
     def prev_shader(self, n=1): ...
@@ -51,11 +89,10 @@ class App(Protocol):
                    new_preset: str | None = None): ...
     _new_preset_name: str
     _frame_times: list[float]
-    uniforms: dict[str, "Uniform"]
-    _time_running: float
+    _time_running: bool
     _microphone: object
-    FRAGMENT_SHADER_PREAMBLE: str
 
 
+# TODO -> scene.name
 def get_shader_title(shader_path: str) -> str:
     return os.path.splitext(os.path.basename(shader_path))[0]

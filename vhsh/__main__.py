@@ -1,9 +1,12 @@
 import argparse
+import logging
 import tomllib
 from pathlib import Path
 from typing import Optional
 
 from . import VHShRenderer
+
+logger = logging.getLogger(__name__)
 
 
 def main(argv: Optional[list[str]] = None):
@@ -20,6 +23,8 @@ def main(argv: Optional[list[str]] = None):
     parser.add_argument('-t', '--mic', action="store_true",
         help="Make microphone levels available as uniform.")
     args = parser.parse_args(argv)
+
+    logging.basicConfig(level=logging.DEBUG)  # TODO
 
     midi_mapping = {}
     if args.midi_mapping:

@@ -15,7 +15,7 @@ try:
 except ImportError as __mido_import_error__:
     MIDI_AVAILABLE = False
 
-from .common import Actions
+from .types import Actions
 
 
 class MIDIManager(Thread):
@@ -89,18 +89,18 @@ class MIDIManager(Thread):
                             self.actions.set_show_gui(bool(msg.value))
                             continue
 
-                        uniform = None
+                        parameter = None
                         try:
-                            uniform = self.actions.get_midi_mapping(msg.control)
+                            parameter = self.actions.get_midi_mapping(msg.control)
                             assert 0 <= msg.value <= 127
                             uniform_value = msg.value / 127.0
-                            self.actions.set_uniform_value(uniform, uniform_value, normalized=True)
+                            self.actions.set_parameter_value(parameter, uniform_value, normalized=True)
                         except KeyError as e:
                             print(f"MIDI mapping not found for: {msg.control}")
                             # print(msg)
                             # pprint(self._midi_mapping)
                         except NotImplementedError as e:
-                            self.actions._print_error(f"ERROR setting uniform '{uniform}': {e}")
+                            self.actions._print_error(f"ERROR setting uniform '{parameter}': {e}")
                     time.sleep(1e-6)
         except OSError:
             print("No MIDI devices found!")
