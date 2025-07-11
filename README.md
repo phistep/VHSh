@@ -278,6 +278,7 @@ currently selected preset.
   - [x] `<drag>` drag input, others sliders (for slider flags)
   - [x] ~~~`<hsv` and `<rgb>`~~~
   - [ ] MIDI vector control with button triplet
+- [ ] docs, demo scene
 - [ ] uniforms
   - [x] time
   - [ ] mouse
@@ -287,13 +288,14 @@ currently selected preset.
     - [x] fft
     - [x] array uniforms
     - [ ] normalization
-    - [ ] gui bar plot
-    - [ ] docs, demo scene
+    - [x] gui bar plot
     - [ ] selecting microphone
+    - [ ] use sampler2d like shadertoy?
+    - [ ] dome's advice
   - [ ] video in
   - [ ] image/video file in with `uniform sampler2D foo; // @assets/foo.mp4`
   - [ ] arbitrary data as buffer object
-- [ ] Gamma Correctio
+- [ ] Gamma Correction
     - [_Monitor Guide: Gamma ramp_](https://www.glfw.org/docs/latest/monitor_guide.html)
     - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)
     - [`GLFWgammarramp`](https://www.glfw.org/docs/latest/group__monitor.html#ga939cf093cb0af0498b7b54dc2e181404)
@@ -313,6 +315,26 @@ currently selected preset.
   - [ ] worker add SystemParameter metaclass registry hook
   - [ ] threadsafe parameters, locking
   - [ ] update vs setup of uniforms
+- [ ] subcommands
+    - run
+      - `--kiosk`: no gui, credits, auto cycle scenes after inactivity, morph presets
+    - init
+    - import (or run url directly?)
+- [ ] scene dir format
+  - [ ] support reading from zip: `myscene.vhsh`
+  - ```
+    vhsh init NAME            run with `vhsh run NAME`, can also be run from zip
+    --project
+    -> NAME/
+    -> NAME.glsl
+    --raymarching             basic raymarching renderl loop
+    -> raymarching.glsl
+    --midi-controller=NAME    mapping and config file for controller NAME, if known else template
+    -> midi.toml
+    -> vhsh.nktrl2_data
+    --lib LIB                 explicit hard copy of the stdlib
+    -> iq.glsl                can be included via #include <iq>
+    ```
 
 - switch to SDL?
   - native macos fullscreen
