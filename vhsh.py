@@ -493,13 +493,14 @@ class VHShRenderer:
         system_mapping = defaultdict(dict, system_mapping)
 
         try:
-            with mido.open_input() as inport:
+            with mido.open_input('nanoKONTROL2 SLIDER/KNOB') as inport:
                 print(f"midi: listening for MIDI messages on '{inport.name}'...")
 
                 while True:
                     if self._stop.is_set():
                         break
                     for msg in inport.iter_pending():
+                        print(msg)
                         # print(f"Received MIDI message: {msg}")
                         # print(f"Received MIDI message: #{msg.control} = {msg.value}")
                         button_down = bool(msg.value)
@@ -543,7 +544,17 @@ class VHShRenderer:
                         try:
                             self._uniform_lock.acquire()
                             uniform = self.uniforms[self._midi_mapping[msg.control]]
-                            uniform.set_value_midi(msg.value)
+                            if uniform.type == 'bool':
+                                if uniform.widget == 'button':
+                                    print('push', button_down, uniform.value)
+                                    uniform.set_value_midi(msg.value)
+                                else:
+                                    # by default the bool should behave as toggle, but we
+                                    # don't want to re-programm the controller for that, so
+                                    # we emulate toggle here.
+                                    uniform.set_value_midi(button_down)
+                            else:
+                                uniform.set_value_midi(msg.value)
                         except KeyError as e:
                             print(f"MIDI mapping not found for: {msg.control}")
                             # print(msg)
@@ -769,6 +780,11 @@ class VHShRenderer:
 
             # TODO move to Unifom.imgui??
             match uniform.value, uniform.widget:
+                case bool(x), 'button':
+                    imgui.button(name)
+                    #if imgui.is_item_active():
+                    #    uniform.value = True
+                    #_, uniform.value = imgui.checkbox(name, uniform.value)
                 case bool(x), _:
                     _, uniform.value = imgui.checkbox(name, uniform.value)
 

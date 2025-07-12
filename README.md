@@ -186,6 +186,8 @@ following uniform control properties:
   - `<color>` on `vec3` for a RGB and on `vec4` for a RGBA color picker
   - `<log>` for a logarithmic scale
   - `<drag>` for controling the UI widget with dragging (instead of slider)
+  - `<button>` for bools that behave like simple push buttons. By default bools
+    work as toggles
 - `#MIDI` MIDI control ID. To bind a MIDI control to a uniform,
   for example: `#16`.
 

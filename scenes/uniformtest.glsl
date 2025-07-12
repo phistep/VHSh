@@ -5,6 +5,8 @@
 /// uniform vec4 widget_default_range;  // =(0.0,0.0,0.0,0.0) [0.0,1.0,0.01]
 /// uniform vec4 widget_only;  // =(0.0,0.0,0.0,0.0) [0.0,0.5]
 /// Widget Test
+uniform bool bool_default; // #33
+uniform bool bool_button; // <button> #32
 /// uniform int int_default;
 /// uniform int int_log; // <log>
 /// uniform int int_drag; // <drag>
@@ -30,5 +32,5 @@ uniform vec4 widget_default_range; // =(0.0,0.0,0.0,0.0) [0.0,1.0,0.01]
 uniform vec4 widget_only; // =(0.0,0.0,0.0,0.0) [0.0,0.5]
 
 void main() {
-    FragColor = vec4(default_range);
+    FragColor = vec4(float(bool_button), float(bool_default), 0., 1.);
 }
