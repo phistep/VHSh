@@ -279,6 +279,10 @@ currently selected preset.
 - [x] widget size and close button
 - [x] re-parse metadata on reload
 - [x] remember window position
+- [ ] multiple midi devcies
+  - [x] open all devices
+  - [ ] one mapping per devcie
+  - [ ] default mappings by device name
 - [ ] fix dropdown crashes when no presets available
       ```
       File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
