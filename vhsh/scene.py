@@ -1,5 +1,5 @@
 import re
-from typing import get_args, Generic, Callable, Mapping, Iterable
+from typing import get_args, Generic, Callable, Iterable
 from pathlib import Path
 from enum import StrEnum
 from dataclasses import dataclass
@@ -49,7 +49,7 @@ class Parameter(UniformLike, Generic[UniformT]):
     name: str
     type: str
     value: UniformT  # annotate optional param, but always set
-    default: UniformT
+    default: UniformT | None
     range: tuple[float, float, float] | None
     widget: Widget | None
     midi: int | None  # TODO -> controls: list[int]
@@ -124,6 +124,7 @@ class Parameter(UniformLike, Generic[UniformT]):
 
     @classmethod
     def from_def(cls, definition: str) -> "Parameter":
+        # TODO take line number, better error messages
         try:
             matches = re.search(
                 # TODO why ^(?!\/\/)\s* not working to ignore comments?
@@ -142,7 +143,11 @@ class Parameter(UniformLike, Generic[UniformT]):
                 f"Syntax error in metadata defintion: {definition}") from e
 
         if widget is not None:
-            widget = widget.strip('<>')
+            try:
+                widget = Widget(widget.strip('<>'))
+            except Exception as e:
+                raise ParameterParserError(
+                    f"Unknown widget type '{widget}'") from e
 
         try:
             # TODO ast.literal_eval
@@ -185,7 +190,7 @@ class Parameter(UniformLike, Generic[UniformT]):
 class Preset:
     name: str
     index: int
-    parameters: Mapping[str, Parameter]
+    parameters: dict[str, Parameter]
 
 
 class Scene:

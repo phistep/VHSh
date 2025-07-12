@@ -236,9 +236,10 @@ class VHShRenderer(Actions):
 
     @preset_index.setter
     def preset_index(self, value):
-        if self._preset_index == 0:
-            # TODO abstract uniform from parameters and add here
-            self.presets[0].parameters = self.parameters
+        # TODO why was this here?
+        # if self._preset_index == 0:
+        #     # TODO abstract uniform from parameters and add here
+        #     self.presets[0].parameters = self.parameters
 
         self._preset_index = value % len(self.presets)
         print()
@@ -250,11 +251,12 @@ class VHShRenderer(Actions):
                 self._midi_mapping[parameter.midi] = parameter.name
             print(" ", parameter)
 
-        self.uniforms = {**self.system_parameters,
-                         **self.presets[self._preset_index].parameters}
+        self.parameters = self.presets[self._preset_index].parameters
 
     def set_scene(self, scene: Scene, verbose: bool = True, clear: bool = False):
         self.presets = scene.presets
+        # initializes self.parameters
+        self.preset_index = 0
         # TODO @property?
         current_preset = self.presets[self.preset_index]
 
@@ -290,7 +292,7 @@ class VHShRenderer(Actions):
             pprint(self._midi_mapping)
 
         parameters = [*self.system_parameters.values(),
-                      *current_preset.parameters.values()]
+                      *self.parameters.values()]
         self.renderer.set_shader(scene.source, parameters)
 
     def prev_preset(self, n: int = 1):
@@ -387,25 +389,30 @@ class VHShRenderer(Actions):
             while not glfw.window_should_close(self._window):
                 # TODO split int system_update, update(), render() ?
 
+                glfw.poll_events()
+                self.gui.process_inputs()
+
                 current_time = glfw.get_time()
                 num_frames += 1
                 if current_time - last_time >= 0.1:
                     self._frame_times.append(100/num_frames)
                     num_frames = 0
                     last_time += 0.1
-                glfw.poll_events()
-                self.gui.process_inputs()
                 self.width, self.height = \
                     glfw.get_framebuffer_size(self._window)
 
                 if self._file_changed.is_set():
                     self._reload_scene()
+
                 for system_parameter in self.system_parameters.values():
                     system_parameter.update(self)
-                self.gui.update()
-
+                self.renderer.update((*self.system_parameters.values(),
+                                      *self.parameters.values()))
                 self.renderer.render()
+
+                self.gui.update()
                 self.gui.render()
+
                 glfw.swap_buffers(self._window)
 
         except KeyboardInterrupt:

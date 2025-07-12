@@ -273,8 +273,13 @@ class Renderer:
                    for parameter in uniforms},
             )
 
-    def update_uniforms(self, values: dict[str, UniformValue]):
-        ...
+    def update(self, uniforms: Sequence[UniformLike]):
+        for uniform in uniforms:
+            try:
+                with self._uniform_lock:
+                    self.uniforms[uniform.name].value = uniform.value
+            except KeyError as e:
+                logger.warning(f"'{e}' not in uniforms={self.uniforms}")
 
     def render(self):
         gl.glUseProgram(self.shader_program)
