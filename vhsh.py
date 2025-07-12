@@ -14,6 +14,7 @@ from array import array
 from typing import (Optional, TypeVar, TypeAlias, Iterable, get_args, Literal,
                     Callable, Any, Self, TYPE_CHECKING)
 from threading import Thread, Event, Lock
+from contextlib import ExitStack
 from pprint import pprint
 from textwrap import dedent
 from itertools import cycle
@@ -492,9 +493,15 @@ class VHShRenderer:
         pprint(system_mapping)
         system_mapping = defaultdict(dict, system_mapping)
 
+        devices = mido.get_output_names()
+        print("MIDI devices:", devices)
+
         try:
-            with mido.open_input() as inport:
-                print(f"midi: listening for MIDI messages on '{inport.name}'...")
+            with ExitStack() as stack:
+                ports = [stack.enter_context(mido.open_input(device))
+                         for device in devices]
+                print(f"midi: listening for MIDI messages on '{[p.name for p in ports]}'...")
+                inport = mido.ports.MultiPort(ports)
 
                 while True:
                     if self._stop.is_set():
