@@ -117,7 +117,7 @@ preamble:
   vec4 color = vec4((sin(2. * 3.14 * u_Time * ) + 1.) / 2., 0., 0., 1.);
   ```
   will create a red pulsing effect with one pulse per second.
-- `float[8] u_Microphone`: If started with `--mic`, this is an 8 element float
+- `float[7] u_Microphone`: If started with `--mic`, this is a float
   array that gives you volume per frequency band normalized over the last 5s.
 
   | Index             | Range   |        | Description |
@@ -128,7 +128,7 @@ preamble:
   | `u_Microphone[3]` | 500 Hz  | 2 kHz  | Mids        |
   | `u_Microphone[4]` | 2 KHz   | 6 kHz  | High Mids   |
   | `u_Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
-  | `u_Microphone[7]` | > 8 KHz |        | Air         |
+  | `u_Microphone[6]` | > 8 KHz |        | Air         |
 
 ### Custom Parameters
 
