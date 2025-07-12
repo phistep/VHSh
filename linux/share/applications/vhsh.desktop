@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+
+Type=Application
+Name=VHSh
+#Icon=
+Comment=Video Home Shader: A demo tool for digitally assisted analog vjaying
+Keywords=Shader;OpenGL;GLSL;
+Categories=Video;Development;Graphics;3DGraphics;Midi;Player;Art;
+MimeType=text/plain;text/x-csrc;text/x-glsl;
+
+Exec=/usr/local/bin/vhsh --midi --midi-mapping /usr/local/share/vhsh/midi-mapping/default.toml %F
+Terminal=true

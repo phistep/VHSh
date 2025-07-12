@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-glsl">
+    <comment>GLSL Shader Source</comment>
+    <glob pattern="*.glsl" />
+    <glob pattern="*.vert" />
+    <glob pattern="*.frag" />
+    <glob pattern="*.geom" />
+  </mime-type>
+</mime-info>
