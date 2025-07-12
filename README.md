@@ -303,6 +303,13 @@ currently selected preset.
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
 - [ ] TODO.md
 - [ ] pypi
+- [ ] package linux
+  - [x] .desktop
+  - [x] mime type default app
+  - [ ] icon
+  - [ ] debian package
+  - [ ] default midi mappings
+  - [ ] github actions for building
 - [ ] pass scene dir with scenes, midi mapping and other assets
 - [ ] shadertoy import
 - [ ] rename uniforms to just capitalized: `Time`, etc.
