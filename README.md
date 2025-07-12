@@ -4,8 +4,40 @@ _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
 ![Screenshot of VHSh in action](screenshot.png)
 
-
 ## Setup
+
+- macOS
+  ```sh
+  brew install pipx
+  ```
+- ubuntu
+  ```sh
+  sudo apt install pipx
+  # for audio support
+  sudo apt install portaudio19-dev
+  ```
+
+```sh
+pipx ensurepath
+pipx install 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh'
+# you might need to open a new terminal
+vhsh -h
+```
+
+- MIDI support
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[midi]'
+  ```
+- audio support
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[audio]'
+  ```
+- everyting
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[all]'
+  ```
+
+### Development
 
 Create a virtual environmenet and install the dependencies
 
@@ -29,6 +61,9 @@ If you pass multiple shader files, you can switch between them in the tool.
 To open all files in a given folder, use `my_shader_folder/*`.
 
 You can pass `--watch` to automatically reload the shader upon file change.
+
+You can pass `--mic` to enable microphone input. See
+[_Builin Parameters_](#builtin-parameters).
 
 To toggle the UI, press `<tab>`.
 
@@ -114,7 +149,18 @@ preamble:
   vec4 color = vec4((sin(2. * 3.14 * u_Time * ) + 1.) / 2., 0., 0., 1.);
   ```
   will create a red pulsing effect with one pulse per second.
+- `float[7] u_Microphone`: If started with `--mic`, this is a float
+  array that gives you volume per frequency band normalized over the last 5s.
 
+  | Index             | Range   |        | Description |
+  | ----------------- | ------- | ------ | ----------- |
+  | `u_Microphone[0]` | 0 Hz    | 60 Hz  | Rumble      |
+  | `u_Microphone[1]` | 60 Hz   | 250 Hz | Low End     |
+  | `u_Microphone[2]` | 250 Hz  | 500 Hz | Low Mids    |
+  | `u_Microphone[3]` | 500 Hz  | 2 kHz  | Mids        |
+  | `u_Microphone[4]` | 2 KHz   | 6 kHz  | High Mids   |
+  | `u_Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
+  | `u_Microphone[6]` | > 8 KHz |        | Air         |
 
 ### Custom Parameters
 
@@ -233,6 +279,12 @@ currently selected preset.
 - [x] widget size and close button
 - [x] re-parse metadata on reload
 - [x] remember window position
+- [ ] fix dropdown crashes when no presets available
+      ```
+      File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
+      for idx, item in  [(p['index'], p['name'])
+                        ~^^^^^^^^^
+      ```
 - [ ] fix `t` as uniform name doesn't generate ui
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
@@ -245,10 +297,31 @@ currently selected preset.
       - auto assign n sucessor ids as well
       - have the user assign multiple `#1,#2,#3`
 - [ ] "touchpad" widget for `vec2`
+- [ ] test image when started without any shader files
 - [ ] record mp4
 - [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
-- [x] widgets
+- [ ] TODO.md
+- [ ] pypi
+- [ ] pass scene dir with scenes, midi mapping and other assets
+- [ ] shadertoy import
+- [ ] rename uniforms to just capitalized: `Time`, etc.
+- [ ] simplify parser: split on `" "`, then `match` on first char
+- [ ] make named midi ccs in toml via #defines
+     ```toml
+     [uniform.inputs]
+     slider = [1, 2, 3, 4]
+     knob = [10, 11, 12, 13]
+     button = [20, 21, 22, 23]
+     master_button = 42
+     ```
+     ```glsl
+     uniform float zoom; // #slider1
+     uniform bool debug; // <toggle> #button1
+     uniform bool flash; // #master_button
+     ```
+- [ ] view midi mappings in imgui
+- [ ] widgets
   - [x] `<log>`
   - [x] `<drag>` drag input, others sliders (for slider flags)
   - [x] ~~~`<hsv` and `<rgb>`~~~
@@ -257,10 +330,19 @@ currently selected preset.
   - [x] time
   - [ ] mouse
   - [ ] prev frame
-  - [ ] audio fft
+  - [-] audio fft
+    - [x] listen
+    - [x] fft
+    - [x] array uniforms
+    - [ ] normalization
+    - [ ] gui bar plot
+    - [ ] docs, demo scene
+    - [ ] selecting microphone
   - [ ] video in
   - [ ] buffer objects (arrays, for eg prime number dump)
         https://www.khronos.org/opengl/wiki/Uniform_Buffer_Object
+  - [ ] image/video file in with `uniform sampler2D foo; // @assets/foo.mp4`
+  - [ ] arbitrary data as buffer object
 - [ ] Gamma Correctio
     - [_Monitor Guide: Gamma ramp_](https://www.glfw.org/docs/latest/monitor_guide.html)
     - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)

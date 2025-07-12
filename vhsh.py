@@ -11,12 +11,14 @@ import signal
 from datetime import datetime
 from collections import defaultdict, deque
 from array import array
-from typing import Optional, TypeVar, TypeAlias, Iterable, get_args, Literal, Callable, Any, Self
+from typing import (Optional, TypeVar, TypeAlias, Iterable, get_args, Literal,
+                    Callable, Any, Self, TYPE_CHECKING)
 from threading import Thread, Event, Lock
 from pprint import pprint
 from textwrap import dedent
 from itertools import cycle
 from contextlib import contextmanager
+from time import sleep
 
 from imgui.integrations.glfw import GlfwRenderer
 import OpenGL.GL as gl
@@ -26,6 +28,8 @@ import imgui
 
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 # `mido` imported conditionally in VHShRenderer._midi_listen()
+if TYPE_CHECKING:
+    import pyaudio
 
 
 VertexArrayObject: TypeAlias = np.uint32
@@ -54,6 +58,91 @@ class UniformIntializationError(ShaderCompileError):
 
 class ProgramLinkError(RuntimeError):
     """program link error."""
+
+class Microphone(Thread):
+
+    NUM_LEVELS = 7
+
+    def __init__(self,
+                 rate: int = 44100,
+                 chunk: int = 1024,
+                 buffer_size_s: float = 5.0,
+                 smooth: float = 0.05,
+                 format: int | None = None,
+                 intervals: list[int] = [0, 60, 250, 500, 2_000, 6_000, 8_000]):
+        super().__init__()
+
+        import pyaudio
+
+        self.rate = rate
+        self.chunk = chunk
+        self.format = pyaudio.paInt16 if format is None else format
+        self.channels = 1  # TODO configurable?
+
+        self._bins = list(zip(intervals, intervals[1:]))
+        self._levels = deque([np.zeros(len(intervals))],  # last interval is open
+                             maxlen=int(rate/chunk*smooth))
+        self._max_vol = chunk * (2**16-1)  # TODO sizeof(format)
+
+        self._frame_buffer = deque(maxlen=int(rate / chunk * buffer_size_s))
+        self._stop_stream = Event()
+        self._output_lock = Lock()
+
+    @property
+    def levels(self) -> list[float]:
+        with self._output_lock:
+            level_history = np.array(self._levels)
+        max_ = min(self._max_vol, level_history.ravel().max())
+        levels = (level_history.mean(axis=0) / max_
+                  if max_ != 0
+                  else np.zeros(level_history.shape[-1]))
+        return levels.tolist()
+
+    def run(self):
+        import pyaudio
+
+        def _record(in_data, frame_count, time_info, status):
+            self._frame_buffer.appendleft(in_data)
+            return (in_data, pyaudio.paContinue)
+
+        audio = pyaudio.PyAudio()
+        stream = audio.open(input=True,
+                            format=self.format,
+                            channels=self.channels,
+                            rate=self.rate,
+                            frames_per_buffer=self.chunk,
+                            stream_callback=_record)
+
+        try:
+            while stream.is_active() and not self._stop_stream.is_set():
+                if not self._frame_buffer:
+                    sleep(0.1)
+                    continue
+
+                raw_frame = self._frame_buffer.pop()
+                frame = np.frombuffer(raw_frame, dtype=np.uint16)
+
+                spect = np.fft.fft(frame)
+                # Scale frequencies to Hz
+                freq = np.fft.fftfreq(frame.shape[-1], 1/self.rate)
+                # only positive frequencies (first half of the spectrum)
+                positive_freqs = freq >= 0
+                spectrum = abs(spect[positive_freqs])
+                frequencies = freq[positive_freqs]
+
+                levels = [np.sum(spectrum[(frequencies >= min_) & (frequencies < max_)])
+                          for min_, max_ in self._bins]
+                levels.append(np.sum(spectrum[frequencies >= self._bins[-1][1]]))
+                with self._output_lock:
+                    self._levels.append(np.array(levels))
+
+        finally:
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+
+    def stop(self):
+        self._stop_stream.set()
 
 
 class Uniform:
@@ -94,6 +183,18 @@ class Uniform:
                 self._glUniform = gl.glUniform1f
                 self.default = self.default or 1.0
                 self.range = self.range or (0.0, 1.0, 0.01)
+            case str() as t if t.startswith('float['):
+                try:
+                    m = re.match(r'float\[(\d+)\]', type_)
+                    len = int(m.group(1))
+                except (AttributeError, ValueError) as e:
+                    raise UniformIntializationError(
+                        f"Unable to parse float array type '{type_}': {e}"
+                    ) from e
+                self._type = (float,) * len
+                self._glUniform = gl.glUniform1fv
+                self.default = self.default or (0.0,) * len
+                self.range = None
             case 'vec2':
                 self._type = GLSLVec2
                 self._glUniform = gl.glUniform2f
@@ -132,7 +233,7 @@ class Uniform:
             s += f' <{self.widget}>'
         s += f" ={str(self.value).replace(' ', '')}"
         if self.range is not None:
-            s += f' {str(list(self.range)).replace(' ', '')}'
+            s += f" {str(list(self.range)).replace(' ', '')}"
         if self.midi is not None:
             s += f' #{self.midi}'
         return s
@@ -154,7 +255,10 @@ class Uniform:
         args = self.value
         if not isinstance(args, Iterable):
             args = [args]
-        self._glUniform(self._location, *args)
+        if self._glUniform.__name__.endswith('v'):
+            self._glUniform(self._location, len(args), args)
+        else:
+            self._glUniform(self._location, *args)
 
     def set_value_midi(self, value: int):
         assert 0 <= value <= 127
@@ -180,7 +284,7 @@ class Uniform:
         try:
             matches = re.search(
                 # TODO why ^(?!\/\/)\s* not working to ignore comments?
-                (R'uniform\s+(?P<type>\w+)\s+(?P<name>\w+)\s*;'
+                (R'uniform\s+(?P<type>[\w\[\]]+)\s+(?P<name>\w+)\s*;'
                  R'(?:\s*//\s*(?:'
                  R'(?P<widget><\w+>)?\s*)?'
                  R'(?P<default>=(?:\S+|\([^\)]+\)))?'
@@ -260,6 +364,8 @@ class VHShRenderer:
         out vec4 FragColor;
         uniform vec2 u_Resolution;
         uniform float u_Time;
+        uniform float[{num_levels}] u_Microphone;
+        #line 1
         """
     )
 
@@ -278,7 +384,8 @@ class VHShRenderer:
                  watch: bool = False,
                  midi: bool = False,
                  midi_mapping: dict = {},
-                 data: dict[str, list[int | float]] = {}):
+                 data: dict[str, list[int | float]] = {},
+                 microphone: bool = False):
         # need to be defined for __del__() before glfw/imgui init can fail
         self.vao = None
         self.vbo = None
@@ -287,6 +394,7 @@ class VHShRenderer:
         self._stop = Event()
         self._file_watcher = None
         self._midi_listener = None
+        self._microphone = None
         self._glfw_imgui_renderer = None
         self._time_running = True
         self._preset_index = 0
@@ -295,11 +403,17 @@ class VHShRenderer:
         self._error = None
 
         imgui.create_context()
+        imgui_style = imgui.get_style()
+        imgui.style_colors_dark(imgui_style)
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM] = \
+            imgui_style.colors[imgui.COLOR_PLOT_LINES]
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = \
+            imgui_style.colors[imgui.COLOR_BUTTON_HOVERED]
         self._window = self._init_window(self.NAME, width, height)
         self._glfw_imgui_renderer = GlfwRenderer(self._window)
 
         self._start_time = glfw.get_time()
-        self._frame_times = deque([1], maxlen=100)
+        self._frame_times = deque([1.0], maxlen=100)
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
 
@@ -343,6 +457,10 @@ class VHShRenderer:
                                          name="VHSh.midi_listener",
                                          args=(midi_mapping,))
             self._midi_listener.start()
+
+        if microphone:
+            self._microphone = Microphone()
+            self._microphone.start()
 
     @staticmethod
     def _init_window(name: str, width: int, height: int):
@@ -625,6 +743,10 @@ class VHShRenderer:
 
         imgui.drag_float2('u_Resolution', *self.uniforms['u_Resolution'].value)
 
+        if self._microphone:
+            imgui.plot_histogram("u_Microphone",
+                                 array('f', self.uniforms['u_Microphone'].value))
+
         imgui.spacing()
         imgui.separator()
         imgui.spacing()
@@ -773,16 +895,20 @@ class VHShRenderer:
         imgui.render()
 
     def _draw_shader(self):
-
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
         gl.glUseProgram(self.shader_program)
+
         self.uniforms['u_Resolution'].value = [float(self.width),
                                                float(self.height)]
+
         # regular `time.time()` is too big for f32, so we just return
         # seconds from program start, glwf does this
         if self._time_running:
             self.uniforms['u_Time'].value = glfw.get_time()
+
+        if self._microphone:
+            self.uniforms['u_Microphone'].value = self._microphone.levels
+
         for uniform in self.uniforms.values():
             uniform.update()
 
@@ -838,7 +964,11 @@ class VHShRenderer:
                              **self.presets[self._preset_index]['uniforms']}
 
     def set_shader(self, shader_src: str, verbose: bool = True):
-        shader_src = self.FRAGMENT_SHADER_PREAMBLE + shader_src
+        preamble = self.FRAGMENT_SHADER_PREAMBLE
+        num_levels = (len(self._microphone.levels) if self._microphone
+                      else Microphone.NUM_LEVELS)
+        preamble = preamble.format(num_levels=num_levels)
+        shader_src = preamble + shader_src
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
                                               shader_src)
 
@@ -1036,6 +1166,11 @@ class VHShRenderer:
             if self._midi_listener.is_alive():
                 self._midi_listener.join()
 
+        if self._microphone is not None:
+            if self._microphone.is_alive():
+                self._microphone.stop()
+                self._microphone.join()
+
     def __del__(self):
         self.shutdown()
 
@@ -1052,6 +1187,9 @@ def main(argv: Optional[list[str]] = None):
         help="Path to TOML file with system MIDI mappings")
     parser.add_argument('-d', '--data', type=str, action='append',
         help="Path to file with uniform data, one array elemet per line. Filename must be valid GLSL identifier")
+    # TODO support seelction the microphone
+    parser.add_argument('-t', '--mic', action="store_true",
+        help="Make microphone levels available as uniform.")
     args = parser.parse_args(argv)
 
     midi_mapping = {}
@@ -1075,7 +1213,8 @@ def main(argv: Optional[list[str]] = None):
                                  watch=args.watch,
                                  midi=args.midi,
                                  midi_mapping=midi_mapping,
-                                 data=data)
+                                 data=data,
+                                 microphone=args.mic)
     vhsh_renderer.run()
 
 
