@@ -4,8 +4,40 @@ _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
 ![Screenshot of VHSh in action](screenshot.png)
 
-
 ## Setup
+
+- macOS
+  ```sh
+  brew install pipx
+  ```
+- ubuntu
+  ```sh
+  sudo apt install pipx
+  # for audio support
+  sudo apt install portaudio19-dev
+  ```
+
+```sh
+pipx ensurepath
+pipx install 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh'
+# you might need to open a new terminal
+vhsh -h
+```
+
+- MIDI support
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[midi]'
+  ```
+- audio support
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[audio]'
+  ```
+- everyting
+  ```sh
+  pipx install -f 'git+https://github.com/phistep/VHSh.git@package#egg=vhsh[all]'
+  ```
+
+### Development
 
 Create a virtual environmenet and install the dependencies
 
@@ -247,6 +279,12 @@ currently selected preset.
 - [x] widget size and close button
 - [x] re-parse metadata on reload
 - [x] remember window position
+- [ ] fix dropdown crashes when no presets available
+      ```
+      File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
+      for idx, item in  [(p['index'], p['name'])
+                        ~^^^^^^^^^
+      ```
 - [ ] fix `t` as uniform name doesn't generate ui
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
@@ -263,7 +301,27 @@ currently selected preset.
 - [ ] record mp4
 - [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
-- [x] widgets
+- [ ] TODO.md
+- [ ] pypi
+- [ ] pass scene dir with scenes, midi mapping and other assets
+- [ ] shadertoy import
+- [ ] rename uniforms to just capitalized: `Time`, etc.
+- [ ] simplify parser: split on `" "`, then `match` on first char
+- [ ] make named midi ccs in toml via #defines
+     ```toml
+     [uniform.inputs]
+     slider = [1, 2, 3, 4]
+     knob = [10, 11, 12, 13]
+     button = [20, 21, 22, 23]
+     master_button = 42
+     ```
+     ```glsl
+     uniform float zoom; // #slider1
+     uniform bool debug; // <toggle> #button1
+     uniform bool flash; // #master_button
+     ```
+- [ ] view midi mappings in imgui
+- [ ] widgets
   - [x] `<log>`
   - [x] `<drag>` drag input, others sliders (for slider flags)
   - [x] ~~~`<hsv` and `<rgb>`~~~
