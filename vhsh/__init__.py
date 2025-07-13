@@ -9,6 +9,7 @@ from textwrap import dedent
 from pathlib import Path
 
 import glfw
+from imgui.integrations.glfw import GlfwRenderer
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 
 from .types import UniformValue, get_shader_title
@@ -57,7 +58,7 @@ class VHShRenderer:
 
         self.window = Window(self.NAME, width, height)
 
-        self.gui = GUI(self)
+        self.gui = GUI(app=self, renderer=GlfwRenderer, window=self.window.handler)
         self._show_gui = True
 
         self._file_changed = Event()
@@ -151,7 +152,7 @@ class VHShRenderer:
         self._time_running = value
 
     def set_show_gui(self, value: bool):
-        self._show_gui = value
+        self.gui.visible = value
 
     # TODO replace with self.parameters with magic?
     def set_parameter_value(self,
@@ -335,7 +336,7 @@ class VHShRenderer:
         try:
             if (not self.renderer
                     or not self.gui
-                    or self.gui._glfw_imgui_renderer is None):
+                    or self.gui._renderer is None):
                 raise RuntimeError("glfw imgui renderer not initialized!")
 
             while not self.window.should_close():

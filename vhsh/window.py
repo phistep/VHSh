@@ -3,6 +3,8 @@ import glfw
 
 class Window:
 
+    __type__ = 'glfw'
+
     def __init__(self,
                  title: str,
                  width: int,
@@ -26,20 +28,20 @@ class Window:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
 
-        self._window = glfw.create_window(width=width,
+        self.handler = glfw.create_window(width=width,
                                           height=height,
                                           title=self.title,
                                           monitor=None,
                                           share=None)
-        glfw.make_context_current(self._window)
-        if not self._window:
+        glfw.make_context_current(self.handler)
+        if not self.handler:
             glfw.terminate()
             raise RuntimeError("GLFW could not initialize Window")
 
     @property
     def size(self) -> tuple[int, int]:
         ":returns: width, height"
-        return glfw.get_framebuffer_size(self._window)
+        return glfw.get_framebuffer_size(self.handler)
 
     @property
     def opacity(self) -> float:
@@ -50,7 +52,7 @@ class Window:
         if self._opacity == opacity:
             return
         self._opacity = opacity
-        glfw.set_window_opacity(self._window, opacity)
+        glfw.set_window_opacity(self.handler, opacity)
 
     @property
     def floating(self) -> bool:
@@ -61,7 +63,7 @@ class Window:
         if self._floating == floating:
             return
         self._floating = floating
-        glfw.set_window_attrib(self._window,
+        glfw.set_window_attrib(self.handler,
                                glfw.FLOATING,
                                glfw.TRUE if floating else glfw.FALSE)
 
@@ -75,10 +77,10 @@ class Window:
         # TODO properties?
 
     def should_close(self) -> bool:
-        return glfw.window_should_close(self._window)
+        return glfw.window_should_close(self.handler)
 
     def swap_buffers(self):
-        glfw.swap_buffers(self._window)
+        glfw.swap_buffers(self.handler)
 
     def close(self):
         glfw.terminate()

@@ -1,13 +1,19 @@
-from typing import Iterable, TypeVar
+from typing import Iterable, TypeVar, Type, Protocol
 from array import array
 
 import imgui
-from imgui.integrations.glfw import GlfwRenderer
+from imgui.integrations.base import BaseOpenGLRenderer
 
 from .types import App, get_shader_title
 
 
 T = TypeVar('T')
+
+
+class ImguiRenderer(Protocol):
+    def render(self, draw_data) -> None: ...
+    def process_inputs(self) -> None: ...
+    def shutdown(self) -> None: ...
 
 
 # TODO move to Uniform @property range
@@ -24,8 +30,13 @@ def _get_range(value: Iterable[T],
             return min_default, max_default, step_default
 
 class GUI:
-    def __init__(self, app: App):
+    def __init__(self,
+                 app: App,
+                 renderer: Type[ImguiRenderer],
+                 *args,
+                 **kwargs):
         self._app = app
+        self.visible = True
 
         imgui.create_context()
         imgui_style = imgui.get_style()
@@ -35,15 +46,14 @@ class GUI:
         imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = \
             imgui_style.colors[imgui.COLOR_BUTTON_HOVERED]
 
-        # TODO to app or window?
-        self._glfw_imgui_renderer = GlfwRenderer(self._app.window._window)
+        self._renderer = renderer(*args, **kwargs)
 
 
     def update(self):
         # TODO ctrl+tab? or ctrl+`
         # TODO not while in input
         if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_TAB)):
-            self._app._show_gui = not self._app._show_gui
+            self.visible = not self.visible
 
         imgui.new_frame()
         imgui.begin("Parameters", closable=False)
@@ -104,7 +114,7 @@ class GUI:
             ):
                 for idx, item in  [(p.index, p.name)
                                    for p in self._app.presets]:
-                    is_selected = (idx == self.preset_index)
+                    is_selected = (idx == self._app.preset_index)
                     if imgui.selectable(item, is_selected)[0]:
                         self._app.preset_index = idx
                     if is_selected:
@@ -301,14 +311,14 @@ class GUI:
         imgui.end_frame()
 
     def process_inputs(self):
-        self._glfw_imgui_renderer.process_inputs()
+        self._renderer.process_inputs()
 
     def render(self):
-        if not self._app._show_gui:
+        if not self.visible:
             return
 
         imgui.render()
-        self._glfw_imgui_renderer.render(imgui.get_draw_data())
+        self._renderer.render(imgui.get_draw_data())
 
     def shutdown(self):
-        self._glfw_imgui_renderer.shutdown()
+        self._renderer.shutdown()

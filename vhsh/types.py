@@ -67,7 +67,6 @@ class Actions(Protocol):
 # factor out ShaderRenderer first, then decide on the interface =
 # (separate Action classes for each interface?)
 class App(Protocol):
-    _show_gui: bool
     window: "Window"
     _error: ShaderCompileError | ParameterParserError | None
     _shader_path: str
