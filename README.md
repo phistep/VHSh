@@ -305,16 +305,74 @@ currently selected preset.
     - [x] Renderer -> ShaderRenderer
     - [x] Microphone
     - [ ] FileWatcher
-    - [?] PresetManager
+    - [~] ~~PresetManager~~ -> move it all to scene, call `shader` in main `scene`
     - [x] Scene, Preset, Parameter
     - [-] State(Protocol), Actions(Protocol)
     - [ ] app.py class VHSh
-    - [ ] Windowing glwf
+    - [ ] Window glwf
   - [ ] docstrings
   - [-] logger: cli args, configure logging, replace print
   - [ ] worker add SystemParameter metaclass registry hook
   - [ ] threadsafe parameters, locking
   - [ ] update vs setup of uniforms
+  - Next Up
+    - factor out all preset management to Scene
+    - just use @property VHShRenderer.scene w/ scene index
+    - factor out all glwf calls to Window class
+    - then fix and isolate the midi stuff / control system
+    - move to app.y
+    - final cleanup.
+    - merge, backport new features on main and branches
+    - ...
+    - scene dir support: Collection? Project?
+    - end goal: timeline support (playlist)
+    ```py
+    Window
+        __init__
+        @property opacity
+        @property floating
+        ...
+
+    FileWatcher(Thread)
+        _watch_file
+
+    Scene
+        set_parameter_value
+        preset_index
+        preset_index
+        prev_preset
+        next_preset
+        write
+
+    Time
+        start
+        stop
+        running
+        now
+
+    MIDIController
+        get_midi_mapping how
+
+    VHSh
+        __init__
+
+        set_show_gui
+
+        scene_index
+        set_scene(update_parameters: bool)  # get rid of reload
+        scene
+        prev_scene
+        next_scene
+        # eventually -> Timeline
+
+        error return self.renderer.error
+
+        run
+
+        shutdown
+        __del__
+    ```
+
 - [ ] subcommands
     - run
       - `--kiosk`: no gui, credits, auto cycle scenes after inactivity, morph presets

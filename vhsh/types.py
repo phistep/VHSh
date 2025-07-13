@@ -68,15 +68,13 @@ class Actions(Protocol):
 # (separate Action classes for each interface?)
 class App(Protocol):
     _show_gui: bool
-    _window: int  # TODO ?? GLFW Window
+    window: "Window"
     _error: ShaderCompileError | ParameterParserError | None
     _shader_path: str
     _shader_paths: list[str]
     _shader_index: int
     parameters: dict[str, "Parameter"]
     system_parameters: dict[str, "SystemParameter"]
-    opacity: float
-    floating: bool
     def prev_shader(self, n=1): ...
     def next_shader(self, n=1): ...
     presets: list["Preset"]

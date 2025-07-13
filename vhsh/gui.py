@@ -35,7 +35,8 @@ class GUI:
         imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = \
             imgui_style.colors[imgui.COLOR_BUTTON_HOVERED]
 
-        self._glfw_imgui_renderer = GlfwRenderer(self._app._window)
+        # TODO to app or window?
+        self._glfw_imgui_renderer = GlfwRenderer(self._app.window._window)
 
 
     def update(self):
@@ -60,14 +61,15 @@ class GUI:
                     imgui.text_wrapped(str(self._app._error))
 
         with imgui.begin_group():
-            _, self._app.floating = imgui.checkbox('Floating' ,
-                                                              self._app.floating)
+            _, self._app.window.floating = \
+                imgui.checkbox('Floating', self._app.window.floating)
 
             imgui.same_line()
-            _, self._app.opacity = imgui.slider_float("Opacity",
-                                                      self._app.opacity,
-                                                      min_value=0.,
-                                                      max_value=1.)
+            _, self._app.window.opacity = \
+                imgui.slider_float("Opacity",
+                                   self._app.window.opacity,
+                                   min_value=0.,
+                                   max_value=1.)
 
         imgui.spacing()
         imgui.separator()
@@ -120,6 +122,7 @@ class GUI:
             imgui.same_line()
             imgui.text("Preset")
 
+            # TODO should live in GUI
             _, self._app._new_preset_name = imgui.input_text_with_hint(
                 "##Name", "New Preset Name", self._app._new_preset_name)
             imgui.same_line()
@@ -159,11 +162,15 @@ class GUI:
                     # self._start_time = glfw.get_time()
                     pass
 
-        imgui.drag_float2('u_Resolution', *self._app.system_parameters['u_Resolution'].value, format="%.0f")
+        imgui.drag_float2('u_Resolution',
+                           *self._app.system_parameters['u_Resolution'].value,
+                           format="%.0f")
 
         if self._app._microphone:
-            imgui.plot_histogram("u_Microphone",
-                                 array('f', self._app.system_uniforms['u_Microphone'].value))
+            imgui.plot_histogram(
+                "u_Microphone",
+                array('f', self._app.system_parameters['u_Microphone'].value)
+            )
 
         imgui.spacing()
         imgui.separator()

@@ -3,7 +3,6 @@ __version__ = "0.1.0"
 import sys
 import re
 from collections import deque
-from typing import TYPE_CHECKING
 from threading import Thread, Event
 from pprint import pprint
 from textwrap import dedent
@@ -12,21 +11,21 @@ from pathlib import Path
 import glfw
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 
-from .microphone import Microphone
-from .renderer import ShaderCompileError, Renderer
+from .types import UniformValue, get_shader_title
+from .window import Window
 from .scene import ParameterParserError, Scene, Preset, Parameter, SystemParameter
-from .types import UniformValue, Actions, get_shader_title
-from .midi import MIDIManager
+from .renderer import ShaderCompileError, Renderer
 from .gui import GUI
+from .midi import MIDIManager
+from .microphone import Microphone
 
-if TYPE_CHECKING:
-    import pyaudio
 
+class VHShRenderer:
 
-class VHShRenderer(Actions):
+    # TODO use ths as class name
+    NAME = "VideoHomeShader"
 
-    NAME = "Video Home Shader"
-
+    # TODO scene.DEFAULT_SCENE: Scene
     FRAGMENT_SHADER = dedent("""\
         void main() {
             vec2 pos = gl_FragCoord.xy / u_Resolution;
@@ -51,13 +50,12 @@ class VHShRenderer(Actions):
         self._microphone: Microphone = None  # type: ignore
         self._glfw_imgui_renderer = None
 
+        # class Time: .now(), .start(), .stop(), running()
         self._start_time = glfw.get_time()
         self._time_running = True
         self._frame_times = deque([1.0], maxlen=100)
 
-        self._window = self._init_window(self.NAME, width, height)
-        self._opacity = 1.0
-        self._floating = False
+        self.window = Window(self.NAME, width, height)
 
         self.gui = GUI(self)
         self._show_gui = True
@@ -73,8 +71,8 @@ class VHShRenderer(Actions):
         self.parameters: dict[str, Parameter] = {}
         self.system_parameters: dict[str, SystemParameter] = dict(
             u_Resolution=SystemParameter(
-                "u_Resolution", type="vec2", value=(0., .0),
-                update=lambda self: glfw.get_framebuffer_size(self._window)
+                "u_Resolution", type="vec2", value=(0., 0.),
+                update=lambda app: app.window.size
             ),
             u_Time=SystemParameter(
                 "u_Time", type="float", value=0.,
@@ -121,53 +119,6 @@ class VHShRenderer(Actions):
         except (ParameterParserError, ShaderCompileError) as e:
             self._print_error(e)
             sys.exit(1)
-
-    @staticmethod
-    def _init_window(name: str, width: int, height: int):
-        if not glfw.init():
-            RuntimeError("GLFW could not initialize OpenGL context")
-
-        # Needed for restoring the window posision
-        glfw.window_hint_string(glfw.COCOA_FRAME_NAME, name)
-
-        # OS X supports only forward-compatible core profiles from 3.2
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
-
-        window = glfw.create_window(int(width), int(height), name, None, None)
-        glfw.make_context_current(window)
-
-        if not window:
-            glfw.terminate()
-            raise RuntimeError("GLFW could not initialize Window")
-
-        return window
-
-    @property
-    def opacity(self) -> float:
-        return self._opacity
-
-    @opacity.setter
-    def opacity(self, opacity: float):
-        if self._opacity == opacity:
-            return
-        self._opacity = opacity
-        glfw.set_window_opacity(self._window, opacity)
-
-    @property
-    def floating(self) -> bool:
-        return self._floating
-
-    @floating.setter
-    def floating(self, floating: bool):
-        if self._floating == floating:
-            return
-        self._floating = floating
-        glfw.set_window_attrib(self._window,
-                               glfw.FLOATING,
-                               glfw.TRUE if floating else glfw.FALSE)
 
     def _watch_file(self, filename: str):
         from watchfiles import watch
@@ -353,6 +304,7 @@ class VHShRenderer(Actions):
             f.write(shader_src)
         print(f"wrote {'uniform values' if uniforms else ''}{'presets' if presets else ''} to '{self._shader_path}'")
 
+    # error()
     def _print_error(self, e: Exception | str):
         try:
             lines = str(e).strip().splitlines()
@@ -386,20 +338,17 @@ class VHShRenderer(Actions):
                     or self.gui._glfw_imgui_renderer is None):
                 raise RuntimeError("glfw imgui renderer not initialized!")
 
-            while not glfw.window_should_close(self._window):
-                # TODO split int system_update, update(), render() ?
-
-                glfw.poll_events()
+            while not self.window.should_close():
+                self.window.update()
                 self.gui.process_inputs()
 
+                # TODO -> renderer.frame_times, .update()
                 current_time = glfw.get_time()
                 num_frames += 1
                 if current_time - last_time >= 0.1:
                     self._frame_times.append(100/num_frames)
                     num_frames = 0
                     last_time += 0.1
-                self.width, self.height = \
-                    glfw.get_framebuffer_size(self._window)
 
                 if self._file_changed.is_set():
                     self._reload_scene()
@@ -413,7 +362,7 @@ class VHShRenderer(Actions):
                 self.gui.update()
                 self.gui.render()
 
-                glfw.swap_buffers(self._window)
+                self.window.swap_buffers()
 
         except KeyboardInterrupt:
             pass
@@ -425,8 +374,7 @@ class VHShRenderer(Actions):
             self.renderer.shutdown()
         if self.gui is not None:
             self.gui.shutdown()
-        glfw.terminate()
-
+        self.window.close()
 
         if self._file_watcher is not None:
             if self._file_watcher.is_alive():

@@ -12,6 +12,7 @@ from .types import (
 
 
 
+# TODO move to app
 @dataclass
 class SystemParameter(UniformLike, Generic[UniformT]):
     """Pass a function that returns a value to update the Parameter with.
