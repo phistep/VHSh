@@ -40,28 +40,6 @@ class UniformLike(Protocol):
         return f"uniform {self.type} {self.name};"
 
 
-### App Protocols
-
-class Actions(Protocol):
-    def prev_shader(self): ...
-    def next_shader(self): ...
-    def prev_preset(self, n: int = 1): ...
-    def next_preset(self, n: int = 1): ...
-    def write_file(self,
-                   presets: bool = True,
-                   uniforms: bool = False,
-                   new_preset: str | None = None): ...
-    # TODO @properties
-    def set_show_gui(self, value: bool): ...
-    def get_midi_mapping(self, cc: int) -> str: ...
-    def set_parameter_value(self,
-                          name: str,
-                          value: UniformValue,
-                          normalized: bool = False): ...
-    # TODO -> fmt_error, also display in GUI
-    def _print_error(self, e: Exception | str): ...
-
-
 # TODO Split into Actions and State
 # factor out ShaderRenderer first, then decide on the interface =
 # (separate Action classes for each interface?)
@@ -86,7 +64,6 @@ class App(Protocol):
                    new_preset: str | None = None): ...
     _new_preset_name: str
     _frame_times: list[float]
-    _time_running: bool
     _microphone: object
 
 

@@ -119,7 +119,7 @@ class VHShRenderer:
 
         self._midi_mapping: dict[int, str] = {}
         if midi:
-            self._midi_listener = MIDIManager(actions=self,
+            self._midi_listener = MIDIManager(app=self,
                                               system_mapping=midi_mapping,)
             self._midi_listener.start()
 
@@ -175,9 +175,6 @@ class VHShRenderer:
 
     def next_shader(self, n=1):
         self._shader_index = (self._shader_index + n) % len(self._shader_paths)
-
-    def set_time_running(self, value: bool):
-        self.time.running = value
 
     def set_show_gui(self, value: bool):
         self.gui.visible = value
