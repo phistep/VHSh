@@ -48,6 +48,7 @@ class GUI:
 
         self._renderer = renderer(*args, **kwargs)
 
+        self._new_preset_name = ""
 
     def update(self):
         app = self._app
@@ -123,23 +124,23 @@ class GUI:
                 imgui.end_combo()
             imgui.same_line()
             if imgui.arrow_button("Prev Preset", imgui.DIRECTION_LEFT):
-                app.prev_preset()
+                app.scene.prev_preset()
             imgui.same_line()
             if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
-                app.next_preset()
+                app.scene.next_preset()
             imgui.same_line()
             if imgui.button("Save"):
-                app.write_file(uniforms=False, presets=True)
+                app.scene.write_file(uniforms=False, presets=True)
             imgui.same_line()
             imgui.text("Preset")
 
             # TODO should live in GUI
-            _, app._new_preset_name = imgui.input_text_with_hint(
-                "##Name", "New Preset Name", app._new_preset_name)
+            _, self._new_preset_name = imgui.input_text_with_hint(
+                "##Name", "New Preset Name", self._new_preset_name)
             imgui.same_line()
             if imgui.button("Save##Save New Preset"):
-                self.write_file(uniforms=False, presets=True, new_preset=app._new_preset_name)
-                app._new_preset_name = ""
+                self.write_file(uniforms=False, presets=True, new_preset=self._new_preset_name)
+                self._new_preset_name = ""
             imgui.same_line()
             imgui.text("New Preset")
 

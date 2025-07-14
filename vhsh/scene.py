@@ -265,13 +265,12 @@ class Scene:
         print()
         print("current preset:", self.presets[self.preset_index].name)
 
+        # TODO how to update midi from here?!
         self._midi_mapping = {}
         for parameter in self.presets[self.preset_index].parameters.values():
             if parameter.midi is not None:
                 self._midi_mapping[parameter.midi] = parameter.name
             print(" ", parameter)
-
-        self.parameters = self.presets[self._preset_index].parameters
 
     def prev_preset(self, n: int = 1):
         self.preset_index = (self.preset_index - n) % len(self.presets)

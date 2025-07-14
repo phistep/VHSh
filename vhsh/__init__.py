@@ -95,7 +95,6 @@ class VHShRenderer:
         self._scene_index = 0  # initializes @property .scene
         self._scene_path = self.scene.path  # TODO needed? / to FileWatcher
         self._preset_index = 0
-        self._new_preset_name = ""  # TODO to GUI
         self.system_parameters: dict[str, SystemParameter] = dict(
             u_Resolution=SystemParameter(
                 "u_Resolution", type="vec2", value=(0., 0.),
