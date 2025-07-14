@@ -71,15 +71,16 @@ class GUI:
                     imgui.text_wrapped(str(self._app._error))
 
         with imgui.begin_group():
-            _, self._app.window.floating = \
-                imgui.checkbox('Floating', self._app.window.floating)
-
-            imgui.same_line()
             _, self._app.window.opacity = \
                 imgui.slider_float("Opacity",
                                    self._app.window.opacity,
                                    min_value=0.,
                                    max_value=1.)
+
+            imgui.same_line()
+
+            _, self._app.window.floating = \
+                imgui.checkbox('Floating', self._app.window.floating)
 
         imgui.spacing()
         imgui.separator()
@@ -159,18 +160,10 @@ class GUI:
         with imgui.begin_group():
             imgui.drag_float("u_Time", self._app.system_parameters['u_Time'].value)
             imgui.same_line()
-            changed, self._app._time_running = imgui.checkbox(
-                'playing' if self._app._time_running else 'paused',
-                self._app._time_running
+            _, self._app.time.running = imgui.checkbox(
+                'playing' if self._app.time.running else 'paused',
+                self._app.time.running
             )
-            if changed:
-                if self._app._time_running:
-                    # TODO api in App
-                    # glfw.set_time(self._app._start_time)
-                    pass
-                else:
-                    # self._start_time = glfw.get_time()
-                    pass
 
         imgui.drag_float2('u_Resolution',
                            *self._app.system_parameters['u_Resolution'].value,

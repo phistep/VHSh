@@ -2,13 +2,13 @@ __version__ = "0.1.0"
 
 import sys
 import re
+import time
 from collections import deque
 from threading import Thread, Event
 from pprint import pprint
 from textwrap import dedent
 from pathlib import Path
 
-import glfw
 from imgui.integrations.glfw import GlfwRenderer
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 
@@ -19,6 +19,37 @@ from .renderer import ShaderCompileError, Renderer
 from .gui import GUI
 from .midi import MIDIManager
 from .microphone import Microphone
+
+
+class Time:
+
+    def __init__(self, running: bool = True):
+        self._running = running
+        self._start =  self.now()
+        self._last_time = 0
+        self._offset = 0
+
+    def now(self):
+        return time.monotonic()
+
+    @property
+    def running(self) -> int:
+        return self._running
+
+    @running.setter
+    def running(self, start: bool):
+        if start == self._running:
+            return
+        if start:
+            self._offset += self.now() - self._last_time
+            self._running = True
+        else:
+            self._last_time = self.now()
+            self._running = False
+
+    def __call__(self) -> float:
+        current_time = self.now() if self.running else self._last_time
+        return current_time - self._start - self._offset
 
 
 class VHShRenderer:
@@ -49,11 +80,9 @@ class VHShRenderer:
         self._file_watcher: Thread = None  # type: ignore
         self._midi_listener: MIDIManager = None  # type: ignore
         self._microphone: Microphone = None  # type: ignore
-        self._glfw_imgui_renderer = None
 
         # class Time: .now(), .start(), .stop(), running()
-        self._start_time = glfw.get_time()
-        self._time_running = True
+        self.time = Time()
         self._frame_times = deque([1.0], maxlen=100)
 
         self.window = Window(self.NAME, width, height)
@@ -77,8 +106,7 @@ class VHShRenderer:
             ),
             u_Time=SystemParameter(
                 "u_Time", type="float", value=0.,
-                update=lambda app: (glfw.get_time() if self._time_running
-                                    else None)
+                update=lambda app: self.time()
             ),
         )
 
@@ -149,7 +177,7 @@ class VHShRenderer:
         self._shader_index = (self._shader_index + n) % len(self._shader_paths)
 
     def set_time_running(self, value: bool):
-        self._time_running = value
+        self.time.running = value
 
     def set_show_gui(self, value: bool):
         self.gui.visible = value
@@ -331,7 +359,7 @@ class VHShRenderer:
             print(e)
 
     def run(self):
-        last_time = glfw.get_time()  # TODO maybe time.monotonic_ns()
+        last_time = self.time.now()
         num_frames = 0
         try:
             if (not self.renderer
@@ -343,8 +371,10 @@ class VHShRenderer:
                 self.window.update()
                 self.gui.process_inputs()
 
-                # TODO -> renderer.frame_times, .update()
-                current_time = glfw.get_time()
+                # TODO -> renderer.frame_times, .update()? maybe not
+                # TODO fix should use own high precion timer?
+                # TODO correct unit?
+                current_time = self.time.now()
                 num_frames += 1
                 if current_time - last_time >= 0.1:
                     self._frame_times.append(100/num_frames)
