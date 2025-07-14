@@ -49,13 +49,12 @@ class App(Protocol):
     _shader_path: str
     _shader_paths: list[str]
     _shader_index: int
+    scene: "Scene"
     parameters: dict[str, "Parameter"]
     system_parameters: dict[str, "SystemParameter"]
     time: "Time"
     def prev_shader(self, n=1): ...
     def next_shader(self, n=1): ...
-    presets: list["Preset"]
-    preset_index: int
     def prev_preset(self, n: int = 1): ...
     def next_preset(self, n: int = 1): ...
     def write_file(self,

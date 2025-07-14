@@ -31,7 +31,7 @@ def main(argv: Optional[list[str]] = None):
         with open(args.midi_mapping, 'rb') as f:
             midi_mapping = tomllib.load(f)
 
-    vhsh_renderer = VHShRenderer(args.shader,
+    vhsh_renderer = VHShRenderer(scenes=args.shader,
                                  watch=args.watch,
                                  midi=args.midi,
                                  midi_mapping=midi_mapping,

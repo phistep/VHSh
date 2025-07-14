@@ -199,9 +199,7 @@ class Scene:
     def __init__(self, path: Path):
         self.path = path
         self.name = self.path.stem.replace('_', ' ').replace('-', ' ').title()
-
-        self.source = self._read_file(path)
-        self.presets = self._load_presets(self.source)
+        self.reload()
 
     def __str__(self) -> str:
         # TODO ext
@@ -241,3 +239,95 @@ class Scene:
                                           parameters={}))
 
         return presets
+
+    def reload(self):
+        self.source = self._read_file(self.path)
+        self._preset_index = 0
+        self.presets = self._load_presets(self.source)
+
+    @property
+    def parameters(self) -> dict[str, Parameter]:
+        current_preset = self.presets[self.preset_index]
+        return current_preset.parameters
+
+    @property
+    def preset_index(self):
+        return self._preset_index
+
+    @preset_index.setter
+    def preset_index(self, value):
+        # TODO why was this here?
+        # if self._preset_index == 0:
+        #     # TODO abstract uniform from parameters and add here
+        #     self.presets[0].parameters = self.parameters
+
+        self._preset_index = value % len(self.presets)
+        print()
+        print("current preset:", self.presets[self.preset_index].name)
+
+        self._midi_mapping = {}
+        for parameter in self.presets[self.preset_index].parameters.values():
+            if parameter.midi is not None:
+                self._midi_mapping[parameter.midi] = parameter.name
+            print(" ", parameter)
+
+        self.parameters = self.presets[self._preset_index].parameters
+
+    def prev_preset(self, n: int = 1):
+        self.preset_index = (self.preset_index - n) % len(self.presets)
+
+    def next_preset(self, n: int = 1):
+        self.preset_index = (self.preset_index + n) % len(self.presets)
+
+
+    # TODO move to scenes.Scene
+    def write_file(self,
+                   presets: bool = True,
+                   uniforms: bool = False,
+                   new_preset: str | None = None):
+        with open(self._shader_path) as f:
+            shader_src = f.read()
+
+        if presets:
+            with self._uniform_lock:
+                if new_preset is not None:
+                    # TODO proper convertion
+                    parameters = {name: Parameter(**uniform.__dict__)
+                                  for name, uniform in self.uniforms.items()}
+                    self.presets.append(Preset(name=new_preset, parameters=parameters))
+                    self._preset_index = len(self.presets) - 1
+                for uniform in self.uniforms.values():
+                    self.presets[self._preset_index]['uniforms'] = \
+                        self.uniforms.copy()
+
+            presets_s = ""
+            for preset in self.presets[1:]:
+                presets_s += f"/// // {preset['name']}\n"
+                presets_s += '\n'.join(
+                    f"/// {u}" for u in preset['uniforms'].values()
+                    if u.name not in self.FRAGMENT_SHADER_PREAMBLE
+                ) + '\n'
+
+            lines = [line for line in shader_src.splitlines()
+                        if not line.startswith('///')]
+            shader_src = '\n'.join(lines) + '\n'
+
+            shader_src = presets_s + shader_src
+
+            if self._preset_index == 0:
+                uniforms = True
+
+        if uniforms:
+            with self._uniform_lock:
+                for uniform in self.uniforms.values():
+                    if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
+                        continue
+                    uniform.default = uniform.value
+                    print(uniform)
+                    shader_src = re.sub(f'^uniform \\w+ {uniform.name}.*$', str(uniform),
+                                        shader_src,
+                                        flags=re.MULTILINE)
+
+        with open(self._shader_path, 'w') as f:
+            f.write(shader_src)
+        print(f"wrote {'uniform values' if uniforms else ''}{'presets' if presets else ''} to '{self._shader_path}'")

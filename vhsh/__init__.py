@@ -67,7 +67,7 @@ class VHShRenderer:
     )
 
     def __init__(self,
-                 shader_paths: list[Path],
+                 scenes: list[Path],
                  width: int = 1280,
                  height: int = 720,
                  watch: bool = False,
@@ -81,7 +81,6 @@ class VHShRenderer:
         self._midi_listener: MIDIManager = None  # type: ignore
         self._microphone: Microphone = None  # type: ignore
 
-        # class Time: .now(), .start(), .stop(), running()
         self.time = Time()
         self._frame_times = deque([1.0], maxlen=100)
 
@@ -92,13 +91,11 @@ class VHShRenderer:
 
         self._file_changed = Event()
         # TODO handle Scenes not shader_paths
-        self._shader_paths = shader_paths
-        self._shader_index = 0  # initializes @property ._shader_path
-        self.__shader_path = self._shader_path
-        self.presets: list[Preset] = []
+        self.scenes = [Scene(path) for path in scenes]
+        self._scene_index = 0  # initializes @property .scene
+        self._scene_path = self.scene.path  # TODO needed? / to FileWatcher
         self._preset_index = 0
-        self._new_preset_name = ""
-        self.parameters: dict[str, Parameter] = {}
+        self._new_preset_name = ""  # TODO to GUI
         self.system_parameters: dict[str, SystemParameter] = dict(
             u_Resolution=SystemParameter(
                 "u_Resolution", type="vec2", value=(0., 0.),
@@ -114,7 +111,7 @@ class VHShRenderer:
         if watch:
             self._file_watcher = Thread(target=self._watch_file,
                                         name="VHSh.file_watcher",
-                                        args=(self._shader_path,))
+                                        args=(scenes,))
             self._file_watcher.start()
 
         self._midi_mapping: dict[int, str] = {}
@@ -140,44 +137,44 @@ class VHShRenderer:
         self.renderer = Renderer(list(self.system_parameters.values()))
         self._error = None
 
-        print("scenes:", [get_shader_title(s) for s in self._shader_paths])
+        print("scenes:", [f"{scene.name} [{scene.path}]"
+                          for scene in self.scenes])
 
         try:
-            scene = Scene(self._shader_path)
-            self.set_scene(scene, verbose=False)
+            self.load_scene(self.scene, verbose=False)
         except (ParameterParserError, ShaderCompileError) as e:
             self._print_error(e)
             sys.exit(1)
 
-    def _watch_file(self, filename: str):
+    def _watch_file(self, filenames: list[str]):
         from watchfiles import watch
-        print(f"Watching for changes in '{filename}'...")
-        for _ in watch(filename, stop_event=self._file_watcher_stop):
-            # print(f"'{filename}' changed!")
-            self._file_changed.set()
+        print(f"Watching for changes in {filenames}...")
+        for _, filename in watch(*filenames, stop_event=self._file_watcher_stop):
+            # TODO
+            print("file change", filename, self.scene.path)
+            if filename == self.scene.path:
+                # print(f"'{filename}' changed!")
+                self._file_changed.set()
 
     @property
-    def _shader_path(self) -> Path:
-        return self._shader_paths[self._shader_index]
+    def scene(self) -> Scene:
+        return self.scenes[self.scene_index]
 
     @property
-    def _shader_index(self) -> int:
-        return self.__shader_index
+    def scene_index(self) -> int:
+        return self._scene_index
 
-    @_shader_index.setter
-    def _shader_index(self, value: int):
-        self.__shader_index = value
-        self._preset_index = 0
+    @scene_index.setter
+    def scene_index(self, value: int):
+        self._scene_index = value
+        self.scene.preset_index = 0
         self._file_changed.set()
 
-    def prev_shader(self, n=1):
-        self._shader_index = (self._shader_index - n) % len(self._shader_paths)
+    def prev_scene(self, n=1):
+        self.scene_index = (self.scene_index - n) % len(self.scenes)
 
-    def next_shader(self, n=1):
-        self._shader_index = (self._shader_index + n) % len(self._shader_paths)
-
-    def set_show_gui(self, value: bool):
-        self.gui.visible = value
+    def next_scene(self, n=1):
+        self.scene_index = (self.scene_index + n) % len(self.scenes)
 
     # TODO replace with self.parameters with magic?
     def set_parameter_value(self,
@@ -189,58 +186,35 @@ class VHShRenderer:
     def get_midi_mapping(self, cc: int) -> str:
         return self._midi_mapping[cc]
 
-    def _reload_scene(self):
-            scene = Scene(self._shader_path)
+    def reload(self):
+        self.scene.reload()
 
-            self._file_changed.clear()
-            if (clear := self._shader_path != self.__shader_path):
-                self.__shader_path = self._shader_path
-
+        self._file_changed.clear()
+        if (clear := self.scene.path != self._scene_path):
+            self._scene_path = self.scene.path
             try:
-                self.set_scene(scene, clear=clear)
+                self.load_scene(self.scene, clear=clear)
             except ShaderCompileError as e:
                 self._error = e
                 self._print_error(e)
             else:
                 self._error = None
                 print("\x1b[2;32mOK:"
-                      f" \x1b[2;37m{self._shader_path}"
+                      f" \x1b[2;37m{self._scene_path}"
                       "\x1b[0;0m")
 
-    @property
-    def preset_index(self):
-        return self._preset_index
-
-    @preset_index.setter
-    def preset_index(self, value):
-        # TODO why was this here?
-        # if self._preset_index == 0:
-        #     # TODO abstract uniform from parameters and add here
-        #     self.presets[0].parameters = self.parameters
-
-        self._preset_index = value % len(self.presets)
-        print()
-        print("current preset:", self.presets[self.preset_index].name)
-
-        self._midi_mapping = {}
-        for parameter in self.presets[self.preset_index].parameters.values():
-            if parameter.midi is not None:
-                self._midi_mapping[parameter.midi] = parameter.name
-            print(" ", parameter)
-
-        self.parameters = self.presets[self._preset_index].parameters
-
-    def set_scene(self, scene: Scene, verbose: bool = True, clear: bool = False):
-        self.presets = scene.presets
-        # initializes self.parameters
+    def load_scene(self,
+                   scene: Scene,
+                   verbose: bool = True,
+                   clear: bool = False):
         self.preset_index = 0
         # TODO @property?
-        current_preset = self.presets[self.preset_index]
+        current_preset = self.scene.presets[scene.preset_index]
 
         if verbose:
             print()
             print("scene:", scene.name)
-            print("presets:", [p.name for p in self.presets])
+            print("presets:", [p.name for p in self.scene.presets])
             print("current preset:", current_preset.name)
 
         # TODO handle updating with current value correctly
@@ -257,78 +231,19 @@ class VHShRenderer:
         self._midi_mapping = {}
         if verbose:
             print("parameters:")
-        for parameter in current_preset.parameters.values():
+        for parameter in self.scene.parameters.values():
             if verbose:
                 print(" ", parameter)
 
             if parameter.midi is not None:
                 self._midi_mapping[parameter.midi] = parameter.name
-
         if verbose and self._midi_listener:
             print("midi_mapping:")
             pprint(self._midi_mapping)
 
         parameters = [*self.system_parameters.values(),
-                      *self.parameters.values()]
+                      *self.scene.parameters.values()]
         self.renderer.set_shader(scene.source, parameters)
-
-    def prev_preset(self, n: int = 1):
-        self.preset_index = (self.preset_index - n) % len(self.presets)
-
-    def next_preset(self, n: int = 1):
-        self.preset_index = (self.preset_index + n) % len(self.presets)
-
-    # TODO move to scenes.Scene
-    def write_file(self,
-                   presets: bool = True,
-                   uniforms: bool = False,
-                   new_preset: str | None = None):
-        with open(self._shader_path) as f:
-            shader_src = f.read()
-
-        if presets:
-            with self._uniform_lock:
-                if new_preset is not None:
-                    # TODO proper convertion
-                    parameters = {name: Parameter(**uniform.__dict__)
-                                  for name, uniform in self.uniforms.items()}
-                    self.presets.append(Preset(name=new_preset, parameters=parameters))
-                    self._preset_index = len(self.presets) - 1
-                for uniform in self.uniforms.values():
-                    self.presets[self._preset_index]['uniforms'] = \
-                        self.uniforms.copy()
-
-            presets_s = ""
-            for preset in self.presets[1:]:
-                presets_s += f"/// // {preset['name']}\n"
-                presets_s += '\n'.join(
-                    f"/// {u}" for u in preset['uniforms'].values()
-                    if u.name not in self.FRAGMENT_SHADER_PREAMBLE
-                ) + '\n'
-
-            lines = [line for line in shader_src.splitlines()
-                        if not line.startswith('///')]
-            shader_src = '\n'.join(lines) + '\n'
-
-            shader_src = presets_s + shader_src
-
-            if self._preset_index == 0:
-                uniforms = True
-
-        if uniforms:
-            with self._uniform_lock:
-                for uniform in self.uniforms.values():
-                    if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
-                        continue
-                    uniform.default = uniform.value
-                    print(uniform)
-                    shader_src = re.sub(f'^uniform \\w+ {uniform.name}.*$', str(uniform),
-                                        shader_src,
-                                        flags=re.MULTILINE)
-
-        with open(self._shader_path, 'w') as f:
-            f.write(shader_src)
-        print(f"wrote {'uniform values' if uniforms else ''}{'presets' if presets else ''} to '{self._shader_path}'")
 
     # error()
     def _print_error(self, e: Exception | str):
@@ -379,12 +294,12 @@ class VHShRenderer:
                     last_time += 0.1
 
                 if self._file_changed.is_set():
-                    self._reload_scene()
+                    self.reload()
 
                 for system_parameter in self.system_parameters.values():
                     system_parameter.update(self)
                 self.renderer.update((*self.system_parameters.values(),
-                                      *self.parameters.values()))
+                                      *self.scene.parameters.values()))
                 self.renderer.render()
 
                 self.gui.update()

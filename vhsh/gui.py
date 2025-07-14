@@ -50,6 +50,8 @@ class GUI:
 
 
     def update(self):
+        app = self._app
+
         # TODO ctrl+tab? or ctrl+`
         # TODO not while in input
         if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_TAB)):
@@ -58,51 +60,49 @@ class GUI:
         imgui.new_frame()
         imgui.begin("Parameters", closable=False)
 
-        if self._app._error is not None:
+        if app._error is not None:
             imgui.open_popup("Error")
         with imgui.begin_popup_modal("Error",
             flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
         ) as error_popup:
             if error_popup.opened:
-                if self._app._error is None:
+                if app._error is None:
                     imgui.close_current_popup()
                 else:
                     # TODO colored
-                    imgui.text_wrapped(str(self._app._error))
+                    imgui.text_wrapped(str(app._error))
 
         with imgui.begin_group():
-            _, self._app.window.opacity = \
+            _, app.window.opacity = \
                 imgui.slider_float("Opacity",
-                                   self._app.window.opacity,
+                                   app.window.opacity,
                                    min_value=0.,
                                    max_value=1.)
 
             imgui.same_line()
 
-            _, self._app.window.floating = \
-                imgui.checkbox('Floating', self._app.window.floating)
+            _, app.window.floating = \
+                imgui.checkbox('Floating', app.window.floating)
 
         imgui.spacing()
         imgui.separator()
         imgui.spacing()
 
         with imgui.begin_group():
-            if imgui.begin_combo("##Scene",
-                                 get_shader_title(self._app._shader_path)):
-                for idx, item in enumerate(
-                        map(get_shader_title, self._app._shader_paths)):
-                    is_selected = (idx == self._app._shader_index)
+            if imgui.begin_combo("##Scene", app.scene.name):
+                for idx, item in enumerate([scene.name for scene in app.scene]):
+                    is_selected = (idx == app._shader_index)
                     if imgui.selectable(item, is_selected)[0]:
-                        self._app._shader_index = idx
+                        app._shader_index = idx
                     if is_selected:
                         imgui.set_item_default_focus()
                 imgui.end_combo()
             imgui.same_line()
             if imgui.arrow_button("Prev Scene", imgui.DIRECTION_LEFT):
-                self._app.prev_shader()
+                app.prev_shader()
             imgui.same_line()
             if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
-                self._app.next_shader()
+                app.next_shader()
             imgui.same_line()
             imgui.text("Scene")
 
@@ -111,42 +111,42 @@ class GUI:
         with imgui.begin_group():
             # TODO begin_list_box?
             if imgui.begin_combo(
-                "##Preset", self._app.presets[self._app.preset_index].name
+                "##Preset", app.scene.presets[app.scene.preset_index].name
             ):
                 for idx, item in  [(p.index, p.name)
-                                   for p in self._app.presets]:
-                    is_selected = (idx == self._app.preset_index)
+                                   for p in app.scene.presets]:
+                    is_selected = (idx == app.scene.preset_index)
                     if imgui.selectable(item, is_selected)[0]:
-                        self._app.preset_index = idx
+                        app.scene.preset_index = idx
                     if is_selected:
                         imgui.set_item_default_focus()
                 imgui.end_combo()
             imgui.same_line()
             if imgui.arrow_button("Prev Preset", imgui.DIRECTION_LEFT):
-                self._app.prev_preset()
+                app.prev_preset()
             imgui.same_line()
             if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
-                self._app.next_preset()
+                app.next_preset()
             imgui.same_line()
             if imgui.button("Save"):
-                self._app.write_file(uniforms=False, presets=True)
+                app.write_file(uniforms=False, presets=True)
             imgui.same_line()
             imgui.text("Preset")
 
             # TODO should live in GUI
-            _, self._app._new_preset_name = imgui.input_text_with_hint(
-                "##Name", "New Preset Name", self._app._new_preset_name)
+            _, app._new_preset_name = imgui.input_text_with_hint(
+                "##Name", "New Preset Name", app._new_preset_name)
             imgui.same_line()
             if imgui.button("Save##Save New Preset"):
-                self.write_file(uniforms=False, presets=True, new_preset=self._app._new_preset_name)
-                self._app._new_preset_name = ""
+                self.write_file(uniforms=False, presets=True, new_preset=app._new_preset_name)
+                app._new_preset_name = ""
             imgui.same_line()
             imgui.text("New Preset")
 
         imgui.spacing()
 
         with imgui.begin_group():
-            frame_times = array('f', self._app._frame_times)
+            frame_times = array('f', app._frame_times)
             imgui.plot_lines("Frame Time##Plot", frame_times,
                 overlay_text=f"{frame_times[-1]:5.2f} ms"
                              f"  ({1000/frame_times[-1]:3.0f} fps)")
@@ -158,28 +158,28 @@ class GUI:
 
         # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
         with imgui.begin_group():
-            imgui.drag_float("u_Time", self._app.system_parameters['u_Time'].value)
+            imgui.drag_float("u_Time", app.system_parameters['u_Time'].value)
             imgui.same_line()
-            _, self._app.time.running = imgui.checkbox(
-                'playing' if self._app.time.running else 'paused',
-                self._app.time.running
+            _, app.time.running = imgui.checkbox(
+                'playing' if app.time.running else 'paused',
+                app.time.running
             )
 
         imgui.drag_float2('u_Resolution',
-                           *self._app.system_parameters['u_Resolution'].value,
+                           *app.system_parameters['u_Resolution'].value,
                            format="%.0f")
 
-        if self._app._microphone:
+        if app._microphone:
             imgui.plot_histogram(
                 "u_Microphone",
-                array('f', self._app.system_parameters['u_Microphone'].value)
+                array('f', app.system_parameters['u_Microphone'].value)
             )
 
         imgui.spacing()
         imgui.separator()
         imgui.spacing()
 
-        current_preset = self._app.presets[self._app.preset_index]
+        current_preset = app.scene.presets[app.scene.preset_index]
         parameters = list(current_preset.parameters.items())
         peaking_parameters = zip(parameters, parameters[1:] + [(None, None)])
         for (name, parameter), (next_name, _) in peaking_parameters:
