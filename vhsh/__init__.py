@@ -1,20 +1,21 @@
 __version__ = "0.1.0"
 
 import sys
-import re
 import time
+from typing import Generic, Callable
 from collections import deque
 from threading import Thread, Event
 from pprint import pprint
 from textwrap import dedent
 from pathlib import Path
+from dataclasses import dataclass
 
 from imgui.integrations.glfw import GlfwRenderer
 # `watchfiles` imported conditionally in VHShRenderer._watch_file()
 
-from .types import UniformValue, get_shader_title
+from .types import UniformValue, UniformLike, UniformT
 from .window import Window
-from .scene import ParameterParserError, Scene, Preset, Parameter, SystemParameter
+from .scene import ParameterParserError, Scene
 from .renderer import ShaderCompileError, Renderer
 from .gui import GUI
 from .midi import MIDIManager
@@ -50,6 +51,33 @@ class Time:
     def __call__(self) -> float:
         current_time = self.now() if self.running else self._last_time
         return current_time - self._start - self._offset
+
+
+@dataclass
+class SystemParameter(UniformLike, Generic[UniformT]):
+    """Pass a function that returns a value to update the Parameter with.
+
+    Pass None if value should be kept constant.
+    """
+    name: str
+    type: str
+    value: UniformT
+    # TODO why are recursive types not working?
+    update: Callable[["VHShRenderer"], UniformT | None]
+
+    def __post_init__(self):
+        # wrap `.update()` so that it sets .value,
+        # but can be passed as `update=`
+
+        self._update = self.update
+
+        def update(renderer: "VHShRenderer"):
+            value = self._update(renderer)
+            if value is not None:
+                self.value = value
+            return value
+
+        self.update = update
 
 
 class VHShRenderer:
@@ -94,7 +122,6 @@ class VHShRenderer:
         self.scenes = [Scene(path) for path in scenes]
         self._scene_index = 0  # initializes @property .scene
         self._scene_path = self.scene.path  # TODO needed? / to FileWatcher
-        self._preset_index = 0
         self.system_parameters: dict[str, SystemParameter] = dict(
             u_Resolution=SystemParameter(
                 "u_Resolution", type="vec2", value=(0., 0.),
@@ -130,7 +157,7 @@ class VHShRenderer:
             type=f"float[{num_levels}]",
             value=(0.) * num_levels,
             update=lambda app=self: (app._microphone.levels
-                                        if app._microphone else None)
+                                     if app._microphone else None)
         )
 
         self.renderer = Renderer(list(self.system_parameters.values()))
@@ -242,7 +269,7 @@ class VHShRenderer:
 
         parameters = [*self.system_parameters.values(),
                       *self.scene.parameters.values()]
-        self.renderer.set_shader(scene.source, parameters)
+        self.renderer.set_shader(scene.source, parameters, clear=clear)
 
     # error()
     def _print_error(self, e: Exception | str):
@@ -260,7 +287,7 @@ class VHShRenderer:
             offender = parts[3].strip()
             message = ':'.join(parts[4:])
             print(f"\x1b[1;31m{title}: \x1b[0;0m"
-                  f"\x1b[2;37m{self._shader_path}:\x1b[0;0m"
+                  f"\x1b[2;37m{self.scene.path}:\x1b[0;0m"
                   f"\x1b[1;37m{col}:{line} \x1b[0;0m"
                   f"\x1b[2;37m({offender})\x1b[0;0m"
                   f"\x1b[0;37m:{message}\x1b[0;0m"

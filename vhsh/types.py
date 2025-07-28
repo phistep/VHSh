@@ -1,5 +1,5 @@
 import os
-from typing import Protocol, TypeAlias, TypeVar, Union
+from typing import Protocol, TypeAlias, TypeVar, Union, Generic, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -26,15 +26,15 @@ GLSLVec2: TypeAlias = tuple[float, float]
 GLSLVec3: TypeAlias = tuple[float, float, float]
 GLSLVec4: TypeAlias = tuple[float, float, float, float]
 
-UniformValue: TypeAlias = Union[GLSLBool, GLSLInt, GLSLFloat,
-                                GLSLVec2, GLSLVec3, GLSLVec4,
-                                list["UniformValue"]]
+_UniformValue: TypeAlias = Union[GLSLBool, GLSLInt, GLSLFloat,
+                                 GLSLVec2, GLSLVec3, GLSLVec4]
+UniformValue: TypeAlias = Union[_UniformValue, Sequence[_UniformValue]]
 UniformT = TypeVar('UniformT', bound=UniformValue)
 
-class UniformLike(Protocol):
+class UniformLike(Protocol, Generic[UniformT]):
     name: str
     type: str
-    value: UniformValue
+    value: UniformT | list[UniformT]
 
     def __str__(self) -> str:
         return f"uniform {self.type} {self.name};"
@@ -46,26 +46,16 @@ class UniformLike(Protocol):
 class App(Protocol):
     window: "Window"
     _error: ShaderCompileError | ParameterParserError | None
-    _shader_path: str
-    _shader_paths: list[str]
-    _shader_index: int
+    @property
+    def scene_index(self) -> int: ...
+    @scene_index.setter
+    def scene_index(self, value: int): ...
+    scenes: list["Scene"]
     scene: "Scene"
     parameters: dict[str, "Parameter"]
     system_parameters: dict[str, "SystemParameter"]
     time: "Time"
-    def prev_shader(self, n=1): ...
-    def next_shader(self, n=1): ...
-    def prev_preset(self, n: int = 1): ...
-    def next_preset(self, n: int = 1): ...
-    def write_file(self,
-                   presets: bool = True,
-                   uniforms: bool = False,
-                   new_preset: str | None = None): ...
-    _new_preset_name: str
+    def prev_scene(self, n=1): ...
+    def next_scene(self, n=1): ...
     _frame_times: list[float]
     _microphone: object
-
-
-# TODO -> scene.name
-def get_shader_title(shader_path: str) -> str:
-    return os.path.splitext(os.path.basename(shader_path))[0]

@@ -283,8 +283,9 @@ class Renderer:
 
     def render(self):
         gl.glUseProgram(self.shader_program)
-        for uniform in self.uniforms.values():
-            uniform.update()
+        with self._uniform_lock:
+            for uniform in self.uniforms.values():
+                uniform.update()
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glBindVertexArray(self.vao)

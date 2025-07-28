@@ -11,34 +11,6 @@ from .types import (
 )
 
 
-
-# TODO move to app
-@dataclass
-class SystemParameter(UniformLike, Generic[UniformT]):
-    """Pass a function that returns a value to update the Parameter with.
-
-    Pass None if value should be kept constant.
-    """
-    name: str
-    type: str
-    value: UniformT
-    update: Callable[[App], UniformT | None]
-
-    def __post_init__(self):
-        # wrap `.update()` so that it sets .value,
-        # but can be passed as `update=`
-
-        self._update = self.update
-
-        def update(app: App):
-            value = self._update(app)
-            if value is not None:
-                self.value = value
-            return value
-
-        self.update = update
-
-
 class Widget(StrEnum):
     COLOR = "color"
     LOG = "log"

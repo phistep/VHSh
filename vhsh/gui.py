@@ -2,9 +2,8 @@ from typing import Iterable, TypeVar, Type, Protocol
 from array import array
 
 import imgui
-from imgui.integrations.base import BaseOpenGLRenderer
 
-from .types import App, get_shader_title
+from .types import App
 
 
 T = TypeVar('T')
@@ -91,19 +90,19 @@ class GUI:
 
         with imgui.begin_group():
             if imgui.begin_combo("##Scene", app.scene.name):
-                for idx, item in enumerate([scene.name for scene in app.scene]):
-                    is_selected = (idx == app._shader_index)
+                for idx, item in enumerate([scene.name for scene in app.scenes]):
+                    is_selected = (idx == app.scene_index)
                     if imgui.selectable(item, is_selected)[0]:
-                        app._shader_index = idx
+                        app.scene_index = idx
                     if is_selected:
                         imgui.set_item_default_focus()
                 imgui.end_combo()
             imgui.same_line()
             if imgui.arrow_button("Prev Scene", imgui.DIRECTION_LEFT):
-                app.prev_shader()
+                app.prev_scene()
             imgui.same_line()
             if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
-                app.next_shader()
+                app.next_scene()
             imgui.same_line()
             imgui.text("Scene")
 
