@@ -250,6 +250,10 @@ currently selected preset.
 - [x] transparency, floating/allways-on-top
 - [ ] file watcher always reads first file.
       change to watch all files, ignore if not current scene index
+- [ ] multiple midi devcies
+  - [x] open all devices
+  - [ ] one mapping per devcie
+  - [ ] default mappings by device name
 - [ ] fix dropdown crashes when no presets available
       ```
       File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
@@ -273,7 +277,27 @@ currently selected preset.
 - [ ] use logger
 - [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
-- [x] widgets
+- [ ] TODO.md
+- [ ] pypi
+- [ ] pass scene dir with scenes, midi mapping and other assets
+- [ ] shadertoy import
+- [ ] rename uniforms to just capitalized: `Time`, etc.
+- [ ] simplify parser: split on `" "`, then `match` on first char
+- [ ] make named midi ccs in toml via #defines
+     ```toml
+     [uniform.inputs]
+     slider = [1, 2, 3, 4]
+     knob = [10, 11, 12, 13]
+     button = [20, 21, 22, 23]
+     master_button = 42
+     ```
+     ```glsl
+     uniform float zoom; // #slider1
+     uniform bool debug; // <toggle> #button1
+     uniform bool flash; // #master_button
+     ```
+- [ ] view midi mappings in imgui
+- [ ] widgets
   - [x] `<log>`
   - [x] `<drag>` drag input, others sliders (for slider flags)
   - [x] ~~~`<hsv` and `<rgb>`~~~
