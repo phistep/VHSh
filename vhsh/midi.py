@@ -4,10 +4,12 @@
 
 
 import time
+import logging
 from collections import defaultdict
 from threading import Thread, Event
 from pprint import pprint
 from datetime import datetime
+from contextlib import ExitStack
 
 try:
     import mido
@@ -16,6 +18,8 @@ except ImportError as __mido_import_error__:
     MIDI_AVAILABLE = False
 
 from .types import App
+
+logger = logging.getLogger(__name__)
 
 
 class MIDIManager(Thread):
@@ -28,27 +32,32 @@ class MIDIManager(Thread):
 
         self.app = app
 
-        print("midi system mapping:")
+        logger.info("midi system mapping:")
         pprint(system_mapping)
         self.system_mapping = defaultdict(dict, system_mapping)
 
         self._stop_midi = Event()
+
+        self.devices = mido.get_input_names()
+        logger.info("MIDI devices: %s", self.devices)
 
     def stop(self):
         self._stop_midi.set()
 
     def run(self):
         try:
-            with mido.open_input() as inport:  # type: ignore
-                print(f"midi: listening for MIDI messages on '{inport.name}'...")
+            with ExitStack() as stack:
+                ports = [stack.enter_context(mido.open_input(device))
+                        for device in self.devices]
+                logger.info(f"listening for MIDI messages on '{[p.name for p in ports]}'...")
+                inport = mido.ports.MultiPort(ports)
 
                 while True:
                     if self._stop_midi.is_set():
                         break
                     # TODO move to callback
                     for msg in inport.iter_pending():
-                        # print(f"Received MIDI message: {msg}")
-                        # print(f"Received MIDI message: #{msg.control} = {msg.value}")
+                        logger.debug(f"Received MIDI message: #{msg.control} = {msg.value}")
                         button_down = bool(msg.value)
 
                         if msg.control == self.system_mapping['scene'].get('prev'):
@@ -97,7 +106,7 @@ class MIDIManager(Thread):
                             uniform_value = msg.value / 127.0
                             self.app.set_parameter_value(parameter, uniform_value, normalized=True)
                         except KeyError as e:
-                            print(f"MIDI mapping not found for: {msg.control}")
+                            logger.warning(f"MIDI mapping not found for: {msg.control}")
                             # print(msg)
                             # pprint(self._midi_mapping)
                         except NotImplementedError as e:
