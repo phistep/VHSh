@@ -340,11 +340,9 @@ currently selected preset.
   - [ ] threadsafe parameters, locking
   - [ ] update vs setup of uniforms
   - Next Up
-    - factor out all preset management to Scene
-    - just use @property VHShRenderer.scene w/ scene index
-    - factor out all glwf calls to Window class
+    - fix scene.write
     - then fix and isolate the midi stuff / control system
-    - move to app.y
+    - move to app.py
     - final cleanup.
     - merge, backport new features on main and branches
     - ...

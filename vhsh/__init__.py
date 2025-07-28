@@ -11,7 +11,6 @@ from pathlib import Path
 from dataclasses import dataclass
 
 from imgui.integrations.glfw import GlfwRenderer
-# `watchfiles` imported conditionally in VHShRenderer._watch_file()
 
 from .types import UniformValue, UniformLike, UniformT
 from .window import Window
@@ -20,6 +19,7 @@ from .renderer import ShaderCompileError, Renderer
 from .gui import GUI
 from .midi import MIDIManager
 from .microphone import Microphone
+from .watch import FileWatcher
 
 
 class Time:
@@ -105,7 +105,7 @@ class VHShRenderer:
         # need to be defined upfront for __del__() before glfw/imgui init can fail
         self.renderer: Renderer = None  # type: ignore
         self.gui: GUI = None  # type: ignore
-        self._file_watcher: Thread = None  # type: ignore
+        self._file_watcher: FileWatcher = None  # type: ignore
         self._midi_listener: MIDIManager = None  # type: ignore
         self._microphone: Microphone = None  # type: ignore
 
@@ -121,7 +121,6 @@ class VHShRenderer:
         # TODO handle Scenes not shader_paths
         self.scenes = [Scene(path) for path in scenes]
         self._scene_index = 0  # initializes @property .scene
-        self._scene_path = self.scene.path  # TODO needed? / to FileWatcher
         self.system_parameters: dict[str, SystemParameter] = dict(
             u_Resolution=SystemParameter(
                 "u_Resolution", type="vec2", value=(0., 0.),
@@ -134,10 +133,9 @@ class VHShRenderer:
         )
 
         self._file_watcher_stop = Event()
+        self._file_watcher = FileWatcher(scenes, self._file_changed)
+        self._file_watcher.current = self.scene.path
         if watch:
-            self._file_watcher = Thread(target=self._watch_file,
-                                        name="VHSh.file_watcher",
-                                        args=(scenes,))
             self._file_watcher.start()
 
         self._midi_mapping: dict[int, str] = {}
@@ -172,16 +170,6 @@ class VHShRenderer:
             self._print_error(e)
             sys.exit(1)
 
-    def _watch_file(self, filenames: list[str]):
-        from watchfiles import watch
-        print(f"Watching for changes in {filenames}...")
-        for _, filename in watch(*filenames, stop_event=self._file_watcher_stop):
-            # TODO
-            print("file change", filename, self.scene.path)
-            if filename == self.scene.path:
-                # print(f"'{filename}' changed!")
-                self._file_changed.set()
-
     @property
     def scene(self) -> Scene:
         return self.scenes[self.scene_index]
@@ -213,21 +201,28 @@ class VHShRenderer:
         return self._midi_mapping[cc]
 
     def reload(self):
+        # TODO somehow all of this property magic makes this very complicated.
+        # have distinct reload_method and set_scene
+        print("VHSh.reload")
         self.scene.reload()
 
         self._file_changed.clear()
-        if (clear := self.scene.path != self._scene_path):
-            self._scene_path = self.scene.path
-            try:
-                self.load_scene(self.scene, clear=clear)
-            except ShaderCompileError as e:
-                self._error = e
-                self._print_error(e)
-            else:
-                self._error = None
-                print("\x1b[2;32mOK:"
-                      f" \x1b[2;37m{self._scene_path}"
-                      "\x1b[0;0m")
+        # TODO this needs to work even without file_watcher
+        clear = self.scene.path != self._file_watcher.current
+        if clear:
+            self._file_watcher.current = self.scene.path
+
+        # TODO now this crashes upon receiving file change
+        try:
+            self.load_scene(self.scene, clear=clear)
+        except ShaderCompileError as e:
+            self._error = e
+            self._print_error(e)
+        else:
+            self._error = None
+            print("\x1b[2;32mOK:"
+                    f" \x1b[2;37m{self.scene.path}"
+                    "\x1b[0;0m")
 
     def load_scene(self,
                    scene: Scene,

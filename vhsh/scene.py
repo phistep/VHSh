@@ -213,6 +213,7 @@ class Scene:
         return presets
 
     def reload(self):
+        print("Scene.reloading", self)
         self.source = self._read_file(self.path)
         self._preset_index = 0
         self.presets = self._load_presets(self.source)
