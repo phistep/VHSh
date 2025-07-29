@@ -1,6 +1,8 @@
 import os
 from typing import Protocol, TypeAlias, TypeVar, Union, Generic, Sequence
 from dataclasses import dataclass
+from abc import ABC, abstractmethod
+from threading import Thread, Event
 
 import numpy as np
 
@@ -59,3 +61,25 @@ class App(Protocol):
     def next_scene(self, n=1): ...
     _frame_times: list[float]
     _microphone: object
+
+
+class Controller(ABC, Thread):
+    def __init__(self, *args, **kwargs):
+        if not 'name' in kwargs:
+            kwargs['name'] = self.__class__.__name__
+        super().__init__(*args, **kwargs)
+
+        self._stop_controller = Event()
+
+    @abstractmethod
+    def update_pre(self):
+        """Called in the main loop before graphics rendering."""
+        ...
+
+    @abstractmethod
+    def update_post(self):
+        """Called in the main loop after graphics rendering."""
+        ...
+
+    def stop(self):
+        self._stop_controller.set()

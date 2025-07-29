@@ -41,7 +41,6 @@ class Uniform(UniformLike):
                 self._type = GLSLInt
                 self._glUniform = gl.glUniform1i
                 self.value = 1 if value is None else value
-                self.range = self.range or (0, 10, 1)
             case 'float':
                 self._type = GLSLFloat
                 self._glUniform = gl.glUniform1f
@@ -214,24 +213,14 @@ class Renderer:
         return program  # pyright: ignore [reportReturnType]
 
 
-    @overload
     def update_uniform(self,
                        name: str,
-                       value: GLSLBool,
-                       normalized: Literal[False] = False): ...
-    def update_uniform(self,
-                       name: str,
-                       value: GLSLInt | GLSLFloat,
-                       normalized: bool = False):
+                       value: GLSLBool | GLSLInt | GLSLFloat):
         with self._uniform_lock:
             uniform = self.uniforms[name]
             if not isinstance(value, uniform._type):
                 raise ValueError(f"Argument 'value' needs to be of type"
                                  f" '{uniform._type}' (not '{type(value)}')")
-
-            if uniform.range and normalized:
-                min_, max_ = uniform.range[:2]
-                value = min_ + value * (max_ - min_)
 
             match uniform.type:
                 case 'bool':

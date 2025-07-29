@@ -158,6 +158,10 @@ class Parameter(UniformLike, Generic[UniformT]):
                          widget=widget,
                          midi=midi)
 
+    def set_value_normalized(self, value):
+        min_, max_ = self.range[:2]
+        self.value = min_ + value * (max_ - min_)
+
 
 @dataclass
 class Preset:
@@ -213,7 +217,6 @@ class Scene:
         return presets
 
     def reload(self):
-        print("Scene.reloading", self)
         self.source = self._read_file(self.path)
         self._preset_index = 0
         self.presets = self._load_presets(self.source)

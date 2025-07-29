@@ -264,8 +264,11 @@ currently selected preset.
 - [ ] bug uniform parsing when float `=0.0`
 - [ ] limit resolution and upscale
 - [ ] write state to MIDI controler (uTime, UI toggle etc)
+    - https://www.korg.com/us/support/download/manual/0/159/2710/
+    - also: configure push-button/toggle on-the-fly <toggle>
 - [ ] autosave and restore uniform values
-      `atexit` and `pickle`
+      - `atexit` and `pickle`
+      - app dirs
 - [ ] `#include`s, or at least one stdlib in preamble, or pass libs
 - [ ] vec3 input method:
       - select dim with S/M/R buttons, then use the slider
@@ -349,6 +352,7 @@ currently selected preset.
       - MIDI
       - --kiosk
       - FileWather?
+      - Microphone?
       - Timeline
     - move to app.py
     - final cleanup.

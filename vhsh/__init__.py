@@ -12,12 +12,12 @@ from dataclasses import dataclass
 
 from imgui.integrations.glfw import GlfwRenderer
 
-from .types import UniformValue, UniformLike, UniformT
+from .types import UniformValue, UniformLike, UniformT, Controller
 from .window import Window
 from .scene import ParameterParserError, Scene
 from .renderer import ShaderCompileError, Renderer
 from .gui import GUI
-from .midi import MIDIManager
+from .midi import MIDIController
 from .microphone import Microphone
 from .watch import FileWatcher
 
@@ -132,17 +132,21 @@ class VHShRenderer:
             ),
         )
 
+        self.controllers: list[Controller] = []
+
+        if midi:
+            self.controllers.append(
+                MIDIController(self, system_mapping=midi_mapping))
+
+        for controller in self.controllers:
+            controller.start()
+
         self._file_watcher_stop = Event()
         self._file_watcher = FileWatcher(scenes, self._file_changed)
         self._file_watcher.current = self.scene.path
         if watch:
             self._file_watcher.start()
 
-        self._midi_mapping: dict[int, str] = {}
-        if midi:
-            self._midi_listener = MIDIManager(app=self,
-                                              system_mapping=midi_mapping,)
-            self._midi_listener.start()
 
         num_levels = Microphone.NUM_LEVELS
         if microphone:
@@ -197,9 +201,6 @@ class VHShRenderer:
                             normalized: bool = False):
         self.renderer.update_uniform(name, value, normalized=normalized)
 
-    def get_midi_mapping(self, cc: int) -> str:
-        return self._midi_mapping[cc]
-
     def reload(self):
         # TODO somehow all of this property magic makes this very complicated.
         # have distinct reload_method and set_scene
@@ -228,39 +229,14 @@ class VHShRenderer:
                    scene: Scene,
                    verbose: bool = True,
                    clear: bool = False):
-        self.preset_index = 0
-        # TODO @property?
-        current_preset = self.scene.presets[scene.preset_index]
-
         if verbose:
             print()
             print("scene:", scene.name)
             print("presets:", [p.name for p in self.scene.presets])
-            print("current preset:", current_preset.name)
-
-        # TODO handle updating with current value correctly
-        # for parameter in current_preset.parameters.values():
-        #     if parameter.name in self.uniforms:
-        #         parameter.value = self.uniforms[parameter.name].value
-        #     # <current>
-        #     if (self.preset_index == 0 and uniform.name in self.uniforms):
-        #         uniform.value = self.uniforms[uniform.name].value
-        #     # presets
-        #     if self.preset_index == len(self.presets) - 1:
-        #             uniform.value = self.uniforms[uniform.name].value
-
-        self._midi_mapping = {}
-        if verbose:
+            print("current preset:", self.scene.presets[scene.preset_index].name)
             print("parameters:")
-        for parameter in self.scene.parameters.values():
-            if verbose:
+            for parameter in self.scene.parameters.values():
                 print(" ", parameter)
-
-            if parameter.midi is not None:
-                self._midi_mapping[parameter.midi] = parameter.name
-        if verbose and self._midi_listener:
-            print("midi_mapping:")
-            pprint(self._midi_mapping)
 
         parameters = [*self.system_parameters.values(),
                       *self.scene.parameters.values()]
@@ -301,9 +277,6 @@ class VHShRenderer:
                 raise RuntimeError("glfw imgui renderer not initialized!")
 
             while not self.window.should_close():
-                self.window.update()
-                self.gui.process_inputs()
-
                 # TODO -> renderer.frame_times, .update()? maybe not
                 # TODO fix should use own high precion timer?
                 # TODO correct unit?
@@ -314,14 +287,25 @@ class VHShRenderer:
                     num_frames = 0
                     last_time += 0.1
 
-                if self._file_changed.is_set():
-                    self.reload()
+                self.window.update()
+                self.gui.process_inputs()
 
                 for system_parameter in self.system_parameters.values():
                     system_parameter.update(self)
+
+                for controller in self.controllers:
+                    controller.update_pre()
+
+                # -> FileWatcher -> Controller.update_pre
+                if self._file_changed.is_set():
+                    self.reload()
+
                 self.renderer.update((*self.system_parameters.values(),
                                       *self.scene.parameters.values()))
                 self.renderer.render()
+
+                for controller in self.controllers:
+                    controller.update_post()
 
                 self.gui.update()
                 self.gui.render()
@@ -340,15 +324,15 @@ class VHShRenderer:
             self.gui.shutdown()
         self.window.close()
 
+        for controller in self.controllers:
+            if controller.is_alive():
+                controller.stop()
+                controller.join()
+
         if self._file_watcher is not None:
             if self._file_watcher.is_alive():
                 self._file_watcher_stop.set()
                 self._file_watcher.join()
-
-        if self._midi_listener is not None:
-            if self._midi_listener.is_alive():
-                self._midi_listener.stop()
-                self._midi_listener.join()
 
         if self._microphone is not None:
             if self._microphone.is_alive():
