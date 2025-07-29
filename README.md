@@ -328,23 +328,36 @@ currently selected preset.
     - [-] MIDIManager -> MIDIContoller
     - [x] Renderer -> ShaderRenderer
     - [x] Microphone
-    - [ ] FileWatcher
+    - [x] FileWatcher
     - [~] ~~PresetManager~~ -> move it all to scene, call `shader` in main `scene`
     - [x] Scene, Preset, Parameter
     - [-] State(Protocol), Actions(Protocol)
     - [ ] app.py class VHSh
-    - [ ] Window glwf
+    - [x] Window glwf
   - [ ] docstrings
   - [-] logger: cli args, configure logging, replace print
-  - [ ] worker add SystemParameter metaclass registry hook
+  - [ ] worker (Microphone,...) add SystemParameter metaclass registry hook
   - [ ] threadsafe parameters, locking
   - [ ] update vs setup of uniforms
   - Next Up
     - fix scene.write
+    - clean up/unify VHSh.load_scene, VHSh.reload, Scene.reload, disentanlge
+      FileWatcher
     - then fix and isolate the midi stuff / control system
+      - abstract/Protocol Controller
+      - GUI is a controller + more?
+      - MIDI
+      - --kiosk
+      - FileWather?
+      - Timeline
     - move to app.py
     - final cleanup.
+      - print_error
+      - logging
+    - release main~renate state as 0.1
+    - release feature branches as 0.x
     - merge, backport new features on main and branches
+    - release 1.0
     - ...
     - scene dir support: Collection? Project?
     - end goal: timeline support (playlist)

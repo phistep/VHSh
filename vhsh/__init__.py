@@ -266,7 +266,7 @@ class VHShRenderer:
                       *self.scene.parameters.values()]
         self.renderer.set_shader(scene.source, parameters, clear=clear)
 
-    # error()
+    # error(), custom ShaderCompileError attrs
     def _print_error(self, e: Exception | str):
         try:
             lines = str(e).strip().splitlines()
