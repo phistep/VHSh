@@ -1,30 +1,36 @@
 import logging
-from threading import Thread, Event, Lock
+from threading import Event
 from pathlib import Path
+
+from .types import Controller, App
 
 
 logger = logging.getLogger(__name__)
 
 
-class FileWatcher(Thread):
+class FileWatcher(Controller):
 
-    def __init__(self, filenames: list[Path], file_changed: Event = Event()):
+    def __init__(self, app: App):
         super().__init__()
-        self._file_watcher_stop = Event()
-        self.file_changed = file_changed
-        self.filenames = filenames
-        self.current = Path(filenames[0])
+        self._app = app
+        self.file_changed = Event()
+        self.filenames = [scene.path for scene in app.scenes]
 
     def run(self):
         from watchfiles import watch
 
         logger.info(f"Watching for changes in %s...", self.filenames)
 
-        for changes in watch(*self.filenames, stop_event=self._file_watcher_stop):
+        for changes in watch(*self.filenames, stop_event=self._stop_controller):
             for _, filename in changes:
-                if Path(filename).absolute() == self.current.absolute():
+                logger.debug(filename)
+                if Path(filename).absolute() == self._app.scene.path.absolute():
                     logger.debug("'%s' changed!", filename)
                     self.file_changed.set()
 
-    def stop(self):
-        self._file_watcher_stop.set()
+    def update_pre(self):
+        if self.file_changed.is_set():
+            try:
+                self._app.reload(clear=False)
+            finally:
+                self.file_changed.clear()

@@ -107,4 +107,4 @@ class MIDIController(Controller):
 
     def update_post(self):
         # TODO send MIDI state
-        pass
+        ...

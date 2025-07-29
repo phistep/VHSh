@@ -248,7 +248,7 @@ currently selected preset.
 - [x] re-parse metadata on reload
 - [x] remember window position
 - [x] transparency, floating/allways-on-top
-- [ ] file watcher always reads first file.
+- [x] file watcher always reads first file.
       change to watch all files, ignore if not current scene index
 - [ ] multiple midi devcies
   - [x] open all devices
@@ -304,7 +304,7 @@ currently selected preset.
   - [x] `<log>`
   - [x] `<drag>` drag input, others sliders (for slider flags)
   - [x] ~~~`<hsv` and `<rgb>`~~~
-  - [ ] MIDI vector control with button triplet
+  - [ ] ~~~MIDI vector control with button triplet~~~ multiple ids per parameter
 - [ ] docs, demo scene
 - [ ] uniforms
   - [x] time
@@ -346,18 +346,20 @@ currently selected preset.
     - fix scene.write
     - clean up/unify VHSh.load_scene, VHSh.reload, Scene.reload, disentanlge
       FileWatcher
-    - then fix and isolate the midi stuff / control system
+        - currently uniform updating upon scene change is broken
+    - control system
       - abstract/Protocol Controller
-      - GUI is a controller + more?
-      - MIDI
-      - --kiosk
-      - FileWather?
-      - Microphone?
-      - Timeline
+      - [ ] GUI is a controller + more?
+      - [x] MIDI
+      - [x] FileWather
+      - [ ] Microphone?
+      - ... --kiosk
+      - ... Timeline
     - move to app.py
     - final cleanup.
       - print_error
       - logging
+      - gui get_range
     - release main~renate state as 0.1
     - release feature branches as 0.x
     - merge, backport new features on main and branches

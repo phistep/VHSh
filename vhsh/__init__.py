@@ -137,16 +137,11 @@ class VHShRenderer:
         if midi:
             self.controllers.append(
                 MIDIController(self, system_mapping=midi_mapping))
+        if watch:
+            self.controllers.append(FileWatcher(self))
 
         for controller in self.controllers:
             controller.start()
-
-        self._file_watcher_stop = Event()
-        self._file_watcher = FileWatcher(scenes, self._file_changed)
-        self._file_watcher.current = self.scene.path
-        if watch:
-            self._file_watcher.start()
-
 
         num_levels = Microphone.NUM_LEVELS
         if microphone:
@@ -194,26 +189,12 @@ class VHShRenderer:
     def next_scene(self, n=1):
         self.scene_index = (self.scene_index + n) % len(self.scenes)
 
-    # TODO replace with self.parameters with magic?
-    def set_parameter_value(self,
-                            name: str,
-                            value: UniformValue,
-                            normalized: bool = False):
-        self.renderer.update_uniform(name, value, normalized=normalized)
-
-    def reload(self):
+    def reload(self, clear: bool = True):
         # TODO somehow all of this property magic makes this very complicated.
         # have distinct reload_method and set_scene
         print("VHSh.reload")
         self.scene.reload()
 
-        self._file_changed.clear()
-        # TODO this needs to work even without file_watcher
-        clear = self.scene.path != self._file_watcher.current
-        if clear:
-            self._file_watcher.current = self.scene.path
-
-        # TODO now this crashes upon receiving file change
         try:
             self.load_scene(self.scene, clear=clear)
         except ShaderCompileError as e:
@@ -296,10 +277,6 @@ class VHShRenderer:
                 for controller in self.controllers:
                     controller.update_pre()
 
-                # -> FileWatcher -> Controller.update_pre
-                if self._file_changed.is_set():
-                    self.reload()
-
                 self.renderer.update((*self.system_parameters.values(),
                                       *self.scene.parameters.values()))
                 self.renderer.render()
@@ -328,11 +305,6 @@ class VHShRenderer:
             if controller.is_alive():
                 controller.stop()
                 controller.join()
-
-        if self._file_watcher is not None:
-            if self._file_watcher.is_alive():
-                self._file_watcher_stop.set()
-                self._file_watcher.join()
 
         if self._microphone is not None:
             if self._microphone.is_alive():

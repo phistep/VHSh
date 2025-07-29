@@ -61,6 +61,7 @@ class App(Protocol):
     def next_scene(self, n=1): ...
     _frame_times: list[float]
     _microphone: object
+    def reload(self): ...
 
 
 class Controller(ABC, Thread):
@@ -71,15 +72,13 @@ class Controller(ABC, Thread):
 
         self._stop_controller = Event()
 
-    @abstractmethod
     def update_pre(self):
         """Called in the main loop before graphics rendering."""
-        ...
+        pass
 
-    @abstractmethod
     def update_post(self):
         """Called in the main loop after graphics rendering."""
-        ...
+        pass
 
     def stop(self):
         self._stop_controller.set()
