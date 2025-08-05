@@ -339,7 +339,7 @@ currently selected preset.
     - [x] Window glwf
   - [ ] docstrings
   - [-] logger: cli args, configure logging, replace print
-  - [ ] worker (Microphone,...) add SystemParameter metaclass registry hook
+  - [-] worker (Microphone,...) add SystemParameter metaclass registry hook
   - [ ] threadsafe parameters, locking
   - [ ] update vs setup of uniforms
   - Next Up
@@ -360,13 +360,19 @@ currently selected preset.
       - print_error
       - logging
       - gui get_range
-    - release main~renate state as 0.1
-    - release feature branches as 0.x
-    - merge, backport new features on main and branches
-    - release 1.0
+  - Road Map
+    - 0.1: main~renate state
+    - 0.x: feature branches
+    - 1.0: merge refactor, backport new features on main and branches
+    - 1.1: named mappings
+    - 1.2: sampler2D support: image, video
+    - 1.3: scene dir support: Collection? Project?
+           midi_mapping, scenes
+    - 1.4: built-in midi drivers by name/id
+           program ccs
+           toggle
     - ...
-    - scene dir support: Collection? Project?
-    - end goal: timeline support (playlist)
+    - 2.0: timeline support (playlist)
     ```py
     Window
         __init__

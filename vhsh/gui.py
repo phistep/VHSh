@@ -129,7 +129,7 @@ class GUI:
                 app.scene.next_preset()
             imgui.same_line()
             if imgui.button("Save"):
-                app.scene.write_file(uniforms=False, presets=True)
+                app.scene.write_file()
             imgui.same_line()
             imgui.text("Preset")
 
@@ -138,7 +138,7 @@ class GUI:
                 "##Name", "New Preset Name", self._new_preset_name)
             imgui.same_line()
             if imgui.button("Save##Save New Preset"):
-                self.write_file(uniforms=False, presets=True, new_preset=self._new_preset_name)
+                app.scene.write_file(new_preset=self._new_preset_name)
                 self._new_preset_name = ""
             imgui.same_line()
             imgui.text("New Preset")

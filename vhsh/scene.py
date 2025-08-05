@@ -169,9 +169,16 @@ class Preset:
     index: int
     parameters: dict[str, Parameter]
 
+    def __str__(self) -> str:
+        # to Preset.__str__
+        presets = f"/// // {self.name}\n"
+        presets += '\n'.join(f"/// {parameter}"
+                             for parameter in self.parameters.values())
+        presets += '\n'
+        return presets
+
 
 class Scene:
-
     def __init__(self, path: Path):
         self.path = path
         self.name = self.path.stem.replace('_', ' ').replace('-', ' ').title()
@@ -254,55 +261,25 @@ class Scene:
     def next_preset(self, n: int = 1):
         self.preset_index = (self.preset_index + n) % len(self.presets)
 
+    def write_file(self, new_preset: str | None = None):
+        if new_preset is not None:
+            self.presets.append(Preset(name=new_preset,
+                                       parameters=self.parameters.copy(),
+                                       index=len(self.presets)-1))
 
-    # TODO move to scenes.Scene
-    def write_file(self,
-                   presets: bool = True,
-                   uniforms: bool = False,
-                   new_preset: str | None = None):
-        with open(self._shader_path) as f:
-            shader_src = f.read()
+        presets = '\n'.join(str(preset) for preset in self.presets[1:]) + '\n'
+        lines = [line for line in self.source.splitlines()
+                 if not line.startswith('///')]
+        self.source = presets + '\n'.join(lines) + '\n'
 
-        if presets:
-            with self._uniform_lock:
-                if new_preset is not None:
-                    # TODO proper convertion
-                    parameters = {name: Parameter(**uniform.__dict__)
-                                  for name, uniform in self.uniforms.items()}
-                    self.presets.append(Preset(name=new_preset, parameters=parameters))
-                    self._preset_index = len(self.presets) - 1
-                for uniform in self.uniforms.values():
-                    self.presets[self._preset_index]['uniforms'] = \
-                        self.uniforms.copy()
+        if self._preset_index == 0:
+            for parameter in self.parameters.values():
+                parameter.default = parameter.value
+                print(parameter)
+                self.source = re.sub(f'^uniform \\w+ {parameter.name}.*$',
+                                     str(parameter),
+                                     self.source,
+                                     flags=re.MULTILINE)
 
-            presets_s = ""
-            for preset in self.presets[1:]:
-                presets_s += f"/// // {preset['name']}\n"
-                presets_s += '\n'.join(
-                    f"/// {u}" for u in preset['uniforms'].values()
-                    if u.name not in self.FRAGMENT_SHADER_PREAMBLE
-                ) + '\n'
-
-            lines = [line for line in shader_src.splitlines()
-                        if not line.startswith('///')]
-            shader_src = '\n'.join(lines) + '\n'
-
-            shader_src = presets_s + shader_src
-
-            if self._preset_index == 0:
-                uniforms = True
-
-        if uniforms:
-            with self._uniform_lock:
-                for uniform in self.uniforms.values():
-                    if uniform.name in self.FRAGMENT_SHADER_PREAMBLE:
-                        continue
-                    uniform.default = uniform.value
-                    print(uniform)
-                    shader_src = re.sub(f'^uniform \\w+ {uniform.name}.*$', str(uniform),
-                                        shader_src,
-                                        flags=re.MULTILINE)
-
-        with open(self._shader_path, 'w') as f:
-            f.write(shader_src)
-        print(f"wrote {'uniform values' if uniforms else ''}{'presets' if presets else ''} to '{self._shader_path}'")
+        self.path.write_text(self.source)
+        print(f"wrote presets to '{self.path}'")

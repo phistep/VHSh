@@ -53,11 +53,7 @@ class MIDIController(Controller):
                 self._app.scene.next_preset()
         elif msg.control == self._system_mapping['preset'].get('save'):
             if button_down:
-                self._app.scene.write_file(
-                    uniforms=False,
-                    presets=True,
-                    new_preset=f"MIDI {datetime.now()}"
-                )
+                self._app.scene.write_file(new_preset=f"MIDI {datetime.now()}")
 
         elif (msg.control
                 == self._system_mapping['uniform'] .get('time', {}).get('toggle')):

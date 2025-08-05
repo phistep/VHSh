@@ -5,7 +5,7 @@
 /// uniform vec4 base_color;  // <color> =(0.0,0.8529412746429443,1.0,1.0) [0.0,1.0,0.01]
 /// uniform float intensity;  // =0.1899999976158142 [0.0,1.0,0.01]
 /// uniform bool animate;  // =True
-uniform vec2 origin; // =(0.0,0.0) [-2.0,-2.0]
+uniform vec2 origin; // =(0.0,0.0) [-2.0,2.0]
 uniform float scale; // <log> =1.0 [0.0,1000] #0
 uniform int n_max; // =100 [1,100] #16
 uniform vec4 base_color; // <color> =(1.0,1.0,0.0,1.0) [0.0,1.0,0.01]
