@@ -4,8 +4,6 @@ import sys
 import time
 from typing import Generic, Callable
 from collections import deque
-from threading import Thread, Event
-from pprint import pprint
 from textwrap import dedent
 from pathlib import Path
 from dataclasses import dataclass
@@ -117,7 +115,6 @@ class VHShRenderer:
         self.gui = GUI(app=self, renderer=GlfwRenderer, window=self.window.handler)
         self._show_gui = True
 
-        self._file_changed = Event()
         # TODO handle Scenes not shader_paths
         self.scenes = [Scene(path) for path in scenes]
         self._scene_index = 0  # initializes @property .scene
@@ -181,7 +178,7 @@ class VHShRenderer:
     def scene_index(self, value: int):
         self._scene_index = value
         self.scene.preset_index = 0
-        self._file_changed.set()
+        self.reload(clear=True)
 
     def prev_scene(self, n=1):
         self.scene_index = (self.scene_index - n) % len(self.scenes)
