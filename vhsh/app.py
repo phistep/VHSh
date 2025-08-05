@@ -1,14 +1,11 @@
 import sys
 import time
-from typing import Generic, Callable
 from collections import deque
-from textwrap import dedent
 from pathlib import Path
-from dataclasses import dataclass
 
 from imgui.integrations.glfw import GlfwRenderer
 
-from .types import UniformLike, UniformT, Controller, App
+from .types import Controller, SystemParameter
 from .window import Window
 from .scene import ParameterParserError, Scene
 from .renderer import ShaderCompileError, Renderer
@@ -47,33 +44,6 @@ class Time:
     def __call__(self) -> float:
         current_time = self.now() if self.running else self._last_time
         return current_time - self._start - self._offset
-
-
-@dataclass
-class SystemParameter(UniformLike, Generic[UniformT]):
-    """Pass a function that returns a value to update the Parameter with.
-
-    Pass None if value should be kept constant.
-    """
-    name: str
-    type: str
-    value: UniformT
-    # TODO why are recursive types not working?
-    update: Callable[[App], UniformT | None]
-
-    def __post_init__(self):
-        # wrap `.update()` so that it sets .value,
-        # but can be passed as `update=`
-
-        self._update = self.update
-
-        def update(renderer: App):
-            value = self._update(renderer)
-            if value is not None:
-                self.value = value
-            return value
-
-        self.update = update
 
 
 class VHSh:
@@ -115,30 +85,19 @@ class VHSh:
             ),
         )
 
-        self.controllers: list[Controller] = []
+        self.controllers: dict[str, Controller] = {}
 
+        # TODO import all automatically, fail with warning on import error
         if midi:
-            self.controllers.append(
-                MIDIController(self, system_mapping=midi_mapping))
+            self.controllers["MIDIController"] = \
+                MIDIController(self, system_mapping=midi_mapping)
         if watch:
-            self.controllers.append(FileWatcher(self))
-
-        for controller in self.controllers:
-            controller.start()
-
-        num_levels = Microphone.NUM_LEVELS
+            self.controllers["FileWatcher"] = FileWatcher(self)
         if microphone:
-            self._microphone = Microphone()
-            self._microphone.start()
+            self.controllers["Microphone"] = Microphone(self)
 
-            num_levels = len(self._microphone.levels)
-        self.system_parameters["u_Microphone"] = SystemParameter(
-            "u_Microphone",
-            type=f"float[{num_levels}]",
-            value=(0.) * num_levels,
-            update=lambda app=self: (app._microphone.levels
-                                     if app._microphone else None)
-        )
+        for controller in self.controllers.values():
+            controller.start()
 
         self.renderer = Renderer(list(self.system_parameters.values()))
 
@@ -253,14 +212,14 @@ class VHSh:
                 for system_parameter in self.system_parameters.values():
                     system_parameter.update(self)
 
-                for controller in self.controllers:
+                for controller in self.controllers.values():
                     controller.update_pre()
 
                 self.renderer.update((*self.system_parameters.values(),
                                       *self.scene.parameters.values()))
                 self.renderer.render()
 
-                for controller in self.controllers:
+                for controller in self.controllers.values():
                     controller.update_post()
 
                 self.gui.update()
@@ -280,7 +239,7 @@ class VHSh:
             self.gui.shutdown()
         self.window.close()
 
-        for controller in self.controllers:
+        for controller in self.controllers.values():
             if controller.is_alive():
                 controller.stop()
                 controller.join()

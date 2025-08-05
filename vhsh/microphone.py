@@ -1,15 +1,18 @@
-from threading import Thread, Event, Lock
+from threading import Event, Lock
 from collections import deque
 from time import sleep
 
 import numpy as np
 
+from .types import App, Controller, SystemParameter
 
-class Microphone(Thread):
 
-    NUM_LEVELS = 7
+class Microphone(Controller):
+
+    UNIFORM_NAME = 'u_Microphone'
 
     def __init__(self,
+                 app: App,
                  rate: int = 44100,
                  chunk: int = 1024,
                  buffer_size_s: float = 5.0,
@@ -33,6 +36,17 @@ class Microphone(Thread):
         self._frame_buffer = deque(maxlen=int(rate / chunk * buffer_size_s))
         self._stop_stream = Event()
         self._output_lock = Lock()
+
+        if self.UNIFORM_NAME in app.system_parameters:
+            raise RuntimeError(
+                f"Microphone uniform '{self.UNIFORM_NAME}' already exists")
+        num_levels = len(self._levels)
+        app.system_parameters[self.UNIFORM_NAME] = SystemParameter(
+            self.UNIFORM_NAME,
+            type=f"float[{num_levels}]",
+            value=(0.) * num_levels,
+            update=lambda app: app.controllers[self.__class__.__name__].levels  # type: ignore
+        )
 
     @property
     def levels(self) -> list[float]:

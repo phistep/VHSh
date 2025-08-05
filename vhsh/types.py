@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from typing import Protocol, TypeAlias, TypeVar, Union, Generic, Sequence, TYPE_CHECKING
+from typing import (Protocol, TypeAlias, TypeVar, Union, Generic, Sequence,
+                    TYPE_CHECKING, Callable)
 from abc import ABC
 from threading import Thread, Event
 from collections import deque
+from dataclasses import dataclass
 
 import numpy as np
 
 if TYPE_CHECKING:
     from .window import Window
     from .scene import Scene
-    from .app import Time, SystemParameter
+    from .app import Time
 
 ### Exceptions
 
@@ -54,6 +56,7 @@ class App(Protocol):
     error: ShaderCompileError | ParameterParserError | None
     frame_times: deque[float]
     system_parameters: dict[str, SystemParameter]
+    controllers: dict[str, Controller]
     time: Time
     @property
     def scene_index(self) -> int: ...
@@ -85,3 +88,30 @@ class Controller(ABC, Thread):
 
     def stop(self):
         self._stop_controller.set()
+
+
+@dataclass
+class SystemParameter(UniformLike, Generic[UniformT]):
+    """Pass a function that returns a value to update the Parameter with.
+
+    Pass None if value should be kept constant.
+    """
+    name: str
+    type: str
+    value: UniformT
+    # TODO why are recursive types not working?
+    update: Callable[[App], UniformT | None]
+
+    def __post_init__(self):
+        # wrap `.update()` so that it sets .value,
+        # but can be passed as `update=`
+
+        self._update = self.update
+
+        def update(renderer: App):
+            value = self._update(renderer)
+            if value is not None:
+                self.value = value
+            return value
+
+        self.update = update

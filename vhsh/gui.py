@@ -1,9 +1,11 @@
+from re import U
 from typing import Iterable, TypeVar, Type, Protocol
 from array import array
 
 import imgui
 
 from .types import App
+from .microphone import Microphone
 
 
 T = TypeVar('T')
@@ -169,10 +171,10 @@ class GUI:
                            *app.system_parameters['u_Resolution'].value,
                            format="%.0f")
 
-        if app._microphone:
+        if "Microphone" in app.controllers:
             imgui.plot_histogram(
-                "u_Microphone",
-                array('f', app.system_parameters['u_Microphone'].value)
+                Microphone.UNIFORM_NAME,
+                array('f', app.system_parameters[Microphone.UNIFORM_NAME].value)
             )
 
         imgui.spacing()

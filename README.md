@@ -343,18 +343,8 @@ currently selected preset.
   - [ ] threadsafe parameters, locking
   - [ ] update vs setup of uniforms
   - Next Up
-    - fix scene.write
     - clean up/unify VHSh.load_scene, VHSh.reload, Scene.reload, disentanlge
       FileWatcher
-        - currently uniform updating upon scene change is broken
-    - control system
-      - abstract/Protocol Controller
-      - [ ] GUI is a controller + more?
-      - [x] MIDI
-      - [x] FileWather
-      - [ ] Microphone?
-      - ... --kiosk
-      - ... Timeline
     - move to app.py
     - final cleanup.
       - print_error
@@ -371,6 +361,7 @@ currently selected preset.
     - 1.4: built-in midi drivers by name/id
            program ccs
            toggle
+    - 1.5: kiosk
     - ...
     - 2.0: timeline support (playlist)
     ```py
