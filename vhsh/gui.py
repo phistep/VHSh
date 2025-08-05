@@ -60,17 +60,17 @@ class GUI:
         imgui.new_frame()
         imgui.begin("Parameters", closable=False)
 
-        if app._error is not None:
+        if app.error is not None:
             imgui.open_popup("Error")
         with imgui.begin_popup_modal("Error",
             flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
         ) as error_popup:
             if error_popup.opened:
-                if app._error is None:
+                if app.error is None:
                     imgui.close_current_popup()
                 else:
                     # TODO colored
-                    imgui.text_wrapped(str(app._error))
+                    imgui.text_wrapped(str(app.error))
 
         with imgui.begin_group():
             _, app.window.opacity = \
@@ -146,7 +146,7 @@ class GUI:
         imgui.spacing()
 
         with imgui.begin_group():
-            frame_times = array('f', app._frame_times)
+            frame_times = array('f', app.frame_times)
             imgui.plot_lines("Frame Time##Plot", frame_times,
                 overlay_text=f"{frame_times[-1]:5.2f} ms"
                              f"  ({1000/frame_times[-1]:3.0f} fps)")

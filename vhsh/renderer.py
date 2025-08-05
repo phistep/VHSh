@@ -87,15 +87,7 @@ class Uniform(UniformLike):
         #         f" has type '{value_type}': {self.value!r}")
 
     def __str__(self):
-        s = f"uniform {self.type} {self.name};  //"
-        if self.widget is not None:
-            s += f' <{self.widget}>'
-        s += f" ={str(self.value).replace(' ', '')}"
-        if self.range is not None:
-            s += f" {str(list(self.range)).replace(' ', '')}"
-        if self.midi is not None:
-            s += f' #{self.midi}'
-        return s
+        return f"uniform {self.type} {self.name};"
 
     def __repr__(self):
         return (f'<Uniform'

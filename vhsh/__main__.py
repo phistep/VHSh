@@ -4,7 +4,7 @@ import tomllib
 from pathlib import Path
 from typing import Optional
 
-from . import VHShRenderer
+from .app import VHSh
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +25,18 @@ def main(argv: Optional[list[str]] = None):
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.DEBUG)  # TODO
+    logging.getLogger('watchfiles.main').setLevel(logging.INFO)
 
     midi_mapping = {}
     if args.midi_mapping:
         with open(args.midi_mapping, 'rb') as f:
             midi_mapping = tomllib.load(f)
 
-    vhsh_renderer = VHShRenderer(scenes=args.shader,
-                                 watch=args.watch,
-                                 midi=args.midi,
-                                 midi_mapping=midi_mapping,
-                                 microphone=args.mic)
+    vhsh_renderer = VHSh(scenes=args.shader,
+                         watch=args.watch,
+                         midi=args.midi,
+                         midi_mapping=midi_mapping,
+                         microphone=args.mic)
     vhsh_renderer.run()
 
 

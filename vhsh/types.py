@@ -1,10 +1,16 @@
-import os
-from typing import Protocol, TypeAlias, TypeVar, Union, Generic, Sequence
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
+from __future__ import annotations
+
+from typing import Protocol, TypeAlias, TypeVar, Union, Generic, Sequence, TYPE_CHECKING
+from abc import ABC
 from threading import Thread, Event
+from collections import deque
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from .window import Window
+    from .scene import Scene
+    from .app import Time, SystemParameter
 
 ### Exceptions
 
@@ -42,26 +48,23 @@ class UniformLike(Protocol, Generic[UniformT]):
         return f"uniform {self.type} {self.name};"
 
 
-# TODO Split into Actions and State
-# factor out ShaderRenderer first, then decide on the interface =
-# (separate Action classes for each interface?)
+# TODO protocols for all circular imports
 class App(Protocol):
-    window: "Window"
-    _error: ShaderCompileError | ParameterParserError | None
+    window: Window
+    error: ShaderCompileError | ParameterParserError | None
+    frame_times: deque[float]
+    system_parameters: dict[str, SystemParameter]
+    time: Time
     @property
     def scene_index(self) -> int: ...
     @scene_index.setter
     def scene_index(self, value: int): ...
-    scenes: list["Scene"]
-    scene: "Scene"
-    parameters: dict[str, "Parameter"]
-    system_parameters: dict[str, "SystemParameter"]
-    time: "Time"
-    def prev_scene(self, n=1): ...
-    def next_scene(self, n=1): ...
-    _frame_times: list[float]
-    _microphone: object
-    def reload(self): ...
+    scenes: list[Scene]
+    @property
+    def scene(self) -> Scene: ...
+    def prev_scene(self, n: int = 1): ...
+    def next_scene(self, n: int = 1): ...
+    def reload(self, clear: bool = True): ...
 
 
 class Controller(ABC, Thread):
