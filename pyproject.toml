@@ -1,7 +1,7 @@
 [project]
 name = "vhsh"
-version = "0.1.0"
-requires-python = ">= 3.12"
+version = "0.1.1"
+requires-python = "== 3.12.*"  # pyimgui build failure for 3.13
 dependencies = ["PyOpenGL", "glfw", "imgui[glfw]", "numpy", "watchfiles"]
 authors = [{ name = "Philipp Stephan", email = "mail@philippstephan.de" }]
 description = "Video Home Shader: A demo tool for digitally assisted analog vjaying"
