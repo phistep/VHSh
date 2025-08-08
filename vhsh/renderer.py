@@ -137,6 +137,13 @@ class Renderer:
         """
     )
 
+    DEFAULT_FRAGMENT_SHADER = dedent("""\
+        void main() {
+            vec2 pos = gl_FragCoord.xy / u_Resolution;
+            FragColor = vec4(pos.x, pos.y, 1.0 - (pos.x + pos.y) / 2.0, 1.0);
+        }
+    """)
+
     def __init__(self, system_uniforms: list[UniformLike]):
         self.preamble = self.FRAGMENT_SHADER_PREAMBLE.format(
             system_uniforms="\n".join(str(u) for u in system_uniforms)
@@ -151,6 +158,8 @@ class Renderer:
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
         self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
                                                  self.VERTEX_SHADER)
+
+        self.set_shader(self.DEFAULT_FRAGMENT_SHADER, uniforms=system_uniforms, clear=True)
 
     @staticmethod
     def _create_vertices(vertices: np.ndarray) -> tuple[VertexArrayObject,
@@ -260,7 +269,7 @@ class Renderer:
                 with self._uniform_lock:
                     self.uniforms[uniform.name].value = uniform.value
             except KeyError as e:
-                logger.warning(f"'{e}' not in uniforms={self.uniforms}")
+                logger.warning(f"{e} not in uniforms={self.uniforms}")
 
     def render(self):
         gl.glUseProgram(self.shader_program)

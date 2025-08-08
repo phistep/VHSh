@@ -31,6 +31,6 @@ class FileWatcher(Controller):
     def update_pre(self):
         if self.file_changed.is_set():
             try:
-                self._app.reload(clear=False)
+                self._app.load(clear=False)
             finally:
                 self.file_changed.clear()

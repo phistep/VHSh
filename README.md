@@ -280,8 +280,6 @@ currently selected preset.
 - [ ] use logger
 - [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
-- [ ] TODO.md
-- [ ] pypi
 - [ ] pass scene dir with scenes, midi mapping and other assets
 - [ ] shadertoy import
 - [ ] rename uniforms to just capitalized: `Time`, etc.
@@ -305,6 +303,7 @@ currently selected preset.
   - [x] `<drag>` drag input, others sliders (for slider flags)
   - [x] ~~~`<hsv` and `<rgb>`~~~
   - [ ] ~~~MIDI vector control with button triplet~~~ multiple ids per parameter
+  - [ ] `<toggle>` / `<push>` -> need write to midi
 - [ ] docs, demo scene
 - [ ] uniforms
   - [x] time
@@ -327,29 +326,20 @@ currently selected preset.
     - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)
     - [`GLFWgammarramp`](https://www.glfw.org/docs/latest/group__monitor.html#ga939cf093cb0af0498b7b54dc2e181404)
 - [ ] big refactoring
-  - [-] modules
-    - [-] MIDIManager -> MIDIContoller
-    - [x] Renderer -> ShaderRenderer
-    - [x] Microphone
-    - [x] FileWatcher
-    - [~] ~~PresetManager~~ -> move it all to scene, call `shader` in main `scene`
-    - [x] Scene, Preset, Parameter
-    - [-] State(Protocol), Actions(Protocol)
-    - [ ] app.py class VHSh
-    - [x] Window glwf
   - [ ] docstrings
+  - [ ] dev docs: Secenes, Parameters, Controllers, scene_index
+  - [ ] TODO.md
+  - [ ] pypi
   - [-] logger: cli args, configure logging, replace print
-  - [-] worker (Microphone,...) add SystemParameter metaclass registry hook
+      - print_error
   - [ ] threadsafe parameters, locking
-  - [ ] update vs setup of uniforms
   - Next Up
-    - clean up/unify VHSh.load_scene, VHSh.reload, Scene.reload, disentanlge
-      FileWatcher
-    - move to app.py
-    - final cleanup.
+    - final cleanup
       - print_error
       - logging
       - gui get_range
+    - subcommand `run`
+    - -V, --version
   - Road Map
     - 0.1: main~renate state
     - 0.x: feature branches
@@ -364,52 +354,6 @@ currently selected preset.
     - 1.5: kiosk
     - ...
     - 2.0: timeline support (playlist)
-    ```py
-    Window
-        __init__
-        @property opacity
-        @property floating
-        ...
-
-    FileWatcher(Thread)
-        _watch_file
-
-    Scene
-        set_parameter_value
-        preset_index
-        preset_index
-        prev_preset
-        next_preset
-        write
-
-    Time
-        start
-        stop
-        running
-        now
-
-    MIDIController
-        get_midi_mapping how
-
-    VHSh
-        __init__
-
-        set_show_gui
-
-        scene_index
-        set_scene(update_parameters: bool)  # get rid of reload
-        scene
-        prev_scene
-        next_scene
-        # eventually -> Timeline
-
-        error return self.renderer.error
-
-        run
-
-        shutdown
-        __del__
-    ```
 
 - [ ] subcommands
     - run

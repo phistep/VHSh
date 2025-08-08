@@ -1,5 +1,6 @@
 import sys
 import time
+import logging
 from collections import deque
 from pathlib import Path
 
@@ -13,6 +14,9 @@ from .gui import GUI
 from .midi import MIDIController
 from .microphone import Microphone
 from .watch import FileWatcher
+
+
+logger = logging.getLogger(__name__)
 
 
 class Time:
@@ -59,9 +63,6 @@ class VHSh:
         # need to be defined upfront for __del__() before glfw/imgui init can fail
         self.renderer: Renderer = None  # type: ignore
         self.gui: GUI = None  # type: ignore
-        self._file_watcher: FileWatcher = None  # type: ignore
-        self._midi_listener: MIDIManager = None  # type: ignore
-        self._microphone: Microphone = None  # type: ignore
         self.error: ShaderCompileError | ParameterParserError | None = None
 
         self.time = Time()
@@ -103,13 +104,7 @@ class VHSh:
 
         print("scenes:", [f"{scene.name} [{scene.path}]"
                           for scene in self.scenes])
-
-        # TODO move set_scene() into reload(), fall back to test image shader here
-        try:
-            self.load_scene(self.scene, verbose=False)
-        except (ParameterParserError, ShaderCompileError) as e:
-            self._print_error(e)
-            sys.exit(1)
+        self.load()
 
     @property
     def scene(self) -> Scene:
@@ -121,10 +116,12 @@ class VHSh:
 
     @scene_index.setter
     def scene_index(self, value: int):
+        logger.debug("VHSh.scene_index.setter: %i", value)
+
         self._scene_index = value
         self.scene.preset_index = 0
         # TODO maybe make reload explicit? with `changed` return from imgui
-        self.reload(clear=True)
+        self.load(clear=True)
 
     def prev_scene(self, n=1):
         self.scene_index = (self.scene_index - n) % len(self.scenes)
@@ -132,34 +129,22 @@ class VHSh:
     def next_scene(self, n=1):
         self.scene_index = (self.scene_index + n) % len(self.scenes)
 
-    def reload(self, clear: bool = True):
-        self.scene.reload()
+    def load(self, clear: bool = True):
+        logger.info("scene: %s", self.scene.name)
+        logger.info("presets: %s", [p.name for p in self.scene.presets])
+        logger.info("parameters: %s", self.scene.presets[self.scene.preset_index])
 
+        self.scene.reload()
+        parameters = [*self.system_parameters.values(),
+                      *self.scene.parameters.values()]
         try:
-            self.load_scene(self.scene, clear=clear)
+            self.renderer.set_shader(self.scene.source, parameters, clear=clear)
         except ShaderCompileError as e:
             self.error = e
             self._print_error(e)
         else:
             self.error = None
             print(f"\x1b[2;32mOK: \x1b[2;37m{self.scene.path}\x1b[0;0m")
-
-    def load_scene(self,
-                   scene: Scene,
-                   verbose: bool = True,
-                   clear: bool = False):
-        if verbose:
-            print()
-            print("scene:", scene.name)
-            print("presets:", [p.name for p in self.scene.presets])
-            print("current preset:", self.scene.presets[scene.preset_index].name)
-            print("parameters:")
-            for parameter in self.scene.parameters.values():
-                print(" ", parameter)
-
-        parameters = [*self.system_parameters.values(),
-                      *self.scene.parameters.values()]
-        self.renderer.set_shader(scene.source, parameters, clear=clear)
 
     # error(), custom ShaderCompileError attrs
     def _print_error(self, e: Exception | str):
@@ -215,9 +200,10 @@ class VHSh:
                 for controller in self.controllers.values():
                     controller.update_pre()
 
-                self.renderer.update((*self.system_parameters.values(),
-                                      *self.scene.parameters.values()))
-                self.renderer.render()
+                if not self.error:
+                    self.renderer.update((*self.system_parameters.values(),
+                                        *self.scene.parameters.values()))
+                    self.renderer.render()
 
                 for controller in self.controllers.values():
                     controller.update_post()
@@ -243,11 +229,6 @@ class VHSh:
             if controller.is_alive():
                 controller.stop()
                 controller.join()
-
-        if self._microphone is not None:
-            if self._microphone.is_alive():
-                self._microphone.stop()
-                self._microphone.join()
 
     def __del__(self):
         self.shutdown()
