@@ -1,8 +1,26 @@
 [project]
 name = "vhsh"
-dynamic = ["version"]
+version = "0.1.0"
 requires-python = ">= 3.12"
 dependencies = ["PyOpenGL", "glfw", "imgui[glfw]", "numpy", "watchfiles"]
+authors = [{ name = "Philipp Stephan", email = "mail@philippstephan.de" }]
+description = "Video Home Shader: A demo tool for digitally assisted analog vjaying"
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Environment :: GPU",
+    "Topic :: Artistic Software",
+    "Topic :: Multimedia :: Graphics :: 3D Rendering",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://github.com/phistep/vhsh"
+Issues = "https://github.com/phistep/vhsh/issues"
+
 
 [project.optional-dependencies]
 all = ["vhsh[midi,audio]"]
@@ -13,9 +31,9 @@ audio = ["PyAudio"]
 [project.scripts]
 vhsh = "vhsh.__main__:main"
 
-[tool.setuptools]
-packages = ["vhsh", "midi_mappings"]
-dynamic = { "version" = { attr = "vhsh.__version__" } }
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
 
 [tool.pyright]
 venvPath = "."
