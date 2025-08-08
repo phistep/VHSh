@@ -229,166 +229,22 @@ To update an existing preset, select it, adjust the parameter values and click
 currently selected preset.
 
 
-## TODO
-
-- [x] render fragment shader over the whole screen
-- [x] load shader from file
-- [x] auto-generate tuning ui for uniforms
-- [x] auto-define builtin uniforms / math library / preamble
-- [x] hot reload https://watchfiles.helpmanual.io/api/watch/
-- [x] define defaults and ranges in uniform definition as comment
-- [x] MIDI controller support
-- [x] select different shaders
-- [x] save and load different presets
-- [x] write current values to file
-- [x] 60fps cap / fps counter
-- [x] show or hide the controls
-- [x] imgui display shader compile errors
-- [x] widget size and close button
-- [x] re-parse metadata on reload
-- [x] remember window position
-- [x] transparency, floating/allways-on-top
-- [x] file watcher always reads first file.
-      change to watch all files, ignore if not current scene index
-- [ ] multiple midi devcies
-  - [x] open all devices
-  - [ ] one mapping per devcie
-  - [ ] default mappings by device name
-- [ ] fix dropdown crashes when no presets available
-      ```
-      File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
-      for idx, item in  [(p['index'], p['name'])
-                        ~^^^^^^^^^
-      ```
-- [ ] fix `t` as uniform name doesn't generate ui
-- [ ] bug uniform parsing when float `=0.0`
-- [ ] limit resolution and upscale
-- [ ] write state to MIDI controler (uTime, UI toggle etc)
-    - https://www.korg.com/us/support/download/manual/0/159/2710/
-    - also: configure push-button/toggle on-the-fly <toggle>
-- [ ] autosave and restore uniform values
-      - `atexit` and `pickle`
-      - app dirs
-- [ ] `#include`s, or at least one stdlib in preamble, or pass libs
-- [ ] vec3 input method:
-      - select dim with S/M/R buttons, then use the slider
-      - auto assign n sucessor ids as well
-      - have the user assign multiple `#1,#2,#3`
-- [ ] "touchpad" widget for `vec2`
-- [ ] test image when started without any shader files
-- [ ] record mp4
-- [ ] use logger
-- [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
-      maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
-- [ ] pass scene dir with scenes, midi mapping and other assets
-- [ ] shadertoy import
-- [ ] rename uniforms to just capitalized: `Time`, etc.
-- [ ] simplify parser: split on `" "`, then `match` on first char
-- [ ] make named midi ccs in toml via #defines
-     ```toml
-     [uniform.inputs]
-     slider = [1, 2, 3, 4]
-     knob = [10, 11, 12, 13]
-     button = [20, 21, 22, 23]
-     master_button = 42
-     ```
-     ```glsl
-     uniform float zoom; // #slider1
-     uniform bool debug; // <toggle> #button1
-     uniform bool flash; // #master_button
-     ```
-- [ ] view midi mappings in imgui
-- [ ] widgets
-  - [x] `<log>`
-  - [x] `<drag>` drag input, others sliders (for slider flags)
-  - [x] ~~~`<hsv` and `<rgb>`~~~
-  - [ ] ~~~MIDI vector control with button triplet~~~ multiple ids per parameter
-  - [ ] `<toggle>` / `<push>` -> need write to midi
-- [ ] docs, demo scene
-- [ ] uniforms
-  - [x] time
-  - [ ] mouse
-  - [ ] prev frame
-  - [-] audio fft
-    - [x] listen
-    - [x] fft
-    - [x] array uniforms
-    - [ ] normalization
-    - [x] gui bar plot
-    - [ ] selecting microphone
-    - [ ] use sampler2d like shadertoy?
-    - [ ] dome's advice
-  - [ ] video in
-  - [ ] image/video file in with `uniform sampler2D foo; // @assets/foo.mp4`
-  - [ ] arbitrary data as buffer object
-- [ ] Gamma Correction
-    - [_Monitor Guide: Gamma ramp_](https://www.glfw.org/docs/latest/monitor_guide.html)
-    - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)
-    - [`GLFWgammarramp`](https://www.glfw.org/docs/latest/group__monitor.html#ga939cf093cb0af0498b7b54dc2e181404)
-- [ ] big refactoring
-  - [ ] docstrings
-  - [ ] dev docs: Secenes, Parameters, Controllers, scene_index
-  - [ ] TODO.md
-  - [ ] pypi
-  - [-] logger: cli args, configure logging, replace print
-      - print_error
-  - [ ] threadsafe parameters, locking
-  - Next Up
-    - final cleanup
-      - print_error
-      - logging
-      - gui get_range
-    - subcommand `run`
-    - -V, --version
-  - Road Map
-    - 0.x: feature branches
-    - 1.0: merge refactor, backport new features on main and branches
-    - 1.1: named mappings
-    - 1.2: sampler2D support: image, video
-    - 1.3: scene dir support: Collection? Project?
-           midi_mapping, scenes
-    - 1.4: built-in midi drivers by name/id
-           program ccs
-           toggle
-    - 1.5: kiosk
-    - ...
-    - 2.0: timeline support (playlist)
-
-- [ ] subcommands
-    - run
-      - `--kiosk`: no gui, credits, auto cycle scenes after inactivity, morph presets
-    - init
-    - import (or run url directly?)
-- [ ] scene dir format
-  - [ ] support reading from zip: `myscene.vhsh`
-  - ```
-    vhsh init NAME            run with `vhsh run NAME`, can also be run from zip
-    --project
-    -> NAME/
-    -> NAME.glsl
-    --raymarching             basic raymarching renderl loop
-    -> raymarching.glsl
-    --midi-controller=NAME    mapping and config file for controller NAME, if known else template
-    -> midi.toml
-    -> vhsh.nktrl2_data
-    --lib LIB                 explicit hard copy of the stdlib
-    -> iq.glsl                can be included via #include <iq>
-    ```
-
-- switch to SDL?
-  - native macos fullscreen
-  - mic input https://www.lazyfoo.net/tutorials/SDL/34_audio_recording/index.php
-
 ## Resources
 
-- https://pyopengl.sourceforge.net/documentation/manual-3.0/
-- https://regex101.com
-- https://github.com/pyimgui/pyimgui/blob/master/doc/examples/testwindow.py
-- https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
+### Shader Development
+
 - https://iquilezles.org/articles/
 - https://docs.gl/sl4/
 - https://www.youtube.com/watch?v=f4s1h2YETNY
 - http://dev.thi.ng/gradients/
+
+
+### VHSh Development
+
+- https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
+- https://pyopengl.sourceforge.net/documentation/manual-3.0/
+- https://regex101.com
+- https://github.com/pyimgui/pyimgui/blob/master/doc/examples/testwindow.py
 - https://mido.readthedocs.io/en/stable/intro.html
 
 
