@@ -341,7 +341,6 @@ currently selected preset.
     - subcommand `run`
     - -V, --version
   - Road Map
-    - 0.1: main~renate state
     - 0.x: feature branches
     - 1.0: merge refactor, backport new features on main and branches
     - 1.1: named mappings
