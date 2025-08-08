@@ -2,7 +2,7 @@
 
 _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
-![Screenshot of VHSh in action](https://raw.githubusercontent.com/phistep/vhsh/0.1.1/screenshot.png)
+![Screenshot of VHSh in action](https://raw.githubusercontent.com/phistep/VHSh/refs/tags/0.1.1/screenshot.png)
 
 ## Setup
 
@@ -40,7 +40,13 @@ uv install -e '.[all,dev]'
 
 Building and publishing a package
 
+- Update `scr/vhsh/__init__.py:__version__` manually
+- Update the ref in the screenshot URL of the README
+
 ```sh
+uv version --bump patch
+git tag x.y.z
+
 uv build
 
 source .env  # export UV_PUBLISH_TOKEN=
