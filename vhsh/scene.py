@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import get_args, Generic, Callable, Iterable
+from typing import get_args, Generic, Iterable
 from pathlib import Path
 from enum import StrEnum
 from dataclasses import dataclass
@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from .types import (
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
     UniformT, UniformLike,
-    App, ParameterParserError,
+    ParameterParserError,
 )
 
 
@@ -42,34 +42,49 @@ class Parameter(UniformLike, Generic[UniformT]):
             case 'int':
                 _type = GLSLInt
                 self.default = self.default or 1
-                self.range = self.range or (0, 10, 1)
+                if self.range is None:
+                    self.range = (0, 100, 1)
+                elif len(self.range) == 2:
+                    self.range = (*self.range, 1)
             case 'float':
                 _type = GLSLFloat
                 self.default = self.default or 1.0
-                self.range = self.range or (0.0, 1.0, 0.01)
+                if self.range is None:
+                    self.range = (0.0, 1.0, 0.01)
+                elif len(self.range) == 2:
+                    self.range = (*self.range, 0.01)
             case str() as t if t.startswith('float['):
                 try:
                     m = re.match(r'float\[(\d+)\]', self.type)
-                    len = int(m.group(1))  # pyright: ignore[reportOptionalMemberAccess]
+                    length = int(m.group(1))  # pyright: ignore[reportOptionalMemberAccess]
                 except (AttributeError, ValueError) as e:
                     raise ParameterParserError(
                         f"Unable to parse float array type '{self.type}': {e}"
                     ) from e
-                _type = (float,) * len
-                self.default = self.default or (0.0,) * len  # type: ignore
+                _type = (float,) * length
+                self.default = self.default or (0.0,) * length  # type: ignore
                 self.range = None
             case 'vec2':
                 _type = GLSLVec2
                 self.default = self.default or (1.,)*2  # type: ignore
-                self.range = self.range or (0.0, 1.0, 0.01)
+                if self.range is None:
+                    self.range = (0.0, 1.0, 0.01)
+                elif len(self.range) == 2:
+                    self.range = (*self.range, 0.01)
             case 'vec3':
                 _type = GLSLVec3
                 self.default = self.default or (1.,)*3  # type: ignore
-                self.range = self.range or (0.0, 1.0, 0.01)
+                if self.range is None:
+                    self.range = (0.0, 1.0, 0.01)
+                elif len(self.range) == 2:
+                    self.range = (*self.range, 0.01)
             case 'vec4':
                 _type = GLSLVec4
                 self.default = self.default or (1.,)*4  # type: ignore
-                self.range = self.range or (0.0, 1.0, 0.01)
+                if self.range is None:
+                    self.range = (0.0, 1.0, 0.01)
+                elif len(self.range) == 2:
+                    self.range = (*self.range, 0.01)
             case _:
                 raise NotImplementedError(
                     f"Uniform type '{self.type}' not implemented:"
@@ -165,6 +180,8 @@ class Parameter(UniformLike, Generic[UniformT]):
     def set_value_normalized(self, value):
         min_, max_ = self.range[:2]
         self.value = min_ + value * (max_ - min_)
+
+
 
 
 @dataclass

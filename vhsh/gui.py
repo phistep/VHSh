@@ -17,18 +17,7 @@ class ImguiRenderer(Protocol):
     def shutdown(self) -> None: ...
 
 
-# TODO move to Uniform @property range
-def _get_range(value: Iterable[T],
-                min_default: T,
-                max_default: T,
-                step_default: T = None):
-    match value:
-        case (min_, max_):
-            return min_, max_, step_default
-        case (min_, max_, step):
-            return min_, max_, step
-        case _:
-            return min_default, max_default, step_default
+
 
 class GUI:
     def __init__(self,
@@ -195,7 +184,7 @@ class GUI:
                     _, parameter.value = imgui.checkbox(name, parameter.value)
 
                 case int(x), 'drag':
-                    min_, max_, step = _get_range(parameter.range, 0, 100, 1)
+                    min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_int(
                         name,
                         parameter.value,
@@ -204,7 +193,7 @@ class GUI:
                         change_speed=step
                     )
                 case int(x), _:
-                    min_, max_, step = _get_range(parameter.range, 0, 100, 1)
+                    min_, max_, step = parameter.range
                     _, parameter.value = imgui.slider_int(
                         name,
                         parameter.value,
@@ -214,7 +203,7 @@ class GUI:
                     )
 
                 case float(x), 'drag':
-                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float(
                         name,
                         parameter.value,
@@ -224,7 +213,7 @@ class GUI:
                         flags=flags,
                     )
                 case float(x), _:
-                    min_, max_, _ = _get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, _ = parameter.range
                     _, parameter.value = imgui.slider_float(
                         name,
                         parameter.value,
@@ -234,7 +223,7 @@ class GUI:
                     )
 
                 case [float(x), float(y)], 'drag':
-                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float2(
                         name,
                         *parameter.value,
@@ -244,7 +233,7 @@ class GUI:
                         flags=flags
                     )
                 case [float(x), float(y)], _:
-                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, step = parameter.range
                     _, parameter.value = imgui.slider_float2(
                         name,
                         *parameter.value,
@@ -257,7 +246,7 @@ class GUI:
                     _, parameter.value = imgui.color_edit3(name, *parameter.value,
                                                             imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z)], 'drag':
-                    min_, max_, step = _get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float3(
                         name,
                         *parameter.value,
@@ -266,7 +255,7 @@ class GUI:
                         change_speed=step
                     )
                 case [float(x), float(y), float(z)], _:
-                    min_, max_, _ = _get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, _ = parameter.range
                     _, parameter.value = imgui.slider_float3(
                         name,
                         *parameter.value,
@@ -279,7 +268,7 @@ class GUI:
                     _, parameter.value = imgui.color_edit4(name, *parameter.value,
                                                          imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z), float(w)], 'drag':
-                    min_, max_, step = get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float4(
                         name,
                         *parameter.value,
@@ -288,7 +277,7 @@ class GUI:
                         change_speed=step
                     )
                 case [float(x), float(y), float(z), float(w)], _:
-                    min_, max_, _ = _get_range(parameter.range, 0., 1., 0.01)
+                    min_, max_, _ = parameter.range
                     _, parameter.value = imgui.slider_float4(
                         name,
                         *parameter.value,

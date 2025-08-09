@@ -3,12 +3,15 @@
 ## 1.0
 
 - print_error
-- gui get_range
 
 release alpha
 
 - test image when started without any shader files
   dump into workdir?
+  -> move scenes/ into package
+    if no files passed: load default scenes
+      ?? dump minimal scene + add that to scenes
+
 - ruff format
 - subcommand `run`
 - rename uniforms to just capitalized: `Time`, etc.
@@ -52,6 +55,8 @@ release alpha
 - [ ] record mp4
 - [ ] simplify parser: split on `" "`, then `match` on first char
 - [ ] mouse uniform
+- [ ] debian package: install system deps, mime handlers, dekstop file,
+      branch `package-linux`
 
 - [ ] sampler2d
   - [ ] prev frame
