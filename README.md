@@ -51,9 +51,9 @@ defaults write org.python.python ApplePersistenceIgnoreState NO
 
 ### MIDI Support
 
-When using the `--midi` flag, VHSh will listen to incoming MIDI messages and allow
-you to map parameters to MIDI controls. How to assign uniform mappings is described
-in [Custom Parameters](#Custom_Parameters).
+When installed using `[midi]` flag, VHSh will listen to incoming MIDI messages
+and allow you to map parameters to MIDI controls. How to assign uniform mappings
+is described in [Custom Parameters](#Custom_Parameters).
 
 There are also a couple of system controls, like switching scenes, that can be
 mapped to buttons as well. Such a mapping is defined as a [TOML][toml] file and

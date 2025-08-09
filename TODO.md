@@ -4,16 +4,16 @@
 
 - test image when started without any shader files
   dump into workdir?
-- always enable watch, fail with warning
 - print_error
 - gui get_range
-- subcommand `run`
 
 release alpha
 
+- ruff format
+- subcommand `run`
+- rename uniforms to just capitalized: `Time`, etc.
 - docstrings
 - dev docs: Secenes, Parameters, Controllers, scene_index
-- rename uniforms to just capitalized: `Time`, etc.
 
 
 ## Road Map

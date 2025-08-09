@@ -87,12 +87,10 @@ class VHSh:
 
         self.controllers: dict[str, Controller] = dict(
             FileWatcher=FileWatcher(self),
+            MIDIController=MIDIController(self, system_mapping=midi_mapping),
         )
 
         # TODO import all automatically, fail with warning on import error
-        if midi:
-            self.controllers["MIDIController"] = \
-                MIDIController(self, system_mapping=midi_mapping)
         if microphone:
             self.controllers["Microphone"] = Microphone(self)
 

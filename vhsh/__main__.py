@@ -47,8 +47,6 @@ def get_argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('shader', nargs='+',
         help='Path to GLSL fragment shader', type=Path)
-    parser.add_argument('-m', '--midi', action='store_true',
-        help="Listen to MIDI messages for uniform control")
     parser.add_argument('-M', '--midi-mapping',
         help="Path to TOML file with system MIDI mappings")
     # TODO support seelction the microphone
@@ -123,7 +121,6 @@ def main(argv: Optional[list[str]] = None):
             midi_mapping = tomllib.load(f)
 
     vhsh_renderer = VHSh(scenes=args.shader,
-                         midi=args.midi,
                          midi_mapping=midi_mapping,
                          microphone=args.mic)
     vhsh_renderer.run()

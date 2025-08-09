@@ -22,7 +22,7 @@ class FileWatcher(Controller):
         except ImportError:
             logger.warning(
                 "Not watching for file changes!"
-                " 'watchfiles' not installed, install with vhsh[watch]")
+                " 'watchfiles' not installed, install with 'vhsh[watch]'")
             self.stop()
             return
 

@@ -1,7 +1,6 @@
 import time
 import logging
 from collections import defaultdict
-from threading import Thread, Event
 from pprint import pformat
 from datetime import datetime
 from contextlib import ExitStack
@@ -10,7 +9,7 @@ try:
     import mido
     MIDO_AVAILABLE = True
 except ImportError as __mido_import_error__:
-    MIDI_AVAILABLE = False
+    MIDO_AVAILABLE = False
 
 from .types import App, Controller
 
@@ -22,7 +21,11 @@ class MIDIController(Controller):
         super().__init__(*args, **kwargs)
 
         if not MIDO_AVAILABLE:
-            raise __mido_import_error__
+            logger.warning(
+                "Not listenting to MIDI, external control disabled!"
+                " 'mido' not installed, install with 'vhsh[midi]'")
+            self.stop()
+            return
 
         self._app = app
 
@@ -33,7 +36,7 @@ class MIDIController(Controller):
         self.devices = mido.get_input_names()
         logger.info("MIDI devices: %s", self.devices)
 
-    def _handle_message(self, msg: mido.Message):
+    def _handle_message(self, msg: "mido.Message"):
         logger.debug(f"Received MIDI message: #{msg.control} = {msg.value}")
         button_down = bool(msg.value)
 
@@ -78,6 +81,11 @@ class MIDIController(Controller):
                 self._app._print_error(f"ERROR setting uniform '{parameter}': {e}")
 
     def run(self):
+        # we need this if `mido` is not installed and class is not initialized
+        # due to early return.
+        if self._stop_controller.is_set():
+            return
+
         try:
             with ExitStack() as stack:
                 ports = [stack.enter_context(mido.open_input(device))
@@ -95,6 +103,11 @@ class MIDIController(Controller):
             logger.exception(e)
 
     def update_pre(self):
+        # we need this if `mido` is not installed and class is not initialized
+        # due to early return.
+        if self._stop_controller.is_set():
+            return
+
         self._parameter_mapping = {}
         for parameter in self._app.scene.parameters.values():
             if parameter.midi is not None:
