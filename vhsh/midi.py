@@ -26,8 +26,7 @@ class MIDIController(Controller):
 
         self._app = app
 
-        logger.info("midi system mapping:")
-        logger.info(pformat(system_mapping))
+        logger.info("midi system mapping:\n%s", pformat(system_mapping))
         self._system_mapping = defaultdict(dict, system_mapping)
         self._parameter_mapping: dict[int, str] = {}
 

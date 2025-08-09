@@ -4,7 +4,7 @@
 
 - test image when started without any shader files
   dump into workdir?
-- logger: cli args, configure logging, replace print
+- always enable watch, fail with warning
 - print_error
 - gui get_range
 - subcommand `run`

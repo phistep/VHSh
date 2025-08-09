@@ -1,4 +1,5 @@
 import re
+import logging
 from typing import get_args, Generic, Callable, Iterable
 from pathlib import Path
 from enum import StrEnum
@@ -9,6 +10,9 @@ from .types import (
     UniformT, UniformLike,
     App, ParameterParserError,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class Widget(StrEnum):
@@ -239,17 +243,9 @@ class Scene:
 
     @preset_index.setter
     def preset_index(self, value):
-        # TODO why was this here?
-        # if self._preset_index == 0:
-        #     # TODO abstract uniform from parameters and add here
-        #     self.presets[0].parameters = self.parameters
-
         self._preset_index = value % len(self.presets)
-        print()
-        print("current preset:", self.presets[self.preset_index].name)
-
-        for parameter in self.presets[self.preset_index].parameters.values():
-            print(" ", parameter)
+        logger.info("current preset: %s",
+                    self.presets[self.preset_index])
 
     def prev_preset(self, n: int = 1):
         self.preset_index = (self.preset_index - n) % len(self.presets)
@@ -271,11 +267,10 @@ class Scene:
         if self._preset_index == 0:
             for parameter in self.parameters.values():
                 parameter.default = parameter.value
-                print(parameter)
                 self.source = re.sub(f'^uniform \\w+ {parameter.name}.*$',
                                      str(parameter),
                                      self.source,
                                      flags=re.MULTILINE)
 
         self.path.write_text(self.source)
-        print(f"wrote presets to '{self.path}'")
+        logger.info(f"wrote presets to '{self.path}'")

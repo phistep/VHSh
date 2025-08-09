@@ -1,4 +1,3 @@
-import sys
 import time
 import logging
 from collections import deque
@@ -6,7 +5,7 @@ from pathlib import Path
 
 from imgui.integrations.glfw import GlfwRenderer
 
-from .types import Controller, SystemParameter
+from .types import Controller, SystemParameter, Color
 from .window import Window
 from .scene import ParameterParserError, Scene
 from .renderer import ShaderCompileError, Renderer
@@ -102,8 +101,8 @@ class VHSh:
 
         self.renderer = Renderer(list(self.system_parameters.values()))
 
-        print("scenes:", [f"{scene.name} [{scene.path}]"
-                          for scene in self.scenes])
+        logger.info("scenes: %s",
+                    [f"{scene.name} [{scene.path}]" for scene in self.scenes])
         self.load()
 
     @property
@@ -144,7 +143,8 @@ class VHSh:
             self._print_error(e)
         else:
             self.error = None
-            print(f"\x1b[2;32mOK: \x1b[2;37m{self.scene.path}\x1b[0;0m")
+            logger.info(f"{Color.GREEN + Color.Style.BOLD}OK{Color.RESET}:"
+                        f" {self.scene.path}")
 
     # error(), custom ShaderCompileError attrs
     def _print_error(self, e: Exception | str):
@@ -161,15 +161,14 @@ class VHSh:
             line = parts[2].strip()
             offender = parts[3].strip()
             message = ':'.join(parts[4:])
-            print(f"\x1b[1;31m{title}: \x1b[0;0m"
-                  f"\x1b[2;37m{self.scene.path}:\x1b[0;0m"
-                  f"\x1b[1;37m{col}:{line} \x1b[0;0m"
+            logger.error(f"\x1b[2;37m{self.scene.path}:\x1b[0;0m"
+                         f"\x1b[1;37m{col}:{line} \x1b[0;0m"
                   f"\x1b[2;37m({offender})\x1b[0;0m"
                   f"\x1b[0;37m:{message}\x1b[0;0m"
                   f"\x1b[2;37m ({flex})\x1b[0;0m")
                   # white on red: [0;37;41m
         except IndexError:
-            print(e)
+            logger.error(e, exc_info=True)
 
     def run(self):
         last_time = self.time.now()
