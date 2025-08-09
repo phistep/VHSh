@@ -8,11 +8,13 @@ from dataclasses import dataclass
 from .types import (
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
     UniformT, UniformLike,
-    ParameterParserError,
 )
 
 
 logger = logging.getLogger(__name__)
+
+
+class ParameterParserError(ValueError): ...
 
 
 class Widget(StrEnum):

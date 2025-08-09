@@ -2,21 +2,27 @@
 
 ## 1.0
 
-- print_error
+- fix midi/set_normalized log
 
 release alpha
 
+- pretty INFO logs
+- subcommand `run`
+- rename uniforms to just capitalized: `Time`, etc.
 - test image when started without any shader files
   dump into workdir?
   -> move scenes/ into package
     if no files passed: load default scenes
       ?? dump minimal scene + add that to scenes
 
+release beta
+
+- cleanup diagnostics
 - ruff format
-- subcommand `run`
-- rename uniforms to just capitalized: `Time`, etc.
 - docstrings
 - dev docs: Secenes, Parameters, Controllers, scene_index
+
+release rc
 
 
 ## Road Map
@@ -57,6 +63,7 @@ release alpha
 - [ ] mouse uniform
 - [ ] debian package: install system deps, mime handlers, dekstop file,
       branch `package-linux`
+- [ ] make midoi logger not log same message twice in a row
 
 - [ ] sampler2d
   - [ ] prev frame
@@ -123,6 +130,7 @@ release alpha
 
 
 ## Bugs
+
 - fix `t` as uniform name doesn't generate ui
 - bug uniform parsing when float `=0.0`
 - fix dropdown crashes when no presets available
@@ -131,6 +139,7 @@ release alpha
       for idx, item in  [(p['index'], p['name'])
                         ~^^^^^^^^^
       ```
+- ugly crashes on `vhsh /*` when directories are passed, better input sanitation
 
 
 ## Ideas

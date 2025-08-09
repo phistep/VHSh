@@ -40,9 +40,11 @@ class Time:
         if start:
             self._offset += self.now() - self._last_time
             self._running = True
+            logger.info("Time restarted at %.3fs", self())
         else:
             self._last_time = self.now()
             self._running = False
+            logger.info("Time stopped at %.3fs", self())
 
     def __call__(self) -> float:
         current_time = self.now() if self.running else self._last_time
@@ -134,35 +136,11 @@ class VHSh:
             self.renderer.set_shader(self.scene.source, parameters, clear=clear)
         except ShaderCompileError as e:
             self.error = e
-            self._print_error(e)
+            logger.error("%s:\n%s", self.scene.path, e.format())
         else:
             self.error = None
             logger.info(f"{Color.GREEN + Color.Style.BOLD}OK{Color.RESET}:"
                         f" {self.scene.path}")
-
-    # error(), custom ShaderCompileError attrs
-    def _print_error(self, e: Exception | str):
-        try:
-            lines = str(e).strip().splitlines()
-            if len(lines) == 2:
-                flex, error = lines
-            else:
-                error = lines[0]
-                flex = ""
-            parts = error.split(':')
-            title = parts[0].strip()
-            col = parts[1].strip()
-            line = parts[2].strip()
-            offender = parts[3].strip()
-            message = ':'.join(parts[4:])
-            logger.error(f"\x1b[2;37m{self.scene.path}:\x1b[0;0m"
-                         f"\x1b[1;37m{col}:{line} \x1b[0;0m"
-                  f"\x1b[2;37m({offender})\x1b[0;0m"
-                  f"\x1b[0;37m:{message}\x1b[0;0m"
-                  f"\x1b[2;37m ({flex})\x1b[0;0m")
-                  # white on red: [0;37;41m
-        except IndexError:
-            logger.error(e, exc_info=True)
 
     def run(self):
         last_time = self.time.now()

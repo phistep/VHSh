@@ -11,8 +11,9 @@ import numpy as np
 
 if TYPE_CHECKING:
     from .window import Window
-    from .scene import Scene
+    from .scene import Scene, ParameterParserError
     from .app import Time
+    from .renderer import ShaderCompileError
 
 
 ### ANSI Colors
@@ -53,14 +54,6 @@ class Color:
         MAGENTA = "\x1b[45m"
         CYAN = "\x1b[46m"
         WHITE = "\x1b[47m"
-
-
-### Exceptions
-
-class ParameterParserError(ValueError): ...
-class ShaderCompileError(RuntimeError): ...
-class UniformIntializationError(ShaderCompileError): ...
-class ProgramLinkError(RuntimeError): ...
 
 
 ### GLSL
@@ -140,7 +133,6 @@ class SystemParameter(UniformLike, Generic[UniformT]):
     name: str
     type: str
     value: UniformT
-    # TODO why are recursive types not working?
     update: Callable[[App], UniformT | None]
 
     def __post_init__(self):

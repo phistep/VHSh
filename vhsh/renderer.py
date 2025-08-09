@@ -13,10 +13,45 @@ from .types import (
     Shader, ShaderProgram,
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
     UniformValue, UniformLike,
-    ProgramLinkError, ShaderCompileError, UniformIntializationError,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ShaderCompileError(RuntimeError):
+
+    def format(self) -> str:
+        try:
+            lines = str(self).strip().splitlines()
+            if len(lines) == 2:
+                flex, error = lines
+            else:
+                error = lines[0]
+                flex = ""
+            parts = error.split(':')
+            title = parts[0].strip()
+            col = parts[1].strip()
+            line = parts[2].strip()
+            offender = parts[3].strip()
+            message = ':'.join(parts[4:])
+
+            return (f"\x1b[1;37m{col}:{line} \x1b[0;0m"
+                    f"\x1b[2;37m({offender})\x1b[0;0m"
+                    f"\x1b[0;37m:{message}\x1b[0;0m"
+                    f"\x1b[2;37m ({flex})\x1b[0;0m")
+                    # white on red: [0;37;41m
+        except IndexError:
+            logger.debug(
+                "Python error formatting GLSL error message: %s", str(self),
+                exc_info=True
+            )
+            return str(self)
+
+
+class UniformIntializationError(ShaderCompileError): ...
+
+
+class ProgramLinkError(RuntimeError): ...
 
 
 class Uniform(UniformLike):

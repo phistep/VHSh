@@ -78,7 +78,7 @@ class MIDIController(Controller):
                 logger.debug(pformat(self._parameter_mapping))
 
             except NotImplementedError as e:
-                self._app._print_error(f"ERROR setting uniform '{parameter}': {e}")
+                logger.error(f"setting uniform '{parameter}': {e}")
 
     def run(self):
         # we need this if `mido` is not installed and class is not initialized
