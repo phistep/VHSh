@@ -67,7 +67,7 @@ def print_version():
     from .renderer import Renderer
 
     version_line = re.match("#version.*", Renderer.FRAGMENT_SHADER_PREAMBLE)
-    gl_profile = version_line if version_line is not None else ""
+    gl_profile = version_line[0] if version_line is not None else ""
 
     print(f"{__package__} {__version__}  {os.path.dirname(__file__)}")
     print()
