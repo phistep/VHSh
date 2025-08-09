@@ -2,13 +2,13 @@
 
 ## 1.0
 
-- test image when started without any shader files
-  dump into workdir?
 - print_error
 - gui get_range
 
 release alpha
 
+- test image when started without any shader files
+  dump into workdir?
 - ruff format
 - subcommand `run`
 - rename uniforms to just capitalized: `Time`, etc.

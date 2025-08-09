@@ -5,6 +5,10 @@ __pycache__
 .venv*
 *egg-info
 
+dist/
+build/
+
 imgui.ini
 
 experiments
+.zed
