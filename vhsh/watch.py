@@ -17,9 +17,17 @@ class FileWatcher(Controller):
         self.filenames = [scene.path for scene in app.scenes]
 
     def run(self):
-        from watchfiles import watch
+        try:
+            from watchfiles import watch
+        except ImportError:
+            logger.warning(
+                "Not watching for file changes!"
+                " 'watchfiles' not installed, install with vhsh[watch]")
+            self.stop()
+            return
 
-        logger.info(f"Watching for changes in %s...", self.filenames)
+        logger.info(f"Watching for changes in %s...",
+                    [str(f) for f in self.filenames])
 
         for changes in watch(*self.filenames, stop_event=self._stop_controller):
             for _, filename in changes:

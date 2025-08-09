@@ -28,7 +28,8 @@ python3 vhsh.py mandelbrot.glsl
 If you pass multiple shader files, you can switch between them in the tool.
 To open all files in a given folder, use `my_shader_folder/*`.
 
-You can pass `--watch` to automatically reload the shader upon file change.
+If installed with `[watch]`, the shader files will be watched for changes and
+automatically reloaded
 
 You can pass `--mic` to enable microphone input. See
 [_Builin Parameters_](#builtin-parameters).

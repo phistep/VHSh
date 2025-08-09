@@ -47,8 +47,6 @@ def get_argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('shader', nargs='+',
         help='Path to GLSL fragment shader', type=Path)
-    parser.add_argument('-w', '--watch', action='store_true',
-        help="Watch for file changes and automatically reload shader")
     parser.add_argument('-m', '--midi', action='store_true',
         help="Listen to MIDI messages for uniform control")
     parser.add_argument('-M', '--midi-mapping',
@@ -125,7 +123,6 @@ def main(argv: Optional[list[str]] = None):
             midi_mapping = tomllib.load(f)
 
     vhsh_renderer = VHSh(scenes=args.shader,
-                         watch=args.watch,
                          midi=args.midi,
                          midi_mapping=midi_mapping,
                          microphone=args.mic)
