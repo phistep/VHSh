@@ -43,7 +43,6 @@ class ColorFormatter(logging.Formatter):
             self._style._fmt = _fmt
 
 
-
 def get_argument_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('shader', nargs='+',
@@ -59,7 +58,26 @@ def get_argument_parser():
         help="Make microphone levels available as uniform.")
     parser.add_argument('-v', '--verbose', action="store_true",
         help="Enable debugging output")
+    parser.add_argument('-V', '--version', action="store_true",
+        help="Print version information")
     return parser
+
+
+def print_version():
+    from . import __version__
+    import os
+    import imgui
+    import OpenGL
+    from .renderer import Renderer
+
+    version_line = re.match("#version.*", Renderer.FRAGMENT_SHADER_PREAMBLE)
+    gl_profile = version_line if version_line is not None else ""
+
+    print(f"{__package__} {__version__}  {os.path.dirname(__file__)}")
+    print()
+    print(f"Python {sys.version}  {sys.executable}")
+    print(f"{OpenGL.__package__} {OpenGL.__version__}  {gl_profile}")
+    print(f"{imgui.__package__} {imgui.__version__}")  # type: ignore
 
 
 def configure_logging(verbose: bool):
@@ -90,10 +108,14 @@ def configure_logging(verbose: bool):
         logging.getLogger('watchfiles.main').setLevel(logging.INFO)
 
 
-
 def main(argv: Optional[list[str]] = None):
     parser = get_argument_parser()
     args = parser.parse_args(argv)
+
+    if args.version or args.verbose:
+        print_version()
+    if args.version:
+        exit(0)
 
     configure_logging(args.verbose)
 

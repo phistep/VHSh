@@ -8,7 +8,6 @@
 - print_error
 - gui get_range
 - subcommand `run`
-- -V, --version
 
 release alpha
 
