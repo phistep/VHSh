@@ -28,9 +28,11 @@ class Microphone(Controller):
 
         try:
             import pyaudio
+            logger.debug("imported 'pyaudio'")
             if format is None:
                 format = pyaudio.paInt16
         except ImportError:
+            logger.debug("error importing 'pyaudio'")
             if enabled:
                 logger.error(
                     "Microphone input requested, but unable to initialize."
@@ -60,6 +62,10 @@ class Microphone(Controller):
             value=(0.) * num_levels,
             update=lambda app: app.controllers[self.__class__.__name__].levels  # type: ignore
         )
+
+        if not enabled:
+            logger.debug("microphone disabled, shutting down...")
+            self.stop()
 
     @property
     def levels(self) -> list[float]:
