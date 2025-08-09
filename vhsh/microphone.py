@@ -1,3 +1,4 @@
+import logging
 from threading import Event, Lock
 from collections import deque
 from time import sleep
@@ -7,12 +8,16 @@ import numpy as np
 from .types import App, Controller, SystemParameter
 
 
+logger = logging.getLogger(__name__)
+
+
 class Microphone(Controller):
 
     UNIFORM_NAME = 'u_Microphone'
 
     def __init__(self,
                  app: App,
+                 enabled: bool = True,
                  rate: int = 44100,
                  chunk: int = 1024,
                  buffer_size_s: float = 5.0,
@@ -21,11 +26,20 @@ class Microphone(Controller):
                  intervals: list[int] = [0, 60, 250, 500, 2_000, 6_000, 8_000]):
         super().__init__()
 
-        import pyaudio
+        try:
+            import pyaudio
+            if format is None:
+                format = pyaudio.paInt16
+        except ImportError:
+            if enabled:
+                logger.error(
+                    "Microphone input requested, but unable to initialize."
+                    " 'pyaudio' not installed, install with 'vhsh[audio]'")
+            self.stop()
 
         self.rate = rate
         self.chunk = chunk
-        self.format = pyaudio.paInt16 if format is None else format
+        self.format = format
         self.channels = 1  # TODO configurable?
 
         self._bins = list(zip(intervals, intervals[1:]))
@@ -34,7 +48,6 @@ class Microphone(Controller):
         self._max_vol = chunk * (2**16-1)  # TODO sizeof(format)
 
         self._frame_buffer = deque(maxlen=int(rate / chunk * buffer_size_s))
-        self._stop_stream = Event()
         self._output_lock = Lock()
 
         if self.UNIFORM_NAME in app.system_parameters:
@@ -59,6 +72,11 @@ class Microphone(Controller):
         return levels.tolist()
 
     def run(self):
+        # we need this if `mido` is not installed and class is not initialized
+        # due to early return.
+        if self._stop_controller.is_set():
+            return
+
         import pyaudio
 
         def _record(in_data, frame_count, time_info, status):
@@ -74,7 +92,7 @@ class Microphone(Controller):
                             stream_callback=_record)
 
         try:
-            while stream.is_active() and not self._stop_stream.is_set():
+            while stream.is_active() and not self._stop_controller.is_set():
                 if not self._frame_buffer:
                     sleep(0.1)
                     continue
@@ -100,6 +118,3 @@ class Microphone(Controller):
             stream.stop_stream()
             stream.close()
             audio.terminate()
-
-    def stop(self):
-        self._stop_stream.set()

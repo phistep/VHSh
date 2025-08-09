@@ -55,8 +55,6 @@ class VHSh:
                  scenes: list[Path],
                  width: int = 1280,
                  height: int = 720,
-                 watch: bool = False,
-                 midi: bool = False,
                  midi_mapping: dict = {},
                  microphone: bool = False):
         # need to be defined upfront for __del__() before glfw/imgui init can fail
@@ -88,11 +86,9 @@ class VHSh:
         self.controllers: dict[str, Controller] = dict(
             FileWatcher=FileWatcher(self),
             MIDIController=MIDIController(self, system_mapping=midi_mapping),
+            Microphone=Microphone(self, enabled=microphone)
         )
 
-        # TODO import all automatically, fail with warning on import error
-        if microphone:
-            self.controllers["Microphone"] = Microphone(self)
 
         for controller in self.controllers.values():
             controller.start()
