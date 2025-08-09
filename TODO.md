@@ -2,11 +2,11 @@
 
 ## 1.0
 
-- fix midi/set_normalized log
-
 release alpha
 
+- fix midi/set_normalized log
 - pretty INFO logs
+  use colors in shader error format
 - subcommand `run`
 - rename uniforms to just capitalized: `Time`, etc.
 - test image when started without any shader files
@@ -14,6 +14,7 @@ release alpha
   -> move scenes/ into package
     if no files passed: load default scenes
       ?? dump minimal scene + add that to scenes
+- version number in shaders?
 
 release beta
 
@@ -23,6 +24,8 @@ release beta
 - dev docs: Secenes, Parameters, Controllers, scene_index
 
 release rc
+
+release 1.0.0 🥳
 
 
 ## Road Map

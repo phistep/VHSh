@@ -1,14 +1,11 @@
-from re import U
-from typing import Iterable, TypeVar, Type, Protocol
+from typing import Type, Protocol
 from array import array
 
 import imgui
 
 from .types import App
 from .microphone import Microphone
-
-
-T = TypeVar('T')
+from .scene import Widget
 
 
 class ImguiRenderer(Protocol):
@@ -175,7 +172,7 @@ class GUI:
         peaking_parameters = zip(parameters, parameters[1:] + [(None, None)])
         for (name, parameter), (next_name, _) in peaking_parameters:
             flags = 0
-            if parameter.widget == 'log':
+            if parameter.widget == Widget.LOG:
                 flags |=  (imgui.SLIDER_FLAGS_LOGARITHMIC
                            | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT)
 
@@ -183,7 +180,7 @@ class GUI:
                 case bool(x), _:
                     _, parameter.value = imgui.checkbox(name, parameter.value)
 
-                case int(x), 'drag':
+                case int(x), Widget.DRAG:
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_int(
                         name,
@@ -202,7 +199,7 @@ class GUI:
                         flags=flags,
                     )
 
-                case float(x), 'drag':
+                case float(x), Widget.DRAG:
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float(
                         name,
@@ -222,7 +219,7 @@ class GUI:
                         flags=flags,
                     )
 
-                case [float(x), float(y)], 'drag':
+                case [float(x), float(y)], Widget.DRAG:
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float2(
                         name,
@@ -242,10 +239,10 @@ class GUI:
                         flags=flags,
                     )
 
-                case [float(x), float(y), float(z)], 'color':
+                case [float(x), float(y), float(z)], Widget.COLOR:
                     _, parameter.value = imgui.color_edit3(name, *parameter.value,
                                                             imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
-                case [float(x), float(y), float(z)], 'drag':
+                case [float(x), float(y), float(z)], Widget.DRAG:
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float3(
                         name,
@@ -264,10 +261,10 @@ class GUI:
                         flags=flags,
                     )
 
-                case [float(x), float(y), float(z), float(w)], 'color':
+                case [float(x), float(y), float(z), float(w)], Widget.COLOR:
                     _, parameter.value = imgui.color_edit4(name, *parameter.value,
                                                          imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
-                case [float(x), float(y), float(z), float(w)], 'drag':
+                case [float(x), float(y), float(z), float(w)], Widget.DRAG:
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float4(
                         name,
