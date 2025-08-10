@@ -123,10 +123,10 @@ def main(argv: Optional[list[str]] = None):
         with open(args.midi_mapping, 'rb') as f:
             midi_mapping = tomllib.load(f)
 
-    vhsh_renderer = VHSh(scenes=args.shader,
+    vhsh = VHSh(scenes=args.shader,
                          midi_mapping=midi_mapping,
                          microphone=args.mic)
-    vhsh_renderer.run()
+    vhsh.run()
 
 
 if __name__ == "__main__":

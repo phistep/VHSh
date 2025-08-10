@@ -2,8 +2,7 @@
 
 ## 1.0
 
-release alpha
-
+- -V should be usable without scenes argument (fixed by run command?)
 - preset change: new uniforms are not added. do we want that? def not error flood
 - too mant current preset logs on midi save presert
 - fix midi/set_normalized log
