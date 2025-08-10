@@ -60,23 +60,16 @@ class VHSh:
                  height: int = 720,
                  midi_mapping: dict = {},
                  microphone: bool = False):
-        # need to be defined upfront for __del__() before glfw/imgui init can fail
-        self.renderer: Renderer = None  # type: ignore
-        self.gui: GUI = None  # type: ignore
-        self.error: ShaderCompileError | ParameterParserError | None = None
+        self.window = Window(self.__class__.__name__, width, height)
 
         self.time = Time()
         self.frame_times = deque([1.0], maxlen=100)
-
-        self.window = Window(self.__class__.__name__, width, height)
-
-        self.gui = GUI(app=self, renderer=GlfwRenderer, window=self.window.handler)
-        self._show_gui = True
+        self.error: ShaderCompileError | ParameterParserError | None = None
 
         self._load_request = Event()
         self._load_request_args = {}
+        self._scene_index = 0
         self.scenes = [Scene(path) for path in scenes]
-        self._scene_index = 0  # initializes @property .scene
         self.system_parameters: dict[str, SystemParameter] = dict(
             u_Resolution=SystemParameter(
                 "u_Resolution", type="vec2", value=(0., 0.),
@@ -93,12 +86,13 @@ class VHSh:
             MIDIController=MIDIController(self, system_mapping=midi_mapping),
             Microphone=Microphone(self, enabled=microphone)
         )
-
-
         for controller in self.controllers.values():
             controller.start()
 
         self.renderer = Renderer(list(self.system_parameters.values()))
+        self.gui = GUI(app=self,
+                       renderer=GlfwRenderer,
+                       window=self.window.handler)
 
         logger.info("scenes: %s",
                     [f"{scene.name} [{scene.path}]" for scene in self.scenes])
@@ -138,8 +132,6 @@ class VHSh:
         self._load_request_args = dict(clear=clear)
 
     def _load(self, clear: bool = True):
-        self._load_request.clear()
-
         logger.info("scene: %s", self.scene.name)
         logger.info("presets: %s", [p.name for p in self.scene.presets])
         logger.info("parameters: %s", self.scene.presets[self.scene.preset_index])
@@ -182,6 +174,8 @@ class VHSh:
 
                 if self._load_request.is_set():
                     self._load(**self._load_request_args)
+                    self._load_request_args = {}
+                    self._load_request.clear()
 
                 for system_parameter in self.system_parameters.values():
                     system_parameter.update(self)
@@ -208,16 +202,17 @@ class VHSh:
             self.shutdown()
 
     def shutdown(self):
-        if self.renderer is not None:
+        if hasattr(self, 'renderer'):
             self.renderer.shutdown()
-        if self.gui is not None:
+        if hasattr(self, 'gui'):
             self.gui.shutdown()
         self.window.close()
 
-        for controller in self.controllers.values():
-            if controller.is_alive():
-                controller.stop()
-                controller.join()
+        if hasattr(self, 'controllers'):
+            for controller in self.controllers.values():
+                if controller.is_alive():
+                    controller.stop()
+                    controller.join()
 
     def __del__(self):
         self.shutdown()

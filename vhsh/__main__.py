@@ -104,7 +104,7 @@ def configure_logging(verbose: bool):
                             handlers=[handler],
                             force=True)
 
-        logging.getLogger('watchfiles.main').setLevel(logging.INFO)
+        logging.getLogger('watchfiles.main').setLevel(logging.CRITICAL)
 
 
 def main(argv: Optional[list[str]] = None):

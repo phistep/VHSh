@@ -4,6 +4,8 @@
 
 release alpha
 
+- preset change: new uniforms are not added. do we want that? def not error flood
+- too mant current preset logs on midi save presert
 - fix midi/set_normalized log
 - pretty INFO logs
   use colors in shader error format
