@@ -179,11 +179,14 @@ class Parameter(UniformLike, Generic[UniformT]):
                          widget=widget,
                          midi=midi)
 
-    def set_value_normalized(self, value):
-        min_, max_ = self.range[:2]
-        self.value = min_ + value * (max_ - min_)
-
-
+    def set_value_normalized(self, value: float):
+        if self.range is None:
+            raise ValueError("Only parameters with .range can be set normalized")
+        min_, max_, _ = self.range
+        new_value = min_ + value * (max_ - min_)
+        if self.type == 'int':
+            new_value = int(round(new_value))
+        self.value = new_value
 
 
 @dataclass
