@@ -83,10 +83,13 @@ def configure_logging(verbose: bool):
             ColorFormatter(
                 fmt=
                 f"\n{Color.Style.FAINT}%(asctime)s{Color.RESET}"
-                " %(levelname)-8s"
-                " %(name)s"
-                f" {Color.Style.FAINT}(%(filename)s:%(lineno)i){Color.RESET}:"
-                "\n%(message)s"
+                f" %(levelname)-8s"
+                f" %(name)s"
+                f"{Color.Style.FAINT}"
+                f" [%(threadName)s]"
+                f" (%(filename)s:%(lineno)i)"
+                f"{Color.RESET}:"
+                f"\n%(message)s"
             )
         )
         logging.basicConfig(level=logging.DEBUG,
