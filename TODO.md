@@ -18,12 +18,15 @@ release alpha
 
 release beta
 
+- test on the machine!
 - cleanup diagnostics
 - ruff format
 - docstrings
 - dev docs: Secenes, Parameters, Controllers, scene_index
 
 release rc
+
+- github actions (test rcs)
 
 release 1.0.0 🥳
 

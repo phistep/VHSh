@@ -36,18 +36,6 @@ You can pass `--mic` to enable microphone input. See
 
 To toggle the UI, press `<tab>`.
 
-If you're seeing a message like
-
-> 2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState:
-> Existing state will not be touched. New state will be written to
-> /var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
-
-run the following to get rid of it:
-
-```bash
-defaults write org.python.python ApplePersistenceIgnoreState NO
-```
-
 
 ### MIDI Support
 
@@ -80,7 +68,7 @@ Sensible mappings for various controls are supplied in
 [`midi_mappings/`](./midi_mappings).
 
 
-## Writing Shaders for _Video Home Shader_
+### Writing Shaders for _Video Home Shader_
 
 _Video Home Shader_ supplies you with a 2D canvas to draw into using an OpenGL
 _fragment shader_. It is run once for every pixel on the screen and determines
@@ -100,7 +88,7 @@ void main() {
 }
 ```
 
-### Builtin Parameters
+#### Builtin Parameters
 
 You can use the following built-in parameters, that are pre-defined in the
 preamble:
@@ -131,7 +119,7 @@ preamble:
   | `u_Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
   | `u_Microphone[6]` | > 8 KHz |        | Air         |
 
-### Custom Parameters
+#### Custom Parameters
 
 You can define custom parameters to vary directly in the code, and the user
 interface to manipulate them will be generated automatically. Use the `uniform`
@@ -198,7 +186,7 @@ If two consecutive uniforms share a common prefix in their name (like
 `box_size` and `box_color`), they will be grouped together.
 
 
-## Presets
+### Presets
 
 You can save the current uniform values as the new `=DEFAULT` parameter in your
 loaded shader source file by clicking `Save` when the currently selected preset.
@@ -231,6 +219,20 @@ currently selected preset.
 
 
 ## Resources
+
+If you're seeing a message like
+
+```
+2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState:
+Existing state will not be touched. New state will be written to
+/var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
+```
+
+run the following to get rid of it:
+
+```sh
+defaults write org.python.python ApplePersistenceIgnoreState NO
+```
 
 ### Shader Development
 
