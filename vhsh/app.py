@@ -1,5 +1,6 @@
 import time
 import logging
+from threading import Event
 from collections import deque
 from pathlib import Path
 
@@ -72,6 +73,8 @@ class VHSh:
         self.gui = GUI(app=self, renderer=GlfwRenderer, window=self.window.handler)
         self._show_gui = True
 
+        self._load_request = Event()
+        self._load_request_args = {}
         self.scenes = [Scene(path) for path in scenes]
         self._scene_index = 0  # initializes @property .scene
         self.system_parameters: dict[str, SystemParameter] = dict(
@@ -125,6 +128,18 @@ class VHSh:
         self.scene_index = (self.scene_index + n) % len(self.scenes)
 
     def load(self, clear: bool = True):
+        # self.render.set_shader will interact with the OpenGL system. So if
+        # called from a different thread (ie MIDI), it will crash. Therefore,
+        # we ensure that it is only called from the MainThread by signaling
+        # from the other threads and actually loading in the main loop. And
+        # hope for no race conditions
+        self._load_request.set()
+        # yes yes, I know, I need a lock, ...
+        self._load_request_args = dict(clear=clear)
+
+    def _load(self, clear: bool = True):
+        self._load_request.clear()
+
         logger.info("scene: %s", self.scene.name)
         logger.info("presets: %s", [p.name for p in self.scene.presets])
         logger.info("parameters: %s", self.scene.presets[self.scene.preset_index])
@@ -164,6 +179,9 @@ class VHSh:
 
                 self.window.update()
                 self.gui.process_inputs()
+
+                if self._load_request.is_set():
+                    self._load(**self._load_request_args)
 
                 for system_parameter in self.system_parameters.values():
                     system_parameter.update(self)

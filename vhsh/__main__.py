@@ -82,7 +82,7 @@ def configure_logging(verbose: bool):
         handler.setFormatter(
             ColorFormatter(
                 fmt=
-                f"\n{Color.Style.FAINT}%(asctime)s{Color.RESET}"
+                f"{Color.Style.FAINT}%(asctime)s{Color.RESET}"
                 f" %(levelname)-8s"
                 f" %(name)s"
                 f"{Color.Style.FAINT}"
