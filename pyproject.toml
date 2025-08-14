@@ -5,11 +5,12 @@ requires-python = ">= 3.12"
 dependencies = ["PyOpenGL", "glfw", "imgui[glfw]", "numpy"]
 
 [project.optional-dependencies]
-all = ["vhsh[midi,audio,watch]"]
+all = ["vhsh[midi,audio,watch,import]"]
 dev = ["ruff", "pyright", "pyimgui-stubs"]
 watch = ["watchfiles"]
 midi = ["mido[ports-rtmidi]"]
 audio = ["PyAudio"]
+import = ["requests"]
 
 [project.scripts]
 vhsh = "vhsh.__main__:main"

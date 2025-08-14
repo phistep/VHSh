@@ -2,13 +2,11 @@
 
 ## 1.0
 
-- -V should be usable without scenes argument (fixed by run command?)
 - preset change: new uniforms are not added. do we want that? def not error flood
 - too mant current preset logs on midi save presert
-- fix midi/set_normalized log
+- fix midi/set_normalized log (i have a stash)
 - pretty INFO logs
-  use colors in shader error format
-- subcommand `run`
+  use Colors in shader error format
 - rename uniforms to just capitalized: `Time`, etc.
 - test image when started without any shader files
   dump into workdir?

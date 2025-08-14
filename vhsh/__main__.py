@@ -8,9 +8,11 @@ from typing import Optional
 
 from .app import VHSh
 from .types import Color
+from .scene_import import import_scene
 
 
 logger = logging.getLogger(__name__)
+
 
 
 class ColorFormatter(logging.Formatter):
@@ -44,18 +46,32 @@ class ColorFormatter(logging.Formatter):
 
 
 def get_argument_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('shader', nargs='+',
-        help='Path to GLSL fragment shader', type=Path)
-    parser.add_argument('-M', '--midi-mapping',
-        help="Path to TOML file with system MIDI mappings")
-    # TODO support seelction the microphone
-    parser.add_argument('-t', '--mic', action="store_true",
-        help="Make microphone levels available as uniform.")
-    parser.add_argument('-v', '--verbose', action="store_true",
-        help="Enable debugging output")
+    parser = argparse.ArgumentParser(prog='vhsh')
     parser.add_argument('-V', '--version', action="store_true",
         help="Print version information")
+    parser.add_argument('-v', '--verbose', action="store_true",
+        help="Enable debugging output")
+    subparsers = parser.add_subparsers()
+
+    parser_run = subparsers.add_parser('run', help='Run scenes with VHSh')
+    parser_run.add_argument('shader', nargs='+', metavar='SHADER',
+        help='Path to GLSL fragment shader', type=Path)
+    parser_run.add_argument('-M', '--midi-mapping',
+        help="Path to TOML file with system MIDI mappings")
+    # TODO support selction the microphone
+    parser_run.add_argument('-m', '--mic', action="store_true",
+        help="Make microphone levels available as uniform.")
+    parser_run.set_defaults(func=main_run)
+
+    parser_import = subparsers.add_parser('import',
+        help='Import scenes from shadertoy.com',
+        description=("To use you own API key, set 'VHSH_API_KEY_SHADERTOY':"
+                     " https://www.shadertoy.com/myapps"))
+    parser_import.add_argument("url")
+    parser_import.add_argument("-o", "--outfile", type=Path,
+        help="Path to save the scene")
+    parser_import.set_defaults(func=main_import)
+
     return parser
 
 
@@ -107,6 +123,22 @@ def configure_logging(verbose: bool):
         logging.getLogger('watchfiles.main').setLevel(logging.CRITICAL)
 
 
+def main_run(args: argparse.Namespace):
+    midi_mapping = {}
+    if args.midi_mapping:
+        with open(args.midi_mapping, 'rb') as f:
+            midi_mapping = tomllib.load(f)
+
+    vhsh = VHSh(scenes=args.shader,
+                midi_mapping=midi_mapping,
+                microphone=args.mic)
+    vhsh.run()
+
+
+def main_import(args: argparse.Namespace):
+    import_scene(args.url, args.outfile)
+
+
 def main(argv: Optional[list[str]] = None):
     parser = get_argument_parser()
     args = parser.parse_args(argv)
@@ -118,15 +150,12 @@ def main(argv: Optional[list[str]] = None):
 
     configure_logging(args.verbose)
 
-    midi_mapping = {}
-    if args.midi_mapping:
-        with open(args.midi_mapping, 'rb') as f:
-            midi_mapping = tomllib.load(f)
-
-    vhsh = VHSh(scenes=args.shader,
-                         midi_mapping=midi_mapping,
-                         microphone=args.mic)
-    vhsh.run()
+    try:
+        args.func(args)
+    except Exception as e:
+        logger.debug(repr(e), exc_info=True)
+        logger.error(repr(e))
+        exit(-1)
 
 
 if __name__ == "__main__":
