@@ -157,7 +157,8 @@ class GUI:
                            *app.system_parameters['u_Resolution'].value,
                            format="%.0f")
 
-        if "Microphone" in app.controllers:
+        if ("Microphone" in app.controllers
+            and app.controllers["Microphone"].is_alive()):
             imgui.plot_histogram(
                 Microphone.UNIFORM_NAME,
                 array('f', app.system_parameters[Microphone.UNIFORM_NAME].value)
