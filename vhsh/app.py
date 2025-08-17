@@ -71,12 +71,12 @@ class VHSh:
         self._scene_index = 0
         self.scenes = [Scene(path) for path in scenes]
         self.system_parameters: dict[str, SystemParameter] = dict(
-            u_Resolution=SystemParameter(
-                "u_Resolution", type="vec2", value=(0., 0.),
+            Resolution=SystemParameter(
+                "Resolution", type="vec2", value=(0., 0.),
                 update=lambda app: app.window.size
             ),
-            u_Time=SystemParameter(
-                "u_Time", type="float", value=0.,
+            Time=SystemParameter(
+                "Time", type="float", value=0.,
                 update=lambda app: app.time()
             ),
         )

@@ -146,15 +146,15 @@ class GUI:
 
         # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
         with imgui.begin_group():
-            imgui.drag_float("u_Time", app.system_parameters['u_Time'].value)
+            imgui.drag_float("Time", app.system_parameters['Time'].value)
             imgui.same_line()
             _, app.time.running = imgui.checkbox(
                 'playing' if app.time.running else 'paused',
                 app.time.running
             )
 
-        imgui.drag_float2('u_Resolution',
-                           *app.system_parameters['u_Resolution'].value,
+        imgui.drag_float2('Resolution',
+                           *app.system_parameters['Resolution'].value,
                            format="%.0f")
 
         if ("Microphone" in app.controllers

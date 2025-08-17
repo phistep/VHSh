@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class Microphone(Controller):
 
-    UNIFORM_NAME = 'u_Microphone'
+    UNIFORM_NAME = 'Microphone'
 
     def __init__(self,
                  app: App,

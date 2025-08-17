@@ -61,7 +61,7 @@ save = 60  # save current parameter values to a new preset
 toggle_ui = 45  # toggle paramter tweaking window
 
 [uniform.time]
-toggle = 41  # toggle u_Time running
+toggle = 41  # toggle Time running
 ```
 
 Sensible mappings for various controls are supplied in
@@ -93,31 +93,31 @@ void main() {
 You can use the following built-in parameters, that are pre-defined in the
 preamble:
 
-- `vec2 u_Resolution`: width and height of the window in pixels. This can
+- `vec2 Resolution`: width and height of the window in pixels. This can
   be used to calculate normalized screen space coordinates like
   ```glsl
-  vec2 pos = gl_FragCoord.xy / u_Resolution;
+  vec2 pos = gl_FragCoord.xy / Resolution;
   ```
   where `pos.xy` will now have the current pixel's coordinates between
   `[-1, 1]^2`
-- `float u_Time`: Seconds since the program start. This can be used to animate
+- `float Time`: Seconds since the program start. This can be used to animate
   things. For example
   ```glsl
-  vec4 color = vec4((sin(2. * 3.14 * u_Time * ) + 1.) / 2., 0., 0., 1.);
+  vec4 color = vec4((sin(2. * 3.14 * Time * ) + 1.) / 2., 0., 0., 1.);
   ```
   will create a red pulsing effect with one pulse per second.
-- `float[7] u_Microphone`: If started with `--mic`, this is a float
+- `float[7] Microphone`: If started with `--mic`, this is a float
   array that gives you volume per frequency band normalized over the last 5s.
 
   | Index             | Range   |        | Description |
-  | ----------------- | ------- | ------ | ----------- |
-  | `u_Microphone[0]` | 0 Hz    | 60 Hz  | Rumble      |
-  | `u_Microphone[1]` | 60 Hz   | 250 Hz | Low End     |
-  | `u_Microphone[2]` | 250 Hz  | 500 Hz | Low Mids    |
-  | `u_Microphone[3]` | 500 Hz  | 2 kHz  | Mids        |
-  | `u_Microphone[4]` | 2 KHz   | 6 kHz  | High Mids   |
-  | `u_Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
-  | `u_Microphone[6]` | > 8 KHz |        | Air         |
+  | --------------- | ------- | ------ | ----------- |
+  | `Microphone[0]` | 0 Hz    | 60 Hz  | Rumble      |
+  | `Microphone[1]` | 60 Hz   | 250 Hz | Low End     |
+  | `Microphone[2]` | 250 Hz  | 500 Hz | Low Mids    |
+  | `Microphone[3]` | 500 Hz  | 2 kHz  | Mids        |
+  | `Microphone[4]` | 2 KHz   | 6 kHz  | High Mids   |
+  | `Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
+  | `Microphone[6]` | > 8 KHz |        | Air         |
 
 #### Custom Parameters
 

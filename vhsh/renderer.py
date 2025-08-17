@@ -174,7 +174,7 @@ class Renderer:
 
     DEFAULT_FRAGMENT_SHADER = dedent("""\
         void main() {
-            vec2 pos = gl_FragCoord.xy / u_Resolution;
+            vec2 pos = gl_FragCoord.xy / Resolution;
             FragColor = vec4(pos.x, pos.y, 1.0 - (pos.x + pos.y) / 2.0, 1.0);
         }
     """)

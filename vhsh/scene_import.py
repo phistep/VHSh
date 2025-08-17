@@ -69,13 +69,13 @@ def import_shadertoy(url: str, outfile: Path | None = None):
     # TODO maybe arrays need to be defined as variables?
     # TODO maybe literals should be assigned to const variables?
     adapters = textwrap.dedent("""\
-        #define iResolution vec3(u_Resolution, 0.0)
-        #define iTime u_Time
+        #define iResolution vec3(Resolution, 0.0)
+        #define iTime Time
         #define iTimeDelta 0.0
         #define iFrameRate 60.0
-        #define iFrame (60.0 * u_Time)
-        #define iChannelTime float[](u_Time, u_Time, u_Time, u_Time)
-        #define iChannelResolution float[](vec3(u_Resolution, 0.0), vec3(u_Resolution, 0.0), vec3(u_Resolution, 0.0), vec3(u_Resolution, 0.0))
+        #define iFrame (60.0 * Time)
+        #define iChannelTime float[](Time, Time, Time, Time)
+        #define iChannelResolution float[](vec3(Resolution, 0.0), vec3(Resolution, 0.0), vec3(Resolution, 0.0), vec3(Resolution, 0.0))
         #define iMouse vec4(0.0)
         // uniform samplerXX iChannel0..3; // input channel. XX = 2D/Cube
         #define iDate vec4(1970.0, 1.0, 1.0, 0.0)

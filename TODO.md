@@ -7,7 +7,6 @@
 - fix midi/set_normalized log (i have a stash)
 - pretty INFO logs
   use Colors in shader error format
-- rename uniforms to just capitalized: `Time`, etc.
 - test image when started without any shader files
   dump into workdir?
   -> move scenes/ into package
