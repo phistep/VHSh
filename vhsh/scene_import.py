@@ -9,6 +9,7 @@ from enum import StrEnum
 from urllib.parse import urlparse
 
 from .types import Color
+from .app import VHSh
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,15 @@ def import_shadertoy(url: str, outfile: Path | None = None):
         for k, v in info.items()
     )
     logger.info(header)
+
+    _metadata = dict(
+        version=VHSh.SCENE_FORMAT_VERSION,
+        name=info.get("name"),
+        author=info.get("username")
+    )
+    metadata = '\n'.join(f"/// @{key} {value}"
+                         for key, value in _metadata.items()
+                         if value is not None)
 
     header = '\n'.join(
         f"// {k}: {v.replace('\n', '\n//   ') if isinstance(v, str) else v}"
@@ -96,7 +106,7 @@ def import_shadertoy(url: str, outfile: Path | None = None):
         outfile = Path(f"{info['id']}_{safe_name}.glsl")
 
     with open(outfile, 'w') as f:
-        f.write('\n\n'.join([url, header, adapters, src, main_func]))
+        f.write('\n\n'.join([metadata, url, header, adapters, src, main_func]))
     logger.info(f"wrote '{outfile}'")
 
 

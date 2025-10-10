@@ -1,3 +1,4 @@
+/// @version 1
 // Widget Test
 uniform int int_default;
 uniform int int_log; // <log>

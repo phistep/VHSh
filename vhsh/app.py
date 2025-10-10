@@ -54,6 +54,8 @@ class Time:
 
 class VHSh:
 
+    SCENE_FORMAT_VERSION = 1
+
     def __init__(self,
                  scenes: list[Path],
                  width: int = 1280,
@@ -69,7 +71,8 @@ class VHSh:
         self._load_request = Event()
         self._load_request_args = {}
         self._scene_index = 0
-        self.scenes = [Scene(path) for path in scenes]
+        self.scenes = [Scene(path, required_version=self.SCENE_FORMAT_VERSION)
+                       for path in scenes]
         self.system_parameters: dict[str, SystemParameter] = dict(
             Resolution=SystemParameter(
                 "Resolution", type="vec2", value=(0., 0.),

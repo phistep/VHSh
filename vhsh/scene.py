@@ -206,10 +206,29 @@ class Preset:
 
 
 class Scene:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, required_version: int | None = None):
         self.path = path
         self.name = self.path.stem.replace('_', ' ').replace('-', ' ').title()
+        self._required_version = required_version
+
         self.reload()
+
+        self.name = self.metadata.get("name", self.name)
+
+        if self._required_version is not None:
+            scene_version = self.metadata.get("version")
+            if scene_version is None:
+                logger.warning("'%s': Undefined version."
+                               " Might be incompatble with required version %i!",
+                               self.name,
+                               self._required_version)
+            elif scene_version != self._required_version:
+                logger.warning("'%s': Incompatible version %i!"
+                               " Might be incompatble with required version %i!",
+                               self.name,
+                               scene_version,
+                               self._required_version)
+
 
     def __str__(self) -> str:
         # TODO ext
@@ -238,6 +257,9 @@ class Scene:
             # presets
             elif line.startswith('///'):
                 line_content = line.lstrip('/ ').strip()
+                if line_content.startswith('@'):
+                    # metadata line
+                    continue
                 if line.startswith('/// uniform'):
                     parameter = Parameter.from_def(line_content)
                     presets[-1].parameters[parameter.name] = parameter
@@ -250,10 +272,26 @@ class Scene:
 
         return presets
 
+    @staticmethod
+    def _load_metadata(source: str) -> dict[str, str | int]:
+        metadata = {}
+        for line in source.splitlines():
+            if line.startswith('/// @'):
+                key, value = line.lstrip('/ @').strip().split(' ', 1)
+                key = key.strip()
+                value = value.strip()
+                match key:
+                    case "version":
+                        value = int(value)
+                metadata[key] = value
+
+        return metadata
+
     def reload(self):
         self.source = self._read_file(self.path)
         self._preset_index = 0
         self.presets = self._load_presets(self.source)
+        self.metadata = self._load_metadata(self.source)
 
     @property
     def parameters(self) -> dict[str, Parameter]:
@@ -277,15 +315,26 @@ class Scene:
         self.preset_index = (self.preset_index + n) % len(self.presets)
 
     def write_file(self, new_preset: str | None = None):
+        if (self._required_version is not None
+                and "version" not in self.metadata):
+            logger.warning("'%s': Updating Scene version to %i",
+                            self.name,
+                            self._required_version)
+            self.metadata["version"] = self._required_version
+        metadata = '\n'.join(f"/// @{key} {value}"
+                             for key, value in self.metadata.items()) + '\n'
+
         if new_preset is not None:
             self.presets.append(Preset(name=new_preset,
                                        parameters=self.parameters.copy(),
                                        index=len(self.presets)-1))
 
         presets = '\n'.join(str(preset) for preset in self.presets[1:]) + '\n'
+
         lines = [line for line in self.source.splitlines()
                  if not line.startswith('///')]
-        self.source = presets + '\n'.join(lines) + '\n'
+
+        self.source = metadata + presets + '\n'.join(lines) + '\n'
 
         if self._preset_index == 0:
             for parameter in self.parameters.values():

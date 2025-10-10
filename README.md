@@ -22,7 +22,7 @@ Then run `VHSh` fron that environment
 
 ```bash
 source .venv/bin/activate
-python3 vhsh.py mandelbrot.glsl
+python3 -m vhsh run mandelbrot.glsl
 ```
 
 If you pass multiple shader files, you can switch between them in the tool.
@@ -69,6 +69,8 @@ Sensible mappings for various controls are supplied in
 
 
 ### Writing Shaders for _Video Home Shader_
+
+_Scene format version: 1_
 
 _Video Home Shader_ supplies you with a 2D canvas to draw into using an OpenGL
 _fragment shader_. It is run once for every pixel on the screen and determines
@@ -217,6 +219,27 @@ To update an existing preset, select it, adjust the parameter values and click
 `Save`. The current paremeter values will be written to the default values of the
 currently selected preset.
 
+
+### Metadata
+
+Metadata for a scene can be recorded in the form of
+```glsl
+/// @key value
+```
+
+Currently supported metadata fields:
+
+- `version` (`int`): Used to ensure scene format and VHSh version are
+  compatible. Will emit a warning when loading a scene with missing or
+  incompatible version. Missing version will be updated when saving a preset.
+- `name` (`str`): Can be used to set a custom scene name. If omitted, the file
+  name will be cleaned up and title-cased.
+
+### Scene Format Version History
+
+#### `@version 1`
+- Introduced version number
+- Changed system uniforms from `u_Time` to `Time` etc.
 
 ## Resources
 

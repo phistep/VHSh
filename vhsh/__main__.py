@@ -81,11 +81,13 @@ def print_version():
     import imgui
     import OpenGL
     from .renderer import Renderer
+    from .app import VHSh
 
     version_line = re.match("#version.*", Renderer.FRAGMENT_SHADER_PREAMBLE)
     gl_profile = version_line[0] if version_line is not None else ""
 
     print(f"{__package__} {__version__}  {os.path.dirname(__file__)}")
+    print(f"scene format {VHSh.SCENE_FORMAT_VERSION}")
     print()
     print(f"Python {sys.version}  {sys.executable}")
     print(f"{OpenGL.__package__} {OpenGL.__version__}  {gl_profile}")

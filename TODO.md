@@ -12,7 +12,9 @@
   -> move scenes/ into package
     if no files passed: load default scenes
       ?? dump minimal scene + add that to scenes
-- version number in shaders?
+- migration tool: version 0 -> version 1
+  - system uniform rename
+  - version number
 
 release beta
 
@@ -22,6 +24,7 @@ release beta
 - ruff format?
 - docstrings
 - dev docs: Secenes, Parameters, Controllers, scene_index
+- docs for `import` command
 
 release rc
 
@@ -101,6 +104,7 @@ release 1.0.0 🥳
 - [ ] kiosk startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
       - `--kiosk`: no gui, credits, auto cycle scenes after inactivity, morph presets
+      - @author metadata field
 
 - [ ] scene dir format
   - [ ] support reading from zip: `myscene.vhsh`
