@@ -113,6 +113,7 @@ def configure_logging(verbose: bool):
         logging.basicConfig(level=logging.DEBUG,
                             handlers=[handler],
                             force=True)
+        logging.getLogger("watchfiles.main").setLevel(logging.INFO)
 
     else:
         handler = logging.StreamHandler(sys.stdout)

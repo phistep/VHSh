@@ -25,8 +25,8 @@ void main(void) {
     color += vec3(0.3) * not_the_circle;
 
     // backround grid + middle part
-    color += (floor(pow(sin((p_corrected.x + .05) * 10. * 3.141), 2.) + 0.01)
-            + floor(pow(sin((p.y + .05) * 10. * 3.141), 2.) + 0.01)
+    color += (floor(pow(sin((p_corrected.x - .05) * 10. * 3.141), 2.) + 0.01)
+            + floor(pow(sin((p.y - .05) * 10. * 3.141), 2.) + 0.01)
         ) * (1. - (the_cirle * (1. - rect_mask(p, vec2(.5, .5), vec2(.5, .05)))));
 
     // top black/white shit
