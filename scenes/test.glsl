@@ -1,3 +1,5 @@
+uniform float circle_radius; // =0.475 [0.,2.] #1
+
 float rect_mask(vec2 p, vec2 center, vec2 dimensions) {
     return (1. - step(dimensions.x, length(p.x - center.x)))
         * (1. - step(dimensions.y, length(p.y - center.y)));
@@ -18,7 +20,7 @@ void main(void) {
     p_corrected.x = (p.x - 0.5) * aspect + 0.5;
 
     // "circle"
-    float the_cirle = circle_mask(p_corrected, center, 0.475);
+    float the_cirle = circle_mask(p_corrected, center, circle_radius);
     float not_the_circle = 1. - the_cirle;
 
     // background
