@@ -4,6 +4,7 @@ from typing import get_args, Generic, Iterable
 from pathlib import Path
 from enum import StrEnum
 from dataclasses import dataclass
+from ast import literal_eval
 
 from .types import (
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
@@ -145,9 +146,9 @@ class Parameter(UniformLike, Generic[UniformT]):
 
         try:
             # TODO ast.literal_eval
-            default = (eval(default_s.removeprefix('='))
-                        if default_s
-                        else None)
+            default = (literal_eval(default_s.removeprefix('='))
+                       if default_s
+                       else None)
         except SyntaxError as e:
             raise ParameterParserError(
                 f"Invalid 'default' metadata for uniform"
@@ -155,7 +156,7 @@ class Parameter(UniformLike, Generic[UniformT]):
             ) from e
 
         try:
-            range = eval(range_s) if range_s else None
+            range = literal_eval(range_s) if range_s else None
         except SyntaxError as e:
             raise ParameterParserError(
                 f"Invalid 'range' metadata for uniform"

@@ -307,6 +307,7 @@ class Renderer:
                 logger.warning(f"{e} not in uniforms={self.uniforms}")
 
     def render(self):
+        # TODO do I need to do this every frame? also: glBindVertexArray
         gl.glUseProgram(self.shader_program)
         with self._uniform_lock:
             for uniform in self.uniforms.values():

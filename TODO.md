@@ -3,7 +3,7 @@
 ## 1.0
 
 - preset change: new uniforms are not added. do we want that? def not error flood
-- too mant current preset logs on midi save presert
+- too many current preset logs on midi save presert
 - fix midi/set_normalized log (i have a stash)
 - pretty INFO logs
   use Colors in shader error format
@@ -16,9 +16,10 @@
 
 release beta
 
+- read through every file and polish, check for dead code
 - test on the machine!
 - cleanup diagnostics
-- ruff format
+- ruff format?
 - docstrings
 - dev docs: Secenes, Parameters, Controllers, scene_index
 
@@ -35,11 +36,8 @@ release 1.0.0 🥳
 - 1.0: merge refactor, backport new features on main and branches
 - 1.1: named mappings
 - 1.2: scene dir support: Collection? Project?
-        midi_mapping, scenes
 - 1.3: sampler2D support: image, video
 - 1.4: built-in midi drivers by name/id
-        program ccs
-        toggle
 - 1.5: kiosk
 - ...
 - 2.0: timeline support (playlist)
@@ -48,26 +46,15 @@ release 1.0.0 🥳
 
 ## Features
 
-- [ ] multiple midi devcies
-  - [x] open all devices
-  - [ ] one mapping per devcie
-  - [ ] default mappings by device name
-- [ ] limit resolution and upscale
-- [ ] write state to MIDI controler (uTime, UI toggle etc)
-    - https://www.korg.com/us/support/download/manual/0/159/2710/
-    - also: configure push-button/toggle on-the-fly <toggle>
 - [ ] autosave and restore uniform values
       - `atexit` and `pickle`
       - app dirs
 - [ ] `#include`s, or at least one stdlib in preamble, or pass libs
-- [ ] vec3 input method: have the user assign multiple `#1:#2:#3`
-    - multiple mappings for one parameter with `,`
-- [ ] record mp4
 - [ ] simplify parser: split on `" "`, then `match` on first char
 - [ ] mouse uniform
+- [ ] change time speed
 - [ ] debian package: install system deps, mime handlers, dekstop file,
-      branch `package-linux`
-- [ ] make midoi logger not log same message twice in a row
+      branch `package-linux` or flatpak
 
 - [ ] sampler2d
   - [ ] prev frame
@@ -75,6 +62,26 @@ release 1.0.0 🥳
   - [ ] image/video file in with `uniform sampler2D foo; // @assets/foo.mp4`
   - [ ] arbitrary data as buffer object
   -> chatgpt: opencv
+- [ ] limit resolution and upscale
+- [ ] record mp4
+- [ ] render to buffer, make prev frame available as texture
+
+- [ ] multiple midi devcies
+  - [x] open all devices
+  - [ ] one mapping per devcie
+  - [ ] default mappings by device name
+- [ ] make midoi logger not log same message twice in a row
+- [ ] vec3 input method: have the user assign multiple `#1:#2:#3`
+    - multiple mappings for one parameter with `,`
+- [ ] built-in midi drivers by name/id
+      - program ccs
+      - toggle
+      - render controller diagram with control names to image
+        texture for imgui, use openCV, can do video as well
+        https://github.com/pyimgui/pyimgui/issues/82#issuecomment-1658259821
+      - write state to MIDI controler (uTime, UI toggle etc)
+      - https://www.korg.com/us/support/download/manual/0/159/2710/
+      - also: configure push-button/toggle on-the-fly <toggle>
 
 - [ ] make named midi ccs in toml via #defines
      ```toml
@@ -91,15 +98,9 @@ release 1.0.0 🥳
      ```
    - [ ] view midi mappings in imgui
 
-- [ ] subcommands
-    - run
-      - `--kiosk`: no gui, credits, auto cycle scenes after inactivity, morph presets
-    - init
-    - import (or run url directly?)
-- [ ] shadertoy import
-
 - [ ] kiosk startup mode: no gui and fullscreen (not possible in glfw, need sdl)
       maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
+      - `--kiosk`: no gui, credits, auto cycle scenes after inactivity, morph presets
 
 - [ ] scene dir format
   - [ ] support reading from zip: `myscene.vhsh`
