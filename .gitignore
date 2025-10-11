@@ -1,5 +1,6 @@
 .DS_Store
 .env
+.zed
 
 __pycache__
 .venv*
@@ -11,4 +12,4 @@ build/
 imgui.ini
 
 experiments
-.zed
+*.glsl

@@ -1,3 +1,4 @@
+/// @version 1
 uniform float circle_radius; // =0.475 [0.,2.] #1
 
 float rect_mask(vec2 p, vec2 center, vec2 dimensions) {

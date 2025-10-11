@@ -1,8 +1,10 @@
 import time
 import logging
+import shutil
 from threading import Event
 from collections import deque
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from imgui.integrations.glfw import GlfwRenderer
 
@@ -14,6 +16,9 @@ from .gui import GUI
 from .midi import MIDIController
 from .microphone import Microphone
 from .watch import FileWatcher
+
+
+DEFAULT_SCENE_DIR = Path(__file__).parent / "scenes"
 
 
 logger = logging.getLogger(__name__)
@@ -73,6 +78,8 @@ class VHSh:
         self._scene_index = 0
         self.scenes = [Scene(path, required_version=self.SCENE_FORMAT_VERSION)
                        for path in scenes]
+        if not self.scenes:
+            self.scenes = self._get_default_scenes()
         self.system_parameters: dict[str, SystemParameter] = dict(
             Resolution=SystemParameter(
                 "Resolution", type="vec2", value=(0., 0.),
@@ -100,6 +107,34 @@ class VHSh:
         logger.info("scenes: %s",
                     [f"{scene.name} [{scene.path}]" for scene in self.scenes])
         self.load()
+
+    def _get_default_scenes(self, directory: Path = DEFAULT_SCENE_DIR) -> list[Scene]:
+        _paths = sorted(directory.glob("*.glsl"))
+
+        # create first scene in current dir
+        local_paths = [Path() / _paths[0].name.lstrip("_")]
+
+        # use temporary files for remaining, so users can't over-write these
+        for _path in _paths[1:]:
+            local_paths.append(
+                Path(
+                    NamedTemporaryFile(
+                        prefix=f"{self.__class__.__name__.lower()}_",
+                        suffix=f"_{_path.name}",
+                        # we don't clean up because we don't want to delete
+                        # potential user edits
+                        delete=False,
+                    ).name
+                )
+            )
+
+        for _path, local_path in zip(_paths, local_paths):
+            # TODO 3.14 Path.copy()
+            # does not preserve permissions or metadata
+            shutil.copyfile(_path, local_path)
+
+        return [Scene(path, required_version=self.SCENE_FORMAT_VERSION)
+                for path in local_paths]
 
     @property
     def scene(self) -> Scene:

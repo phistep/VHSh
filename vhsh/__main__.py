@@ -54,7 +54,7 @@ def get_argument_parser():
     subparsers = parser.add_subparsers()
 
     parser_run = subparsers.add_parser('run', help='Run scenes with VHSh')
-    parser_run.add_argument('shader', nargs='+', metavar='SHADER',
+    parser_run.add_argument('shader', nargs='*', metavar='SHADER',
         help='Path to GLSL fragment shader', type=Path)
     parser_run.add_argument('-M', '--midi-mapping',
         help="Path to TOML file with system MIDI mappings")

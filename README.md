@@ -36,6 +36,9 @@ You can pass `--mic` to enable microphone input. See
 
 To toggle the UI, press `<tab>`.
 
+When run without any file argument, the default scenes will be loaded and a
+`testcard.glsl` scene will be created in the current directory.
+
 
 ### MIDI Support
 

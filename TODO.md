@@ -7,11 +7,6 @@
 - fix midi/set_normalized log (i have a stash)
 - pretty INFO logs
   use Colors in shader error format
-- test image when started without any shader files
-  dump into workdir?
-  -> move scenes/ into package
-    if no files passed: load default scenes
-      ?? dump minimal scene + add that to scenes
 - migration tool: version 0 -> version 1
   - system uniform rename
   - version number
@@ -23,7 +18,7 @@ release beta
 - cleanup diagnostics
 - ruff format?
 - docstrings
-- dev docs: Secenes, Parameters, Controllers, scene_index
+- dev docs: Scenes, Parameters, Controllers, scene_index
 - docs for `import` command
 
 release rc
