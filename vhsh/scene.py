@@ -213,8 +213,6 @@ class Scene:
 
         self.reload()
 
-        self.name = self.metadata.get("name", self.name)
-
         if self._required_version is not None:
             scene_version = self.metadata.get("version")
             if scene_version is None:
@@ -228,7 +226,6 @@ class Scene:
                                self.name,
                                scene_version,
                                self._required_version)
-
 
     def __str__(self) -> str:
         # TODO ext
@@ -292,6 +289,7 @@ class Scene:
         self._preset_index = 0
         self.presets = self._load_presets(self.source)
         self.metadata = self._load_metadata(self.source)
+        self.name = self.metadata.get("name", self.name)
 
     @property
     def parameters(self) -> dict[str, Parameter]:

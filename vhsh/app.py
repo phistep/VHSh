@@ -223,7 +223,7 @@ class VHSh:
 
                 if not self.error:
                     self.renderer.update((*self.system_parameters.values(),
-                                        *self.scene.parameters.values()))
+                                          *self.scene.parameters.values()))
                     self.renderer.render()
 
                 for controller in self.controllers.values():
