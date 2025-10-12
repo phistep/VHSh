@@ -1,7 +1,7 @@
 [project]
 name = "vhsh"
 dynamic = ["version"]
-requires-python = ">= 3.12"
+requires-python = "==3.12"
 dependencies = ["PyOpenGL", "glfw", "imgui[glfw]", "numpy"]
 
 [project.optional-dependencies]
