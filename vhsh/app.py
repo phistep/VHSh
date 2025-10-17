@@ -103,9 +103,14 @@ class VHSh:
         self.gui = GUI(app=self,
                        renderer=GlfwRenderer,
                        window=self.window.handler)
-
-        logger.info("scenes: %s",
-                    [f"{scene.name} [{scene.path}]" for scene in self.scenes])
+        def _rel(path: Path) -> Path:
+            return path.absolute().relative_to(Path.cwd().absolute())
+        logger.info(
+            f"{Color.Style.BOLD}Scenes:{Color.RESET}\n%s",
+            "\n".join(f"  {scene.name}"
+                      f"  {Color.Style.FAINT}[{_rel(scene.path)}]{Color.RESET}"
+                      for scene in self.scenes)
+        )
         self.load()
 
     def _get_default_scenes(self, directory: Path = DEFAULT_SCENE_DIR) -> list[Scene]:
@@ -170,9 +175,13 @@ class VHSh:
         self._load_request_args = dict(clear=clear)
 
     def _load(self, clear: bool = True):
-        logger.info("scene: %s", self.scene.name)
-        logger.info("presets: %s", [p.name for p in self.scene.presets])
-        logger.info("parameters: %s", self.scene.presets[self.scene.preset_index])
+        logger.info(f"{Color.Style.BOLD}\nScene:{Color.RESET} %s", self.scene.name)
+        logger.info(f"{Color.Style.BOLD}Presets:{Color.RESET}\n%s",
+                    "\n".join(f"  {p.name}" for p in self.scene.presets))
+        current_preset = self.scene.presets[self.scene.preset_index]
+        logger.info(f"{Color.Style.BOLD}Parameters:{Color.RESET}\n%s",
+                    "\n".join(f"  {p.removeprefix("/// uniform ")}"
+                    for p in str(current_preset).splitlines()))
 
         self.scene.reload()
         parameters = [*self.system_parameters.values(),
@@ -185,7 +194,8 @@ class VHSh:
         else:
             self.error = None
             logger.info(f"{Color.GREEN + Color.Style.BOLD}OK{Color.RESET}:"
-                        f" {self.scene.path}")
+                        f" {self.scene.name}"
+                        f"  {Color.Style.FAINT}[{self.scene.path}]{Color.RESET}")
 
     def run(self):
         last_time = self.time.now()

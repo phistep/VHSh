@@ -123,7 +123,7 @@ def configure_logging(verbose: bool):
 
     else:
         handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(ColorFormatter(fmt="%(levelname)s %(message)s",
+        handler.setFormatter(ColorFormatter(fmt="\n%(levelname)s %(message)s",
                                             min_level=logging.WARNING))
         logging.basicConfig(level=logging.INFO,
                             handlers=[handler],

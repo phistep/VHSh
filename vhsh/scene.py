@@ -9,6 +9,7 @@ from ast import literal_eval
 from .types import (
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
     UniformT, UniformLike,
+    Color
 )
 
 
@@ -218,12 +219,12 @@ class Scene:
             if scene_version is None:
                 logger.warning("'%s': Undefined version."
                                " Might be incompatble with required version %i!",
-                               self.name,
+                               self.path,
                                self._required_version)
             elif scene_version != self._required_version:
                 logger.warning("'%s': Incompatible version %i!"
                                " Might be incompatble with required version %i!",
-                               self.name,
+                               self.path,
                                scene_version,
                                self._required_version)
                 logger.warning("HINT: Migrate using\n\n    vhsh migrate '%s'",
@@ -304,8 +305,9 @@ class Scene:
     @preset_index.setter
     def preset_index(self, value):
         self._preset_index = value % len(self.presets)
-        logger.info("current preset: %s",
-                    self.presets[self.preset_index])
+        logger.info(f"{Color.Style.BOLD}Current Preset:{Color.RESET}\n%s",
+                    "\n".join(f"  {p.removeprefix("/// uniform ")}"
+                    for p in str(self.presets[self.preset_index]).splitlines()))
 
     def prev_preset(self, n: int = 1):
         self.preset_index = (self.preset_index - n) % len(self.presets)
@@ -344,4 +346,4 @@ class Scene:
                                      flags=re.MULTILINE)
 
         self.path.write_text(self.source)
-        logger.info(f"wrote presets to '{self.path}'")
+        logger.info(f"Wrote presets to '{self.path}'")

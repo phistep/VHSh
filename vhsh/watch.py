@@ -2,7 +2,7 @@ import logging
 from threading import Event
 from pathlib import Path
 
-from .types import Controller, App
+from .types import Controller, App, Color
 
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,8 @@ class FileWatcher(Controller):
             self.stop()
             return
 
-        logger.info(f"Watching for changes in %s...",
-                    [str(f) for f in self.filenames])
+        logger.info(f"{Color.Style.BOLD}Watching for changes:{Color.RESET}\n%s",
+                    "\n".join(f"  {f}" for f in self.filenames))
 
         for changes in watch(*self.filenames, stop_event=self._stop_controller):
             for _, filename in changes:

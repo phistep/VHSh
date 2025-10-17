@@ -11,7 +11,7 @@ try:
 except ImportError as __mido_import_error__:
     MIDO_AVAILABLE = False
 
-from .types import App, Controller
+from .types import App, Controller, Color
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +29,13 @@ class MIDIController(Controller):
 
         self._app = app
 
-        logger.info("midi system mapping:\n%s", pformat(system_mapping))
+        logger.info(f"{Color.Style.BOLD}[MIDI] System Mapping:{Color.RESET}\n%s", pformat(system_mapping))
         self._system_mapping = defaultdict(dict, system_mapping)
         self._parameter_mapping: dict[int, str] = {}
 
         self.devices = mido.get_input_names()
-        logger.info("MIDI devices: %s", self.devices)
+        logger.info(f"{Color.Style.BOLD}[MIDI] Devices: {Color.RESET}\n%s",
+                    "\n".join(f"  {d}" for d in self.devices))
 
     def _handle_message(self, msg: "mido.Message"):
         logger.debug(f"Received MIDI message: #{msg.control} = {msg.value}")
@@ -91,7 +92,9 @@ class MIDIController(Controller):
                 ports = [stack.enter_context(mido.open_input(device))
                          for device in self.devices]
                 logger.info(
-                    f"listening for MIDI messages on '{[p.name for p in ports]}'...")
+                    f"{Color.Style.BOLD}[MIDI] Listening on:{Color.RESET}\n%s",
+                    "\n".join(f"  {p.name}" for p in ports)
+                )
                 inport = mido.ports.MultiPort(ports)
 
                 while not self._stop_controller.is_set():

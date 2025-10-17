@@ -107,7 +107,7 @@ def import_shadertoy(url: str, outfile: Path | None = None):
 
     with open(outfile, 'w') as f:
         f.write('\n\n'.join([metadata, url, header, adapters, src, main_func]))
-    logger.info(f"wrote '{outfile}'")
+    logger.info(f"Wrote '{outfile}'")
 
 
 def import_scene(url: str, outfile: Path):
