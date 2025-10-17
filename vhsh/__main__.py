@@ -2,13 +2,10 @@ import sys
 import re
 import argparse
 import logging
-import tomllib
 from pathlib import Path
 from typing import Optional
 
-from .app import VHSh
 from .types import Color
-from .scene_import import import_scene
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +42,7 @@ class ColorFormatter(logging.Formatter):
             self._style._fmt = _fmt
 
 
-def get_argument_parser():
+def get_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog='vhsh')
     parser.add_argument('-V', '--version', action="store_true",
         help="Print version information")
@@ -71,6 +68,15 @@ def get_argument_parser():
     parser_import.add_argument("-o", "--outfile", type=Path,
         help="Path to save the scene")
     parser_import.set_defaults(func=main_import)
+
+    parser_migrate = subparsers.add_parser('migrate',
+        help='Migrate scenes from one format to another')
+    parser_migrate.add_argument("path", type=Path)
+    parser_migrate.add_argument("-f", "--from-version", type=int,
+        help="Default: Version from file or 0 if undefined")
+    parser_migrate.add_argument("-t", "--to-version", type=int,
+        help="Default: Current version supported by VHSh (see -V)")
+    parser_migrate.set_defaults(func=main_migrate)
 
     return parser
 
@@ -127,6 +133,10 @@ def configure_logging(verbose: bool):
 
 
 def main_run(args: argparse.Namespace):
+    import tomllib
+
+    from .app import VHSh
+
     midi_mapping = {}
     if args.midi_mapping:
         with open(args.midi_mapping, 'rb') as f:
@@ -139,7 +149,17 @@ def main_run(args: argparse.Namespace):
 
 
 def main_import(args: argparse.Namespace):
+    from .scene_import import import_scene
+
     import_scene(args.url, args.outfile)
+
+
+def main_migrate(args: argparse.Namespace):
+    from .migration import migrate
+
+    migrate(args.path,
+            from_version=args.from_version,
+            to_version=args.to_version)
 
 
 def main(argv: Optional[list[str]] = None):

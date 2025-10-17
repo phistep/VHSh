@@ -11,9 +11,6 @@ release a1
 - fix midi/set_normalized log (i have a stash)
 - pretty INFO logs
   use Colors in shader error format
-- migration tool: version 0 -> version 1
-  - system uniform rename
-  - version number
 
 release beta
 

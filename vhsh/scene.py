@@ -226,10 +226,11 @@ class Scene:
                                self.name,
                                scene_version,
                                self._required_version)
+                logger.warning("HINT: Migrate using\n\n    vhsh migrate '%s'",
+                                path.absolute())
 
     def __str__(self) -> str:
-        # TODO ext
-        return self.path.name
+        return self.name
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.path}>"
