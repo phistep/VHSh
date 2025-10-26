@@ -45,6 +45,7 @@ class Parameter(UniformLike, Generic[UniformT]):
                 self.range = None
                 if self.value is not None:
                     self.value = bool(self.value)
+
             case 'int':
                 _type = GLSLInt
                 if self.default is None:
@@ -56,6 +57,7 @@ class Parameter(UniformLike, Generic[UniformT]):
                     self.range = (*self.range, 1)
                 if self.value is not None:
                     self.value = int(self.value)
+
             case 'float':
                 _type = GLSLFloat
                 if self.default is None:
@@ -67,6 +69,7 @@ class Parameter(UniformLike, Generic[UniformT]):
                     self.range = (*self.range, 0.01)
                 if self.value is not None:
                     self.value = float(self.value)
+
             case str() as t if t.startswith('float['):
                 try:
                     m = re.match(r'float\[(\d+)\]', self.type)
@@ -80,27 +83,36 @@ class Parameter(UniformLike, Generic[UniformT]):
                 self.range = None
                 if self.value is not None:
                     self.value = tuple(float(v) for v in self.value)
+
             case 'vec2':
                 _type = GLSLVec2
-                self.default = tuple(float(v) for v in self.default) or (1.,)*2  # type: ignore
+                if self.default is None:
+                    self.default = (1.,)*2  # type: ignore
+                self.default = tuple(float(v) for v in self.default)
                 if self.range is None:
                     self.range = (0.0, 1.0, 0.01)
                 elif len(self.range) == 2:
                     self.range = (*self.range, 0.01)
                 if self.value is not None:
                     self.value = tuple(float(v) for v in self.value)
+
             case 'vec3':
                 _type = GLSLVec3
-                self.default = tuple(float(v) for v in self.default) or (1.,)*3  # type: ignore
+                if self.default is None:
+                    self.default = (1.,)*3  # type: ignore
+                self.default = tuple(float(v) for v in self.default)
                 if self.range is None:
                     self.range = (0.0, 1.0, 0.01)
                 elif len(self.range) == 2:
                     self.range = (*self.range, 0.01)
                 if self.value is not None:
                     self.value = tuple(float(v) for v in self.value)
+
             case 'vec4':
                 _type = GLSLVec4
-                self.default = tuple(float(v) for v in self.default) or (1.,)*4  # type: ignore
+                if self.default is None:
+                    self.default = (1.,)*4  # type: ignore
+                self.default = tuple(float(v) for v in self.default)
                 if self.range is None:
                     self.range = (0.0, 1.0, 0.01)
                 elif len(self.range) == 2:
@@ -124,6 +136,7 @@ class Parameter(UniformLike, Generic[UniformT]):
 
         if self.value is None:
             self.value = self.default
+
 
     def __str__(self) -> str:
         s = f"uniform {self.type} {self.name};  //"
