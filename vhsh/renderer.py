@@ -299,12 +299,12 @@ class Renderer:
             )
 
     def update(self, uniforms: Sequence[UniformLike]):
-        for uniform in uniforms:
-            try:
-                with self._uniform_lock:
+        with self._uniform_lock:
+            for uniform in uniforms:
+                try:
                     self.uniforms[uniform.name].value = uniform.value
-            except KeyError as e:
-                logger.warning(f"{e} not in uniforms={self.uniforms}")
+                except KeyError as e:
+                    logger.warning(f"{e} not in uniforms={self.uniforms}")
 
     def render(self):
         # TODO do I need to do this every frame? also: glBindVertexArray

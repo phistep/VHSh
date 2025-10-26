@@ -31,11 +31,16 @@ release 1.0.0 🥳
 
 - 0.2: multi-midi
 - 1.0: merge refactor, backport new features on main and branches
-- 1.1: named mappings
+- 1.1: midi
+  - named mappings `#btn1`
+  - vec2/3/4 mappings `#1:2`
+  - multiple ccs per parameter `#2,sl3`
+  - joystick support `<rotation>`, `<translation>`
+  - gui show mappings
 - 1.2: scene dir support: Collection? Project?
-- 1.3: sampler2D support: image, video
-- 1.4: built-in midi drivers by name/id
-- 1.5: kiosk
+- 1.3: kiosk
+- 1.4: sampler2D support: image, video
+- 1.5: built-in midi drivers by name/id
 - ...
 - 2.0: timeline support (playlist)
 - 3.0: wgpu
@@ -60,6 +65,10 @@ release 1.0.0 🥳
     - correct streching
     - improved sinus
 
+- [ ] joystick support:
+      `vec3 <position>`, `vec4 <orientation>` (quat?)
+      keep internal state, treat inputs as delta/velocity
+
 - [ ] sampler2d
   - [ ] prev frame
   - [ ] video in
@@ -77,6 +86,7 @@ release 1.0.0 🥳
 - [ ] make midoi logger not log same message twice in a row
 - [ ] vec3 input method: have the user assign multiple `#1:#2:#3`
     - multiple mappings for one parameter with `,`
+    - set_value_normalized takes optional `entry:
 - [ ] built-in midi drivers by name/id
       - program ccs
       - toggle

@@ -73,12 +73,12 @@ class MIDIController(Controller):
                 value = msg.value / 127.0
                 self._app.scene.parameters[parameter].set_value_normalized(value)
 
-            except KeyError as e:
+            except KeyError:
                 logger.warning(f"MIDI mapping not found for: {msg.control}")
                 logger.debug(str(msg))
                 logger.debug(pformat(self._parameter_mapping))
 
-            except NotImplementedError as e:
+            except Exception as e:
                 logger.error(f"setting uniform '{parameter}': {e}")
 
     def run(self):
@@ -100,7 +100,7 @@ class MIDIController(Controller):
                 while not self._stop_controller.is_set():
                     for message in inport.iter_pending():
                         self._handle_message(message)
-                    time.sleep(1e-6)
+                    time.sleep(1e-6)  # TODO constant/param
         except OSError as e:
             logger.error("No MIDI devices found!")
             logger.exception(e)

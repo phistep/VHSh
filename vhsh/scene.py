@@ -33,7 +33,7 @@ class Parameter(UniformLike, Generic[UniformT]):
     default: UniformT | None
     range: tuple[float, float, float] | None
     widget: Widget | None
-    midi: int | None  # TODO -> controls: list[int]
+    midi: int | None  # TODO -> controls: tuple[int]
 
     # delete everything but the default setting at the bottom? _type not needed
     def __post_init__(self):

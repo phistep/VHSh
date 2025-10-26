@@ -92,11 +92,12 @@ def print_version():
     version_line = re.match("#version.*", Renderer.FRAGMENT_SHADER_PREAMBLE)
     gl_profile = version_line[0] if version_line is not None else ""
 
-    print(f"{__package__} {__version__}  {os.path.dirname(__file__)}")
-    print(f"scene format {VHSh.SCENE_FORMAT_VERSION}")
+    print(f"{__package__} {__version__}")
+    print(f"  {os.path.dirname(__file__)}")
+    print(f"  scene format {VHSh.SCENE_FORMAT_VERSION}")
     print()
-    print(f"Python {sys.version}  {sys.executable}")
-    print(f"{OpenGL.__package__} {OpenGL.__version__}  {gl_profile}")
+    print(f"Python {sys.version}\n  {sys.executable}")
+    print(f"{OpenGL.__package__} {OpenGL.__version__}\n  {gl_profile}")
     print(f"{imgui.__package__} {imgui.__version__}")  # type: ignore
 
 
