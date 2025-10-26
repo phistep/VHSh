@@ -152,7 +152,6 @@ class Parameter(UniformLike, Generic[UniformT]):
 
     @classmethod
     def from_def(cls, definition: str) -> "Parameter":
-        logger.debug("Loading definition: '%s'", definition)
         # TODO take line number, better error messages
         try:
             matches = re.search(
@@ -245,7 +244,6 @@ class Scene:
         self.name = self.path.stem.replace('_', ' ').replace('-', ' ').title()
         self._required_version = required_version
 
-        logger.debug("Loading scene: '%s'", self.path)
         self.reload()
 
         if self._required_version is not None:
@@ -360,6 +358,7 @@ class Scene:
                              for key, value in self.metadata.items()) + '\n'
 
         if new_preset is not None:
+            logger.info("New preset: '%s'", new_preset)
             self.presets.append(Preset(name=new_preset,
                                        parameters=self.parameters.copy(),
                                        index=len(self.presets)-1))

@@ -3,7 +3,6 @@
 ## 1.0
 
 - preset change: new uniforms are not added. do we want that? def not error flood
-- too many current preset logs on midi save presert
 - fix midi/set_normalized log (i have a stash)
 
 release beta
