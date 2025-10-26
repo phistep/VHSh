@@ -39,22 +39,34 @@ class Parameter(UniformLike, Generic[UniformT]):
         match self.type:
             case 'bool':
                 _type = GLSLBool
-                self.default = self.default or True
+                if self.default is None:
+                    self.default = True
+                self.default = bool(self.default)
                 self.range = None
+                if self.value is not None:
+                    self.value = bool(self.value)
             case 'int':
                 _type = GLSLInt
-                self.default = self.default or 1
+                if self.default is None:
+                    self.default = 1
+                self.default = int(self.default)
                 if self.range is None:
                     self.range = (0, 100, 1)
                 elif len(self.range) == 2:
                     self.range = (*self.range, 1)
+                if self.value is not None:
+                    self.value = int(self.value)
             case 'float':
                 _type = GLSLFloat
-                self.default = self.default or 1.0
+                if self.default is None:
+                    self.default = 1.0
+                self.default = float(self.default)
                 if self.range is None:
                     self.range = (0.0, 1.0, 0.01)
                 elif len(self.range) == 2:
                     self.range = (*self.range, 0.01)
+                if self.value is not None:
+                    self.value = float(self.value)
             case str() as t if t.startswith('float['):
                 try:
                     m = re.match(r'float\[(\d+)\]', self.type)
@@ -64,29 +76,37 @@ class Parameter(UniformLike, Generic[UniformT]):
                         f"Unable to parse float array type '{self.type}': {e}"
                     ) from e
                 _type = (float,) * length
-                self.default = self.default or (0.0,) * length  # type: ignore
+                self.default = tuple(float(v) for v in self.default) or (0.0,) * length  # type: ignore
                 self.range = None
+                if self.value is not None:
+                    self.value = tuple(float(v) for v in self.value)
             case 'vec2':
                 _type = GLSLVec2
-                self.default = self.default or (1.,)*2  # type: ignore
+                self.default = tuple(float(v) for v in self.default) or (1.,)*2  # type: ignore
                 if self.range is None:
                     self.range = (0.0, 1.0, 0.01)
                 elif len(self.range) == 2:
                     self.range = (*self.range, 0.01)
+                if self.value is not None:
+                    self.value = tuple(float(v) for v in self.value)
             case 'vec3':
                 _type = GLSLVec3
-                self.default = self.default or (1.,)*3  # type: ignore
+                self.default = tuple(float(v) for v in self.default) or (1.,)*3  # type: ignore
                 if self.range is None:
                     self.range = (0.0, 1.0, 0.01)
                 elif len(self.range) == 2:
                     self.range = (*self.range, 0.01)
+                if self.value is not None:
+                    self.value = tuple(float(v) for v in self.value)
             case 'vec4':
                 _type = GLSLVec4
-                self.default = self.default or (1.,)*4  # type: ignore
+                self.default = tuple(float(v) for v in self.default) or (1.,)*4  # type: ignore
                 if self.range is None:
                     self.range = (0.0, 1.0, 0.01)
                 elif len(self.range) == 2:
                     self.range = (*self.range, 0.01)
+                if self.value is not None:
+                    self.value = tuple(float(v) for v in self.value)
             case _:
                 raise NotImplementedError(
                     f"Uniform type '{self.type}' not implemented:"
