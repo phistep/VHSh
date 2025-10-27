@@ -113,6 +113,7 @@ class VHSh:
         )
         self.load()
 
+    # TODO move to __main__
     def _get_default_scenes(self, directory: Path = DEFAULT_SCENE_DIR) -> list[Scene]:
         _paths = sorted(directory.glob("*.glsl"))
 

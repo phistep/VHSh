@@ -2,8 +2,8 @@
 
 ## 1.0
 
-- preset change: new uniforms are not added. do we want that? def not error flood
 - fix midi/set_normalized log (i have a stash)
+- don't write range to file if not set
 
 release beta
 
@@ -60,6 +60,16 @@ release 1.0.0 🥳
     - mic fft display
     - correct streching
     - improved sinus
+
+  - system integration
+    - linux/macos
+    - [ ] file type default app
+    - [ ] app icon
+    - [ ] imgui ini location
+          https://pyimgui.readthedocs.io/en/latest/reference/imgui.core.html#imgui.core._IO.ini_file_name
+    - [ ] autosave uniform values, restore
+    - [ ] save window position, monitor, transparency, floating, ...
+    - [ ] config file? import api key, microphone, ...? just cli flag file?
 
 - [ ] joystick support:
       `vec3 <position>`, `vec4 <orientation>` (quat?)

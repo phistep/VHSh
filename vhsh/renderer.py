@@ -62,6 +62,7 @@ class Uniform(UniformLike):
                  name: str,
                  value: UniformValue | None = None):
         self._location: int = gl.glGetUniformLocation(program, name)
+        # TODO free on __del__?
         self.type = type_
         self.name = name
 
@@ -303,8 +304,14 @@ class Renderer:
             for uniform in uniforms:
                 try:
                     self.uniforms[uniform.name].value = uniform.value
-                except KeyError as e:
-                    logger.warning(f"{e} not in uniforms={self.uniforms}")
+                except KeyError:
+                    self.uniforms[uniform.name] = Uniform(self.shader_program,
+                                                          type_=uniform.type,
+                                                          name=uniform.name,
+                                                          value=uniform.value)
+            for unused in set(self.uniforms) - set(u.name for u in uniforms):
+                del self.uniforms[unused]
+
 
     def render(self):
         # TODO do I need to do this every frame? also: glBindVertexArray
