@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 from .types import Color
 from .app import VHSh
+from . import __version__
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ def import_shadertoy(url: str, outfile: Path | None = None):
 
     r = requests.get(API_URL + id_,
                      params={"key": api_key},
-                     headers={"user-agent": "vhsh/0.1.0"})
+                     headers={"user-agent": f"vhsh/{__version__}"})
     r.raise_for_status()
     shadertoy_info = r.json()
     logger.debug(pformat(shadertoy_info))
