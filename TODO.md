@@ -3,18 +3,23 @@
 ## 1.0
 
 - fix midi/set_normalized log (i have a stash)
-- don't write range to file if not set
 
 release beta
 
+- default extras in pyproj
+- git tag `__version__`
 - read through every file and polish, check for dead code
 - test on the machine!
 - cleanup diagnostics
-- ruff format?
+- ruff format
+- ty typing
 - docstrings
-- dev docs: Scenes, Parameters, Controllers, scene_index
+- dev docs: uv workflow, Scenes, Parameters, Controllers, scene_index
 - docs for `import` command
 - merge README from main
+- proper pyproject.toml metadata
+- license
+- changelog
 
 release rc
 
@@ -31,15 +36,17 @@ release 1.0.0 🥳
   - named mappings `#btn1`
   - vec2/3/4 mappings `#1:2`
   - multiple ccs per parameter `#2,sl3`
+  - "shift/alt" for more mappings
   - joystick support `<rotation>`, `<translation>`
   - gui show mappings
+  - version + pydantic model midi mapping? 
 - 1.2: scene dir support: Collection? Project?
 - 1.3: kiosk
 - 1.4: sampler2D support: image, video
 - 1.5: built-in midi drivers by name/id
 - ...
 - 2.0: timeline support (playlist)
-- 3.0: wgpu
+- 3.0: wgpu + run as wasm in browser
 
 
 ## Features
@@ -63,17 +70,24 @@ release 1.0.0 🥳
 
   - system integration
     - linux/macos
+    - [ ] open file picker
     - [ ] file type default app
     - [ ] app icon
-    - [ ] imgui ini location
+    - [ ] imgui ini location: XDG_STATE_HOME
           https://pyimgui.readthedocs.io/en/latest/reference/imgui.core.html#imgui.core._IO.ini_file_name
     - [ ] autosave uniform values, restore
     - [ ] save window position, monitor, transparency, floating, ...
-    - [ ] config file? import api key, microphone, ...? just cli flag file?
+        - flag to start afreash
+    - [ ] config file? XDG_CONFIG_HOME, just cli flag file?
+        - import api key,
+        - microphone
+        - keybindings (time, scene, preset, ...)
+    - [ ] write default midi mappings to XDG_DATA_HOME
 
 - [ ] joystick support:
       `vec3 <position>`, `vec4 <orientation>` (quat?)
       keep internal state, treat inputs as delta/velocity
+- [ ] arrow keys for <position>, mouse for <orientation>
 
 - [ ] sampler2d
   - [ ] prev frame
@@ -169,6 +183,7 @@ release 1.0.0 🥳
 
 
 ## Ideas
+- embed strudel.cc
 - switch to SDL?
   - native macos fullscreen
   - mic input https://www.lazyfoo.net/tutorials/SDL/34_audio_recording/index.php
