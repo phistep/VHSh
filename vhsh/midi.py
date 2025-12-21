@@ -59,10 +59,10 @@ class MIDIController(Controller):
                 self._app.scene.write_file(new_preset=f"MIDI {datetime.now()}")
 
         elif (msg.control
-                == self._system_mapping['uniform'] .get('time', {}).get('toggle')):
+                == self._system_mapping['parameter'] .get('time', {}).get('toggle')):
             self._app.time.running = bool(msg.value)
 
-        elif msg.control == self._system_mapping['uniform'].get('toggle_ui'):
+        elif msg.control == self._system_mapping['ui'].get('toggle'):
             self._app.gui.visible = bool(msg.value)
 
         else:

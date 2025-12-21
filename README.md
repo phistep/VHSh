@@ -60,11 +60,11 @@ prev = 61  # switch to next preset
 next = 62  # switch to previous preset
 save = 60  # save current parameter values to a new preset
 
-[uniform]
-toggle_ui = 45  # toggle paramter tweaking window
+[ui]
+toggle = 45  # show/hide parameter control window
 
-[uniform.time]
-toggle = 41  # toggle Time running
+[parameter.time]
+toggle = 41
 ```
 
 Sensible mappings for various controls are supplied in
