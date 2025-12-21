@@ -48,8 +48,6 @@ class GUI:
         imgui.new_frame()
         imgui.begin("Parameters", closable=False)
 
-        if app.error is not None:
-            imgui.open_popup("Error")
         with imgui.begin_popup_modal("Error",
             flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
         ) as error_popup:
@@ -59,6 +57,9 @@ class GUI:
                 else:
                     # TODO colored
                     imgui.text_wrapped(str(app.error))
+
+        if app.error is not None:
+            imgui.open_popup("Error")
 
         with imgui.begin_group():
             _, app.window.opacity = \
