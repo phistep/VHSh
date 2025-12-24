@@ -2,8 +2,6 @@
 
 ## 1.0
 
-- fix midi/set_normalized log (i have a stash)
-
 release beta
 
 - default extras in pyproj

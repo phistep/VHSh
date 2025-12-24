@@ -1,5 +1,7 @@
 import re
+import sys
 import logging
+import math
 from typing import get_args, Generic, Iterable
 from pathlib import Path
 from enum import StrEnum
@@ -25,15 +27,83 @@ class Widget(StrEnum):
     DRAG = "drag"
 
 
+def interpolate_log(t: float, v_min: float, v_max: float, type_: str = 'float') -> float:
+    # imgui_widgets.cpp:ImGui::DragBehaviourT()
+    # When using logarithmic sliders, we need to clamp to avoid hitting zero, but our
+    # choice of clamp value greatly affects slider precision. We attempt to use the
+    # specified precision to estimate a good lower bound.
+    decimal_precision = 1 if type_ == 'int' else 3
+    logarithmic_zero_epsilon = 0.1 ** decimal_precision
+
+    # imgui_widgets.cpp:ImGui::SliderCalcValueFromRatioT()
+    # We special-case the extents because otherwise our fudging can lead to
+    # "mathematically correct" but non-intuitive behaviors like a fully-left slider not
+    # actually reaching the minimum value
+    if t <= 0:
+        return v_min
+    elif t >= 1:
+        return v_max
+    flipped = v_max < v_min  # Check if range is "backwards"
+    v_min_fudged = (
+        math.copysign(logarithmic_zero_epsilon, v_min)
+        if math.fabs(v_min) < logarithmic_zero_epsilon
+        else v_min
+    )
+    v_max_fudged = (
+        math.copysign(logarithmic_zero_epsilon, v_max)
+        if math.fabs(v_max) < logarithmic_zero_epsilon
+        else v_max
+    )
+    if flipped:
+        v_min_fudged, v_max_fudged = v_max_fudged, v_min_fudged
+
+    # Awkward special case - we need ranges of the form (-100 .. 0)
+    # to convert to (-100 .. -epsilon), not (-100 .. epsilon)
+    if v_max == 0 and v_min < 0:
+        v_max_fudged = -logarithmic_zero_epsilon
+
+    t_with_flip = 1-t if flipped else t
+
+    if (v_min * v_max) < 0:  # Range crosses zero, so we have to do this in two parts
+        zero_point = (-min(v_min, v_max)) / math.fabs(v_max - v_min)
+        if (t_with_flip == zero_point):
+            # Special case to make getting exactly zero possible
+            # (the epsilon prevents it otherwise)
+            return 0
+        elif (t_with_flip < zero_point):
+            return  -(
+                logarithmic_zero_epsilon
+                * math.pow(
+                    -v_min_fudged / logarithmic_zero_epsilon,
+                    (1.0 - (t_with_flip / zero_point))
+                )
+            )
+        else:
+            return (
+                logarithmic_zero_epsilon
+                * math.pow(
+                    v_max_fudged / logarithmic_zero_epsilon,
+                    ((t_with_flip - zero_point) / (1.0 - zero_point))
+                )
+            )
+    elif v_min < 0 or v_max < 0:  # Entirely negative slider
+        return (
+            -abs(v_max_fudged)
+            * math.pow(abs(v_min_fudged) / abs(v_max_fudged), 1 - t_with_flip)
+        )
+    else:
+        return v_min_fudged * (v_max_fudged / v_min_fudged) ** t_with_flip
+
+
 @dataclass
 class Parameter(UniformLike, Generic[UniformT]):
     name: str
     type: str
-    value: UniformT  # annotate optional param, but always set
-    default: UniformT | None
-    range: tuple[float, float, float] | None
-    widget: Widget | None
-    midi: int | None  # TODO -> controls: tuple[int]
+    default: UniformT
+    value: UniformT = None # annotate optional param, but always set
+    range: tuple[float, float, float] | None = None
+    widget: Widget | None = None
+    midi: int | None = None # TODO -> controls: tuple[int]
 
     # delete everything but the default setting at the bottom? _type not needed
     def __post_init__(self):
@@ -126,6 +196,8 @@ class Parameter(UniformLike, Generic[UniformT]):
                     f"Uniform type '{self.type}' not implemented:"
                     f" {self.name} ({self.value})")
 
+        # TODO I think this is not working. in `set_value_normalized` I got
+        # flaot values for int parameters.
         uniform_type = get_args(_type) or _type
         value_type = (tuple(type(elem) for elem in self.default)
                       if isinstance(self.default, Iterable)
@@ -213,14 +285,26 @@ class Parameter(UniformLike, Generic[UniformT]):
                          widget=widget,
                          midi=midi)
 
-    def set_value_normalized(self, value: float):
+    def set_value_normalized(self, value):
         if self.range is None:
-            raise ValueError("Only parameters with .range can be set normalized")
-        min_, max_, _ = self.range
-        new_value = min_ + value * (max_ - min_)
+            raise ValueError(f"Paramter '{self.name}' of type {self.type}"
+                             " cannot be set normalized")
+        min_, max_ = self.range[:2]
+
+        logger.debug("%s: min_=%s max_=%s type(value)=%s",
+                      self, min_, max_, type(value))
+
+        if self.widget is Widget.LOG:
+            # new_value = math.exp(math.log(max_-min_+1)*value) + min_ - 1
+            new_value = interpolate_log(value, min_, max_)
+        else:  # linear
+            new_value = min_ + value * (max_ - min_)
+
         if self.type == 'int':
             new_value = int(round(new_value))
+
         self.value = new_value
+        logger.debug("%f -> %f", value, self.value)
 
 
 @dataclass

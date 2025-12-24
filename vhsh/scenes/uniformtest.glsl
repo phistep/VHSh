@@ -24,6 +24,17 @@ uniform float range_only; // =1.0 [0.0,1.0]
 uniform vec4 widget_default_range; // =(0.0,0.0,0.0,0.0) [0.0,1.0,0.01]
 uniform vec4 widget_only; // =(0.0,0.0,0.0,0.0) [0.0,0.5]
 
+uniform float log_zero_positive; // <log> [0.,1.] #0
+uniform float log_negative_zero; // <log> [-1.,0.] #0
+uniform float log_all_positive; // <log> [1.,2.] #0
+uniform float log_all_negative; // <log> [-2.,-1.] #0
+uniform float log_zero_crossing; // <log> [-1.,1.] #0
+uniform float log_zero_positive_flipped; // <log> [1.,0.] #0
+uniform float log_negative_zero_flipped; // <log> [0.,-1.] #0
+uniform float log_all_positive_flipped; // <log> [2.,1.] #0
+uniform float log_all_negative_flipped; // <log> [-1.,-2.] #0
+uniform float log_zero_crossing_flipped; // <log> [1.,-1.] #0
+
 void main() {
     FragColor = vec4(default_range);
 }
