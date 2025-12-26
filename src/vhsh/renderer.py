@@ -1,19 +1,26 @@
-import re
 import logging
-from typing import (get_args, overload,
-                    Literal, Sequence, Iterable, Callable)
+import re
 from textwrap import dedent
 from threading import Lock
+from typing import Callable, Iterable, Sequence
 
-import OpenGL.GL as gl
 import numpy as np
+import OpenGL.GL as gl
 
 from .types import (
-    VertexArrayObject, VertexBufferObject,
-    Shader, ShaderProgram,
-    GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
-    UniformValue, UniformLike,
     Color,
+    GLSLBool,
+    GLSLFloat,
+    GLSLInt,
+    GLSLVec2,
+    GLSLVec3,
+    GLSLVec4,
+    Shader,
+    ShaderProgram,
+    UniformLike,
+    UniformValue,
+    VertexArrayObject,
+    VertexBufferObject,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,7 +37,7 @@ class ShaderCompileError(RuntimeError):
                 error = lines[0]
                 flex = ""
             parts = error.split(':')
-            title = parts[0].strip()
+            title = parts[0].strip()  # noqa: F841
             col = parts[1].strip()
             line = parts[2].strip()
             offender = parts[3].strip()
@@ -199,7 +206,9 @@ class Renderer:
         self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
                                                  self.VERTEX_SHADER)
 
-        self.set_shader(self.DEFAULT_FRAGMENT_SHADER, uniforms=system_uniforms, clear=True)
+        self.set_shader(self.DEFAULT_FRAGMENT_SHADER,
+                        uniforms=system_uniforms,
+                        clear=True)
 
     @staticmethod
     def _create_vertices(vertices: np.ndarray) -> tuple[VertexArrayObject,

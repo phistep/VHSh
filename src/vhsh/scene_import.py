@@ -1,17 +1,13 @@
+import logging
 import os
 import textwrap
-import logging
-from pprint import pformat
-from argparse import Namespace
-from urllib.parse import urlparse
 from pathlib import Path
-from enum import StrEnum
+from pprint import pformat
 from urllib.parse import urlparse
 
-from .types import Color
-from .app import VHSh
 from . import __version__
-
+from .app import VHSh
+from .types import Color
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +68,7 @@ def import_shadertoy(url: str, outfile: Path | None = None):
     # uniform int       iFrame;                // shader playback frame
     # uniform float     iChannelTime[4];       // channel playback time (in seconds)
     # uniform vec3      iChannelResolution[4]; // channel resolution (in pixels)
-    # uniform vec4      iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click
+    # uniform vec4      iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click  # noqa: E501
     # uniform samplerXX iChannel0..3;          // input channel. XX = 2D/Cube
     # uniform vec4      iDate;                 // (year, month, day, time in seconds)
     # uniform float     iSampleRate;           // sound sample rate (i.e., 44100)
@@ -91,7 +87,7 @@ def import_shadertoy(url: str, outfile: Path | None = None):
         // uniform samplerXX iChannel0..3; // input channel. XX = 2D/Cube
         #define iDate vec4(1970.0, 1.0, 1.0, 0.0)
         #define iSampleRate 44100.0
-    """)
+    """)  # noqa: E501
 
     main_func = textwrap.dedent("""\
         void main() {

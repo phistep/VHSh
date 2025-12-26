@@ -1,19 +1,23 @@
-import re
-import sys
 import logging
 import math
-from typing import get_args, Generic, Iterable
-from pathlib import Path
-from enum import StrEnum
-from dataclasses import dataclass
+import re
 from ast import literal_eval
+from dataclasses import dataclass
+from enum import StrEnum
+from pathlib import Path
+from typing import Generic, Iterable, get_args
 
 from .types import (
-    GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4,
-    UniformT, UniformLike,
-    Color
+    Color,
+    GLSLBool,
+    GLSLFloat,
+    GLSLInt,
+    GLSLVec2,
+    GLSLVec3,
+    GLSLVec4,
+    UniformLike,
+    UniformT,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +31,10 @@ class Widget(StrEnum):
     DRAG = "drag"
 
 
-def interpolate_log(t: float, v_min: float, v_max: float, type_: str = 'float') -> float:
+def interpolate_log(t: float,
+                    v_min: float,
+                    v_max: float,
+                    type_: str = 'float') -> float:
     # imgui_widgets.cpp:ImGui::DragBehaviourT()
     # When using logarithmic sliders, we need to clamp to avoid hitting zero, but our
     # choice of clamp value greatly affects slider precision. We attempt to use the

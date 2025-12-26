@@ -1,6 +1,4 @@
 __version__ = "1.0.0b0"
 
-from .app import VHSh
-from .scene import Scene, Parameter
-from .renderer import Renderer
-from .gui import GUI
+from .app import VHSh as VHSh
+from .scene import Parameter as Parameter, Scene as Scene

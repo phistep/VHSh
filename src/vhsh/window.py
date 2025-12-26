@@ -1,6 +1,7 @@
 
 import glfw
 
+
 class Window:
 
     __type__ = 'glfw'

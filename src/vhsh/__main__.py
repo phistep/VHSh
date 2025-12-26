@@ -1,12 +1,11 @@
-import sys
-import re
 import argparse
 import logging
+import re
+import sys
 from pathlib import Path
 from typing import Optional
 
 from .types import Color
-
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +81,14 @@ def get_argument_parser() -> argparse.ArgumentParser:
 
 
 def print_version():
-    from . import __version__
     import os
+
     import imgui
     import OpenGL
-    from .renderer import Renderer
+
+    from . import __version__
     from .app import VHSh
+    from .renderer import Renderer
 
     version_line = re.match("#version.*", Renderer.FRAGMENT_SHADER_PREAMBLE)
     gl_profile = version_line[0] if version_line is not None else ""

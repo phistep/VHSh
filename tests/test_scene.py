@@ -6,17 +6,20 @@ from vhsh.types import UniformLike
 
 @pytest.mark.parametrize(
     "line,default",
-    [("uniform bool bool_with_int_default; // =0", False),
-     ("uniform bool bool_with_int_default; // =1", True),
-     ("uniform int int_with_bool_default; // =False", 0),
-     ("uniform int int_with_bool_default; // =True", 1),
-     ("uniform float float_with_bool_default; // =False", 0.),
-     ("uniform float float_with_bool_default; // =True", 1.),
-     ("uniform vec2 vec2_with_bool_default; // =(True,False)", (1., 0.)),
-     ("uniform vec3 vec3_with_bool_default; // =(True,False,False)", (1., 0., 0.)),
-     ("uniform vec4 vec4_with_bool_default; // =(True,True,False,False)", (1., 1., 0., 0.)),
-     ("uniform float[2] float_array_with_bool_default; // =(True,False)", (1., 0.)),
-     ("uniform vec3 vec3_with_no_default; //", (1., 1., 1.)),
+    [
+        # ruff: disable[E501]
+        ("uniform bool bool_with_int_default; // =0", False),
+        ("uniform bool bool_with_int_default; // =1", True),
+        ("uniform int int_with_bool_default; // =False", 0),
+        ("uniform int int_with_bool_default; // =True", 1),
+        ("uniform float float_with_bool_default; // =False", 0.),
+        ("uniform float float_with_bool_default; // =True", 1.),
+        ("uniform vec2 vec2_with_bool_default; // =(True,False)", (1., 0.)),
+        ("uniform vec3 vec3_with_bool_default; // =(True,False,False)", (1., 0., 0.)),
+        ("uniform vec4 vec4_with_bool_default; // =(True,True,False,False)", (1., 1., 0., 0.)),  # noqa: E501
+        ("uniform float[2] float_array_with_bool_default; // =(True,False)", (1., 0.)),
+        ("uniform vec3 vec3_with_no_default; //", (1., 1., 1.)),
+        # ruff: enable[E501]
     ]
 )
 def test_paramter_value_type_coersion(line: str, default: UniformLike):
@@ -48,7 +51,7 @@ def test_parameter_set_value_normalized(
     if flipped:
         min_, max_ = max_, min_
 
-    parameter = Parameter("test", type_, default=1, range=(min_,max_), widget=widget)
+    parameter = Parameter("test", type_, default=1, range=(min_, max_), widget=widget)
 
     parameter.set_value_normalized(0)
     assert parameter.value == pytest.approx(min_)

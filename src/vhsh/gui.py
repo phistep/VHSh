@@ -1,11 +1,11 @@
-from typing import Type, Protocol
 from array import array
+from typing import Protocol, Type
 
 import imgui
 
-from .types import App
 from .microphone import Microphone
 from .scene import Widget
+from .types import App
 
 
 class ImguiRenderer(Protocol):
@@ -275,7 +275,7 @@ class GUI:
                         max_value=max_,
                         change_speed=step
                     )
-                case [float(x), float(y), float(z), float(w)], _:
+                case [float(x), float(y), float(z), float(w)], _:  # noqa: F841
                     min_, max_, _ = parameter.range
                     _, parameter.value = imgui.slider_float4(
                         name,

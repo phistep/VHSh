@@ -1,19 +1,27 @@
 from __future__ import annotations
 
-from typing import (Protocol, TypeAlias, TypeVar, Union, Generic, Sequence,
-                    TYPE_CHECKING, Callable)
 from abc import ABC
-from threading import Thread, Event
 from collections import deque
 from dataclasses import dataclass
+from threading import Event, Thread
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Generic,
+    Protocol,
+    Sequence,
+    TypeAlias,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from .window import Window
-    from .scene import Scene, ParameterParserError
     from .app import Time
     from .renderer import ShaderCompileError
+    from .scene import ParameterParserError, Scene
+    from .window import Window
 
 
 ### ANSI Colors
@@ -106,7 +114,7 @@ class App(Protocol):
 
 class Controller(ABC, Thread):
     def __init__(self, *args, **kwargs):
-        if not 'name' in kwargs:
+        if 'name' not in kwargs:
             kwargs['name'] = self.__class__.__name__
         super().__init__(*args, **kwargs)
 

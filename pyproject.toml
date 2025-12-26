@@ -36,12 +36,19 @@ packages = ["vhsh"]
 package-dir = {"" = "src"}
 dynamic = { "version" = { attr = "vhsh.__version__" } }
 
-[tool.pytest.ini_options]
-log_level = "DEBUG"
-
 [tool.uv]
 default-groups = ["dev", "test"]
 environments = [
     "sys_platform == 'darwin'",
     "sys_platform == 'linux'",
 ]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "RUF100"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_level = "DEBUG"

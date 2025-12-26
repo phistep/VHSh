@@ -1,12 +1,11 @@
 import logging
-from threading import Event, Lock
 from collections import deque
+from threading import Lock
 from time import sleep
 
 import numpy as np
 
 from .types import App, Controller, SystemParameter
-
 
 logger = logging.getLogger(__name__)
 

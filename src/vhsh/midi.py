@@ -1,17 +1,17 @@
-import time
 import logging
+import time
 from collections import defaultdict
-from pprint import pformat
-from datetime import datetime
 from contextlib import ExitStack
+from datetime import datetime
+from pprint import pformat
 
 try:
     import mido
     MIDO_AVAILABLE = True
-except ImportError as __mido_import_error__:
+except ImportError:
     MIDO_AVAILABLE = False
 
-from .types import App, Controller, Color
+from .types import App, Color, Controller
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,8 @@ class MIDIController(Controller):
 
         self._app = app
 
-        logger.info(f"{Color.Style.BOLD}[MIDI] System Mapping:{Color.RESET}\n%s", pformat(system_mapping))
+        logger.info(f"{Color.Style.BOLD}[MIDI] System Mapping:{Color.RESET}\n%s",
+                    pformat(system_mapping))
         self._system_mapping = defaultdict(dict, system_mapping)
         self._parameter_mapping: dict[int, str] = {}
 

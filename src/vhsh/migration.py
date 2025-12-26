@@ -1,10 +1,10 @@
-import shutil
 import logging
-from pathlib import Path
+import shutil
 from datetime import datetime
+from pathlib import Path
 
-from .scene import Scene
 from .app import VHSh
+from .scene import Scene
 from .types import Color
 
 # TODO move _backup, migrate to scene.Scene methods
@@ -87,7 +87,11 @@ def migrate(path: Path,
             current_version += 1
             migrated_source = _set_version(migrated_source, current_version)
             path.write_text(migrated_source)
-            logger.info(f"{Color.GREEN + Color.Style.BOLD}Migration successful!{Color.RESET}  {Color.Style.FAINT}[%s]{Color.RESET}", path)
+            logger.info(
+                f"{Color.GREEN + Color.Style.BOLD}Migration successful!{Color.RESET}"
+                f"  {Color.Style.FAINT}[%s]{Color.RESET}",
+                path
+            )
         except Exception as e:
             shutil.copy2(backup_path, path)
             logger.critical("Migration from version %i to version %i failed.!"

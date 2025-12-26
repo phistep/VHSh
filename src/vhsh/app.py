@@ -1,22 +1,21 @@
-import time
 import logging
 import shutil
-from threading import Event
+import time
 from collections import deque
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from threading import Event
 
 from imgui.integrations.glfw import GlfwRenderer
 
-from .types import Controller, SystemParameter, Color
-from .window import Window
-from .scene import ParameterParserError, Scene
-from .renderer import ShaderCompileError, Renderer
 from .gui import GUI
-from .midi import MIDIController
 from .microphone import Microphone
+from .midi import MIDIController
+from .renderer import Renderer, ShaderCompileError
+from .scene import ParameterParserError, Scene
+from .types import Color, Controller, SystemParameter
 from .watch import FileWatcher
-
+from .window import Window
 
 DEFAULT_SCENE_DIR = Path(__file__).parent / "scenes"
 

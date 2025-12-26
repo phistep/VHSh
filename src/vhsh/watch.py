@@ -1,9 +1,8 @@
 import logging
-from threading import Event
 from pathlib import Path
+from threading import Event
 
-from .types import Controller, App, Color
-
+from .types import App, Color, Controller
 
 logger = logging.getLogger(__name__)
 

@@ -247,7 +247,7 @@ Currently supported metadata fields:
 
 ## Development
 
-VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and packaging.
+VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and packaging and [`ruff`][ruff] for linting and formatting.
 
 ### Setup
 
@@ -260,6 +260,7 @@ Then create a virtual environment and run the test suite.
 
 ```sh
 uv sync --dev --extra all
+uv run ruff check
 uv run pytest
 ```
 
@@ -322,4 +323,5 @@ defaults write org.python.python ApplePersistenceIgnoreState NO
 [astral]: https://www.astral.sh/
 [uv]: https://docs.astral.sh/uv/
 [uv-install]: https://docs.astral.sh/uv/getting-started/installation/
+[ruff]: https://docs.astral.sh/ruff/
 [semver]: https://semver.org/
