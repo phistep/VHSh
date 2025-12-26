@@ -244,6 +244,45 @@ Currently supported metadata fields:
 - Introduced version number
 - Changed system uniforms from `u_Time` to `Time` etc.
 
+
+## Development
+
+VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and packaging.
+
+### Setup
+
+On macOS, install `uv` via, or refer to its [documentation][uv-install]:
+```sh
+brew install uv
+```
+
+Then create a virtual environment and run the test suite.
+
+```sh
+uv sync --dev --extra all
+uv run pytest
+```
+
+### Publish
+
+To publish the package to PyPI, setup the credentials for PyPI in `.env`
+
+```sh
+UV_PUBLISH_TOKEN=pypi-...
+```
+
+Create a [SemVer][semver] git tag, as the package version is dynmically determined by the latest git tag. Use `uv` to build and publish wheels.
+
+```sh
+git tag -a v1.23.42
+
+set -a; source .env; set +a
+
+uv build
+uv publish
+```
+
+
 ## Resources
 
 If you're seeing a message like
@@ -280,3 +319,7 @@ defaults write org.python.python ApplePersistenceIgnoreState NO
 [imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364
 [imgui.pyi]: https://raw.githubusercontent.com/denballakh/pyimgui-stubs/refs/heads/master/imgui.pyi
 [toml]: https://toml.io
+[astral]: https://www.astral.sh/
+[uv]: https://docs.astral.sh/uv/
+[uv-install]: https://docs.astral.sh/uv/getting-started/installation/
+[semver]: https://semver.org/

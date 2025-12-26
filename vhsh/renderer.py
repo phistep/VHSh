@@ -153,7 +153,9 @@ class Renderer:
                          [ 1.0, -1.0, 0.0]],
                         dtype=np.float32)
 
-    VERTEX_SHADER = dedent("""\
+
+    VERTEX_SHADER = dedent(  # glsl
+        """\
         #version 330 core
 
         layout(location = 0) in vec3 VertexPos;
@@ -164,7 +166,8 @@ class Renderer:
         """
     )
 
-    FRAGMENT_SHADER_PREAMBLE = dedent("""\
+    FRAGMENT_SHADER_PREAMBLE = dedent(  # glsl
+        """\
         #version 330 core
 
         out vec4 FragColor;
@@ -173,7 +176,8 @@ class Renderer:
         """
     )
 
-    DEFAULT_FRAGMENT_SHADER = dedent("""\
+    DEFAULT_FRAGMENT_SHADER = dedent(  # glsl
+        """\
         void main() {
             vec2 pos = gl_FragCoord.xy / Resolution;
             FragColor = vec4(pos.x, pos.y, 1.0 - (pos.x + pos.y) / 2.0, 1.0);

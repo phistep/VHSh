@@ -1,8 +1,15 @@
 [project]
 name = "vhsh"
 dynamic = ["version"]
-requires-python = "==3.12"
+description = "VideoHomeShader: A demo tool for digitally assisted analog vjaying"
+readme = "README.md"
+authors = [
+    { name = "Philipp Stephan", email = "mail@philippstephan.de" }
+]
+requires-python = "~=3.12.0"  # pyimgui
 dependencies = ["PyOpenGL", "glfw", "imgui[glfw]", "numpy"]
+# https://peps.python.org/pep-0771/
+# default-optional-dependency-keys = ["watch", "import"]
 
 [project.optional-dependencies]
 all = ["vhsh[midi,audio,watch,import]"]
@@ -15,13 +22,25 @@ import = ["requests"]
 vhsh = "vhsh.__main__:main"
 
 [dependency-groups]
-dev = ["ruff", "pyright", "pyimgui-stubs"]
+dev = ["ruff", "ty", "pyimgui-stubs"]
 test = ["pytest"]
+
+# TODO uv build does not support scm verison
+# https://github.com/astral-sh/uv/issues/14037
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["vhsh"]
 dynamic = { "version" = { attr = "vhsh.__version__" } }
 
-[tool.pyright]
-venvPath = "."
-venv = ".venv"
+[tool.pytest.ini_options]
+log_level = "DEBUG"
+
+[tool.uv]
+default-groups = ["dev", "test"]
+environments = [
+    "sys_platform == 'darwin'",
+    "sys_platform == 'linux'",
+]
