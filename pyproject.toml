@@ -33,6 +33,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["vhsh"]
+package-dir = {"" = "src"}
 dynamic = { "version" = { attr = "vhsh.__version__" } }
 
 [tool.pytest.ini_options]
