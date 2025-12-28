@@ -9,7 +9,6 @@ release beta
 - read through every file and polish, check for dead code
 - test on the machine!
 - cleanup diagnostics
-- ruff format
 - ty typing
 - docstrings
 - dev docs: uv workflow, Scenes, Parameters, Controllers, scene_index
