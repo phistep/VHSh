@@ -1,6 +1,5 @@
 .DS_Store
 .env
-.zed
 
 __pycache__/
 *.py[oc]

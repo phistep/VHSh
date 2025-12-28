@@ -1,0 +1,18 @@
+// https://zed.dev/docs/debugger
+[
+  {
+    "label": "Debug VHSh",
+    "adapter": "Debugpy",
+    "request": "launch",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "module": "vhsh",
+    "args": [
+      "--verbose",
+      "run",
+      "--midi-mapping", "src/vhsh/midi_mappings/korg_nanoKONTROL2.toml",
+      "src/vhsh/scenes/mandelbrot.glsl",
+      "src/vhsh/scenes/uniformtest.glsl"
+    ],
+    "pythonArgs": ["-Xfrozen_modules=off"]
+  }
+]

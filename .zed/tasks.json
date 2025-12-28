@@ -1,0 +1,25 @@
+// https://zed.dev/docs/tasks
+[
+  {
+    "label": "Run VHSh",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "command": "uv",
+    "args": [
+      "run",
+      "vhsh", "run",
+      "--midi-mapping", "src/vhsh/midi_mappings/korg_nanoKONTROL2.toml",
+      "src/vhsh/scenes/*.glsl",
+    ]
+  },
+  {
+    "label": "Run VHSh (verbose)",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "command": ".venv/bin/vhsh",
+    "args": [
+      "--verbose",
+      "run",
+      "--midi-mapping", "src/vhsh/midi_mappings/korg_nanoKONTROL2.toml",
+      "src/vhsh/scenes/*.glsl",
+    ]
+  }
+]

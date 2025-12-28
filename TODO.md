@@ -2,16 +2,13 @@
 
 ## 1.0
 
-release beta
-
-- default extras in pyproj
 - git tag `__version__`
 - read through every file and polish, check for dead code
 - test on the machine!
 - cleanup diagnostics
 - ty typing
 - docstrings
-- dev docs: uv workflow, Scenes, Parameters, Controllers, scene_index
+- dev docs: Scenes, Parameters, Controllers, scene_index
 - docs for `import` command
 - merge README from main
 - proper pyproject.toml metadata

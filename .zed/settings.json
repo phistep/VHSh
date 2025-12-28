@@ -1,0 +1,15 @@
+// https://zed.dev/docs/configuring-zed#settings-files
+{
+  "preferred_line_length": 80,
+  "wrap_guides": [80, 88],
+  "languages": {
+    "Python": {
+      "language_servers": ["ty", "!basedpyright", "..."],
+      "format_on_save": "on",
+      "code_actions_on_format": {
+        "source.organizeImports.ruff": true,
+        "source.fixAll.ruff": true
+      }
+    },
+  },
+}
