@@ -20,8 +20,8 @@ from vhsh.types import UniformLike
         ("uniform float[2] float_array_with_bool_default; // =(True,False)", (1., 0.)),
         ("uniform vec3 vec3_with_no_default; //", (1., 1., 1.)),
         # ruff: enable[E501]
-    ]
-)
+    ],
+)  # fmt: skip
 def test_paramter_value_type_coersion(line: str, default: UniformLike):
     parameter = Parameter.from_def(line)
     assert parameter.default == default

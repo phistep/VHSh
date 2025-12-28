@@ -14,24 +14,20 @@ class ImguiRenderer(Protocol):
     def shutdown(self) -> None: ...
 
 
-
-
 class GUI:
-    def __init__(self,
-                 app: App,
-                 renderer: Type[ImguiRenderer],
-                 *args,
-                 **kwargs):
+    def __init__(self, app: App, renderer: Type[ImguiRenderer], *args, **kwargs):
         self._app = app
         self.visible = True
 
         imgui.create_context()
         imgui_style = imgui.get_style()
         imgui.style_colors_dark(imgui_style)
-        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM] = \
-            imgui_style.colors[imgui.COLOR_PLOT_LINES]
-        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = \
-            imgui_style.colors[imgui.COLOR_BUTTON_HOVERED]
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM] = imgui_style.colors[
+            imgui.COLOR_PLOT_LINES
+        ]
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = imgui_style.colors[
+            imgui.COLOR_BUTTON_HOVERED
+        ]
 
         self._renderer = renderer(*args, **kwargs)
 
@@ -48,8 +44,8 @@ class GUI:
         imgui.new_frame()
         imgui.begin("Parameters", closable=False)
 
-        with imgui.begin_popup_modal("Error",
-            flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
+        with imgui.begin_popup_modal(
+            "Error", flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
         ) as error_popup:
             if error_popup.opened:
                 if app.error is None:
@@ -62,16 +58,13 @@ class GUI:
             imgui.open_popup("Error")
 
         with imgui.begin_group():
-            _, app.window.opacity = \
-                imgui.slider_float("Opacity",
-                                   app.window.opacity,
-                                   min_value=0.,
-                                   max_value=1.)
+            _, app.window.opacity = imgui.slider_float(
+                "Opacity", app.window.opacity, min_value=0.0, max_value=1.0
+            )
 
             imgui.same_line()
 
-            _, app.window.floating = \
-                imgui.checkbox('Floating', app.window.floating)
+            _, app.window.floating = imgui.checkbox("Floating", app.window.floating)
 
         imgui.spacing()
         imgui.separator()
@@ -80,7 +73,7 @@ class GUI:
         with imgui.begin_group():
             if imgui.begin_combo("##Scene", app.scene.name):
                 for idx, item in enumerate([scene.name for scene in app.scenes]):
-                    is_selected = (idx == app.scene_index)
+                    is_selected = idx == app.scene_index
                     if imgui.selectable(item, is_selected)[0]:
                         app.scene_index = idx
                     if is_selected:
@@ -102,9 +95,8 @@ class GUI:
             if imgui.begin_combo(
                 "##Preset", app.scene.presets[app.scene.preset_index].name
             ):
-                for idx, item in  [(p.index, p.name)
-                                   for p in app.scene.presets]:
-                    is_selected = (idx == app.scene.preset_index)
+                for idx, item in [(p.index, p.name) for p in app.scene.presets]:
+                    is_selected = idx == app.scene.preset_index
                     if imgui.selectable(item, is_selected)[0]:
                         app.scene.preset_index = idx
                     if is_selected:
@@ -124,7 +116,8 @@ class GUI:
 
             # TODO should live in GUI
             _, self._new_preset_name = imgui.input_text_with_hint(
-                "##Name", "New Preset Name", self._new_preset_name)
+                "##Name", "New Preset Name", self._new_preset_name
+            )
             imgui.same_line()
             if imgui.button("Save##Save New Preset"):
                 app.scene.write_file(new_preset=self._new_preset_name)
@@ -135,10 +128,13 @@ class GUI:
         imgui.spacing()
 
         with imgui.begin_group():
-            frame_times = array('f', app.frame_times)
-            imgui.plot_lines("Frame Time##Plot", frame_times,
+            frame_times = array("f", app.frame_times)
+            imgui.plot_lines(
+                "Frame Time##Plot",
+                frame_times,
                 overlay_text=f"{frame_times[-1]:5.2f} ms"
-                             f"  ({1000/frame_times[-1]:3.0f} fps)")
+                f"  ({1000 / frame_times[-1]:3.0f} fps)",
+            )
             imgui.same_line()
 
         imgui.spacing()
@@ -147,22 +143,20 @@ class GUI:
 
         # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
         with imgui.begin_group():
-            imgui.drag_float("Time", app.system_parameters['Time'].value)
+            imgui.drag_float("Time", app.system_parameters["Time"].value)
             imgui.same_line()
             _, app.time.running = imgui.checkbox(
-                'playing' if app.time.running else 'paused',
-                app.time.running
+                "playing" if app.time.running else "paused", app.time.running
             )
 
-        imgui.drag_float2('Resolution',
-                           *app.system_parameters['Resolution'].value,
-                           format="%.0f")
+        imgui.drag_float2(
+            "Resolution", *app.system_parameters["Resolution"].value, format="%.0f"
+        )
 
-        if ("Microphone" in app.controllers
-            and app.controllers["Microphone"].is_alive()):
+        if "Microphone" in app.controllers and app.controllers["Microphone"].is_alive():
             imgui.plot_histogram(
                 Microphone.UNIFORM_NAME,
-                array('f', app.system_parameters[Microphone.UNIFORM_NAME].value)
+                array("f", app.system_parameters[Microphone.UNIFORM_NAME].value),
             )
 
         imgui.spacing()
@@ -175,8 +169,10 @@ class GUI:
         for (name, parameter), (next_name, _) in peaking_parameters:
             flags = 0
             if parameter.widget == Widget.LOG:
-                flags |=  (imgui.SLIDER_FLAGS_LOGARITHMIC
-                           | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT)
+                flags |= (
+                    imgui.SLIDER_FLAGS_LOGARITHMIC
+                    | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT
+                )
 
             match parameter.value, parameter.widget:
                 case bool(x), _:
@@ -189,7 +185,7 @@ class GUI:
                         parameter.value,
                         min_value=min_,
                         max_value=max_,
-                        change_speed=step
+                        change_speed=step,
                     )
                 case int(x), _:
                     min_, max_, step = parameter.range
@@ -229,7 +225,7 @@ class GUI:
                         min_value=min_,
                         max_value=max_,
                         change_speed=step,
-                        flags=flags
+                        flags=flags,
                     )
                 case [float(x), float(y)], _:
                     min_, max_, step = parameter.range
@@ -242,8 +238,9 @@ class GUI:
                     )
 
                 case [float(x), float(y), float(z)], Widget.COLOR:
-                    _, parameter.value = imgui.color_edit3(name, *parameter.value,
-                                                            imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
+                    _, parameter.value = imgui.color_edit3(
+                        name, *parameter.value, imgui.COLOR_EDIT_FLOAT
+                    )  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z)], Widget.DRAG:
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float3(
@@ -251,7 +248,7 @@ class GUI:
                         *parameter.value,
                         min_value=min_,
                         max_value=max_,
-                        change_speed=step
+                        change_speed=step,
                     )
                 case [float(x), float(y), float(z)], _:
                     min_, max_, _ = parameter.range
@@ -264,8 +261,9 @@ class GUI:
                     )
 
                 case [float(x), float(y), float(z), float(w)], Widget.COLOR:
-                    _, parameter.value = imgui.color_edit4(name, *parameter.value,
-                                                         imgui.COLOR_EDIT_FLOAT)  # pyright: ignore [reportCallIssue]
+                    _, parameter.value = imgui.color_edit4(
+                        name, *parameter.value, imgui.COLOR_EDIT_FLOAT
+                    )  # pyright: ignore [reportCallIssue]
                 case [float(x), float(y), float(z), float(w)], Widget.DRAG:
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float4(
@@ -273,7 +271,7 @@ class GUI:
                         *parameter.value,
                         min_value=min_,
                         max_value=max_,
-                        change_speed=step
+                        change_speed=step,
                     )
                 case [float(x), float(y), float(z), float(w)], _:  # noqa: F841
                     min_, max_, _ = parameter.range
@@ -287,7 +285,7 @@ class GUI:
 
             # group prefixed uniforms
             if next_name is not None:
-                if name.split('_')[0] != next_name.split('_')[0]:
+                if name.split("_")[0] != next_name.split("_")[0]:
                     imgui.spacing()
 
         imgui.end()

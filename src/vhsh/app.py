@@ -24,10 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 class Time:
-
     def __init__(self, running: bool = True):
         self._running = running
-        self._start =  self.now()
+        self._start = self.now()
         self._last_time = 0
         self._offset = 0
 
@@ -57,15 +56,16 @@ class Time:
 
 
 class VHSh:
-
     SCENE_FORMAT_VERSION = 1
 
-    def __init__(self,
-                 scenes: list[Path],
-                 width: int = 1280,
-                 height: int = 720,
-                 midi_mapping: dict = {},
-                 microphone: bool = False):
+    def __init__(
+        self,
+        scenes: list[Path],
+        width: int = 1280,
+        height: int = 720,
+        midi_mapping: dict = {},
+        microphone: bool = False,
+    ):
         self.window = Window(self.__class__.__name__, width, height)
 
         self.time = Time()
@@ -75,40 +75,43 @@ class VHSh:
         self._load_request = Event()
         self._load_request_args = {}
         self._scene_index = 0
-        self.scenes = [Scene(path, required_version=self.SCENE_FORMAT_VERSION)
-                       for path in scenes]
+        self.scenes = [
+            Scene(path, required_version=self.SCENE_FORMAT_VERSION) for path in scenes
+        ]
         if not self.scenes:
             self.scenes = self._get_default_scenes()
         self.system_parameters: dict[str, SystemParameter] = dict(
             Resolution=SystemParameter(
-                "Resolution", type="vec2", value=(0., 0.),
-                update=lambda app: app.window.size
+                "Resolution",
+                type="vec2",
+                value=(0.0, 0.0),
+                update=lambda app: app.window.size,
             ),
             Time=SystemParameter(
-                "Time", type="float", value=0.,
-                update=lambda app: app.time()
+                "Time", type="float", value=0.0, update=lambda app: app.time()
             ),
         )
 
         self.controllers: dict[str, Controller] = dict(
             FileWatcher=FileWatcher(self),
             MIDIController=MIDIController(self, system_mapping=midi_mapping),
-            Microphone=Microphone(self, enabled=microphone)
+            Microphone=Microphone(self, enabled=microphone),
         )
         for controller in self.controllers.values():
             controller.start()
 
         self.renderer = Renderer(list(self.system_parameters.values()))
-        self.gui = GUI(app=self,
-                       renderer=GlfwRenderer,
-                       window=self.window.handler)
+        self.gui = GUI(app=self, renderer=GlfwRenderer, window=self.window.handler)
+
         def _rel(path: Path) -> Path:
             return path.absolute().relative_to(Path.cwd().absolute())
+
         logger.info(
             f"{Color.Style.BOLD}Scenes:{Color.RESET}\n%s",
-            "\n".join(f"  {scene.name}"
-                      f"  {Color.Style.FAINT}[{_rel(scene.path)}]{Color.RESET}"
-                      for scene in self.scenes)
+            "\n".join(
+                f"  {scene.name}  {Color.Style.FAINT}[{_rel(scene.path)}]{Color.RESET}"
+                for scene in self.scenes
+            ),
         )
         self.load()
 
@@ -138,8 +141,10 @@ class VHSh:
             # does not preserve permissions or metadata
             shutil.copyfile(_path, local_path)
 
-        return [Scene(path, required_version=self.SCENE_FORMAT_VERSION)
-                for path in local_paths]
+        return [
+            Scene(path, required_version=self.SCENE_FORMAT_VERSION)
+            for path in local_paths
+        ]
 
     @property
     def scene(self) -> Scene:
@@ -176,16 +181,21 @@ class VHSh:
 
     def _load(self, clear: bool = True):
         logger.info(f"{Color.Style.BOLD}\nScene:{Color.RESET} %s", self.scene.name)
-        logger.info(f"{Color.Style.BOLD}Presets:{Color.RESET}\n%s",
-                    "\n".join(f"  {p.name}" for p in self.scene.presets))
+        logger.info(
+            f"{Color.Style.BOLD}Presets:{Color.RESET}\n%s",
+            "\n".join(f"  {p.name}" for p in self.scene.presets),
+        )
         current_preset = self.scene.presets[self.scene.preset_index]
-        logger.info(f"{Color.Style.BOLD}Parameters:{Color.RESET}\n%s",
-                    "\n".join(f"  {p.removeprefix("/// uniform ")}"
-                    for p in str(current_preset).splitlines()))
+        logger.info(
+            f"{Color.Style.BOLD}Parameters:{Color.RESET}\n%s",
+            "\n".join(
+                f"  {p.removeprefix('/// uniform ')}"
+                for p in str(current_preset).splitlines()
+            ),
+        )
 
         self.scene.reload()
-        parameters = [*self.system_parameters.values(),
-                      *self.scene.parameters.values()]
+        parameters = [*self.system_parameters.values(), *self.scene.parameters.values()]
         try:
             self.renderer.set_shader(self.scene.source, parameters, clear=clear)
         except ShaderCompileError as e:
@@ -193,17 +203,17 @@ class VHSh:
             logger.error("%s:\n%s", self.scene.path, e.format())
         else:
             self.error = None
-            logger.info(f"{Color.GREEN + Color.Style.BOLD}OK{Color.RESET}:"
-                        f" {self.scene.name}"
-                        f"  {Color.Style.FAINT}[{self.scene.path}]{Color.RESET}")
+            logger.info(
+                f"{Color.GREEN + Color.Style.BOLD}OK{Color.RESET}:"
+                f" {self.scene.name}"
+                f"  {Color.Style.FAINT}[{self.scene.path}]{Color.RESET}"
+            )
 
     def run(self):
         last_time = self.time.now()
         num_frames = 0
         try:
-            if (not self.renderer
-                    or not self.gui
-                    or self.gui._renderer is None):
+            if not self.renderer or not self.gui or self.gui._renderer is None:
                 raise RuntimeError("glfw imgui renderer not initialized!")
 
             while not self.window.should_close():
@@ -213,7 +223,7 @@ class VHSh:
                 current_time = self.time.now()
                 num_frames += 1
                 if current_time - last_time >= 0.1:
-                    self.frame_times.append(100/num_frames)
+                    self.frame_times.append(100 / num_frames)
                     num_frames = 0
                     last_time += 0.1
 
@@ -232,8 +242,12 @@ class VHSh:
                     controller.update_pre()
 
                 if not self.error:
-                    self.renderer.update((*self.system_parameters.values(),
-                                          *self.scene.parameters.values()))
+                    self.renderer.update(
+                        (
+                            *self.system_parameters.values(),
+                            *self.scene.parameters.values(),
+                        )
+                    )
                     self.renderer.render()
 
                 for controller in self.controllers.values():
@@ -250,13 +264,13 @@ class VHSh:
             self.shutdown()
 
     def shutdown(self):
-        if hasattr(self, 'renderer'):
+        if hasattr(self, "renderer"):
             self.renderer.shutdown()
-        if hasattr(self, 'gui'):
+        if hasattr(self, "gui"):
             self.gui.shutdown()
         self.window.close()
 
-        if hasattr(self, 'controllers'):
+        if hasattr(self, "controllers"):
             for controller in self.controllers.values():
                 if controller.is_alive():
                     controller.stop()

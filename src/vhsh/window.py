@@ -1,17 +1,17 @@
-
 import glfw
 
 
 class Window:
+    __type__ = "glfw"
 
-    __type__ = 'glfw'
-
-    def __init__(self,
-                 title: str,
-                 width: int,
-                 height: int,
-                 opacity: float = 1.0,
-                 floating: bool = False):
+    def __init__(
+        self,
+        title: str,
+        width: int,
+        height: int,
+        opacity: float = 1.0,
+        floating: bool = False,
+    ):
         # TODO @property
         self.title = title
         self._opacity = opacity
@@ -29,11 +29,9 @@ class Window:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
 
-        self.handler = glfw.create_window(width=width,
-                                          height=height,
-                                          title=self.title,
-                                          monitor=None,
-                                          share=None)
+        self.handler = glfw.create_window(
+            width=width, height=height, title=self.title, monitor=None, share=None
+        )
         glfw.make_context_current(self.handler)
         if not self.handler:
             glfw.terminate()
@@ -64,9 +62,9 @@ class Window:
         if self._floating == floating:
             return
         self._floating = floating
-        glfw.set_window_attrib(self.handler,
-                               glfw.FLOATING,
-                               glfw.TRUE if floating else glfw.FALSE)
+        glfw.set_window_attrib(
+            self.handler, glfw.FLOATING, glfw.TRUE if floating else glfw.FALSE
+        )
 
     # TODO as contetxt manager?
     # with window.update():

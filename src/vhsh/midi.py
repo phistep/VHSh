@@ -7,6 +7,7 @@ from pprint import pformat
 
 try:
     import mido
+
     MIDO_AVAILABLE = True
 except ImportError:
     MIDO_AVAILABLE = False
@@ -23,47 +24,53 @@ class MIDIController(Controller):
         if not MIDO_AVAILABLE:
             logger.warning(
                 "Not listenting to MIDI, external control disabled!"
-                " 'mido' not installed, install with 'vhsh[midi]'")
+                " 'mido' not installed, install with 'vhsh[midi]'"
+            )
             self.stop()
             return
 
         self._app = app
 
-        logger.info(f"{Color.Style.BOLD}[MIDI] System Mapping:{Color.RESET}\n%s",
-                    pformat(system_mapping))
+        logger.info(
+            f"{Color.Style.BOLD}[MIDI] System Mapping:{Color.RESET}\n%s",
+            pformat(system_mapping),
+        )
         self._system_mapping = defaultdict(dict, system_mapping)
         self._parameter_mapping: dict[int, str] = {}
 
         self.devices = mido.get_input_names()
-        logger.info(f"{Color.Style.BOLD}[MIDI] Devices: {Color.RESET}\n%s",
-                    "\n".join(f"  {d}" for d in self.devices))
+        logger.info(
+            f"{Color.Style.BOLD}[MIDI] Devices: {Color.RESET}\n%s",
+            "\n".join(f"  {d}" for d in self.devices),
+        )
 
     def _handle_message(self, msg: "mido.Message"):
         logger.debug(f"Received MIDI message: #{msg.control} = {msg.value}")
         button_down = bool(msg.value)
 
-        if msg.control == self._system_mapping['scene'].get('prev'):
+        if msg.control == self._system_mapping["scene"].get("prev"):
             if button_down:
                 self._app.prev_scene()
-        elif msg.control == self._system_mapping['scene'].get('next'):
+        elif msg.control == self._system_mapping["scene"].get("next"):
             if button_down:
                 self._app.next_scene()
 
-        elif msg.control == self._system_mapping['preset'].get('prev'):
+        elif msg.control == self._system_mapping["preset"].get("prev"):
             if button_down:
                 self._app.scene.prev_preset()
-        elif msg.control == self._system_mapping['preset'].get('next'):
+        elif msg.control == self._system_mapping["preset"].get("next"):
             if button_down:
                 self._app.scene.next_preset()
-        elif msg.control == self._system_mapping['preset'].get('save'):
+        elif msg.control == self._system_mapping["preset"].get("save"):
             if button_down:
                 self._app.scene.write_file(new_preset=f"MIDI {datetime.now()}")
 
-        elif (msg.control
-                == self._system_mapping['parameter'] .get('time', {}).get('toggle')):
+        elif msg.control == self._system_mapping["parameter"].get("time", {}).get(
+            "toggle"
+        ):
             self._app.time.running = bool(msg.value)
 
-        elif msg.control == self._system_mapping['ui'].get('toggle'):
+        elif msg.control == self._system_mapping["ui"].get("toggle"):
             self._app.gui.visible = bool(msg.value)
 
         else:
@@ -90,11 +97,13 @@ class MIDIController(Controller):
 
         try:
             with ExitStack() as stack:
-                ports = [stack.enter_context(mido.open_input(device))
-                         for device in self.devices]
+                ports = [
+                    stack.enter_context(mido.open_input(device))
+                    for device in self.devices
+                ]
                 logger.info(
                     f"{Color.Style.BOLD}[MIDI] Listening on:{Color.RESET}\n%s",
-                    "\n".join(f"  {p.name}" for p in ports)
+                    "\n".join(f"  {p.name}" for p in ports),
                 )
                 inport = mido.ports.MultiPort(ports)
 

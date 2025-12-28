@@ -20,13 +20,16 @@ from vhsh.scene import interpolate_log
 def linear(min_, max_, value):
     return min_ + value * (max_ - min_)
 
+
 def log_simple(min_, max_, value):
-     return np.exp(np.log(max_ - min_ + 1) * value) + min_ - 1
+    return np.exp(np.log(max_ - min_ + 1) * value) + min_ - 1
+
 
 def log_vhsh(min_, max_, value):
     return np.frompyfunc(interpolate_log, 3, 1)(value, min_, max_).astype(float)
 
-plt.figure(figsize=(16,4))
+
+plt.figure(figsize=(16, 4))
 cases = [
     [(0, 1), (-1, 0), (-2, -1), (1, 2), (-1, 1)],
     [(1, 0), (0, -1), (-1, -2), (2, 1), (1, -1)],

@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 
 class ShaderCompileError(RuntimeError):
-
     def format(self) -> str:
         try:
             lines = str(self).strip().splitlines()
@@ -36,21 +35,24 @@ class ShaderCompileError(RuntimeError):
             else:
                 error = lines[0]
                 flex = ""
-            parts = error.split(':')
+            parts = error.split(":")
             title = parts[0].strip()  # noqa: F841
             col = parts[1].strip()
             line = parts[2].strip()
             offender = parts[3].strip()
-            message = ':'.join(parts[4:])
+            message = ":".join(parts[4:])
 
-            return (f"{Color.Style.BOLD}{col}:{line}{Color.RESET}"
-                    f" {Color.Style.FAINT}({offender}){Color.RESET}"
-                    f":{message}"
-                    f" {Color.Style.FAINT}({flex}){Color.RESET}")
+            return (
+                f"{Color.Style.BOLD}{col}:{line}{Color.RESET}"
+                f" {Color.Style.FAINT}({offender}){Color.RESET}"
+                f":{message}"
+                f" {Color.Style.FAINT}({flex}){Color.RESET}"
+            )
         except IndexError:
             logger.debug(
-                "Python error formatting GLSL error message: %s", str(self),
-                exc_info=True
+                "Python error formatting GLSL error message: %s",
+                str(self),
+                exc_info=True,
             )
             return str(self)
 
@@ -62,12 +64,13 @@ class ProgramLinkError(RuntimeError): ...
 
 
 class Uniform(UniformLike):
-
-    def __init__(self,
-                 program: ShaderProgram,
-                 type_: str,
-                 name: str,
-                 value: UniformValue | None = None):
+    def __init__(
+        self,
+        program: ShaderProgram,
+        type_: str,
+        name: str,
+        value: UniformValue | None = None,
+    ):
         self._location: int = gl.glGetUniformLocation(program, name)
         # TODO free on __del__?
         self.type = type_
@@ -76,21 +79,21 @@ class Uniform(UniformLike):
         # TODO default step is dropped if not passed
         self._glUniform: Callable[..., None]
         match self.type:
-            case 'bool':
+            case "bool":
                 self._type = GLSLBool
                 self._glUniform = gl.glUniform1i
                 self.value = True if value is None else value
-            case 'int':
+            case "int":
                 self._type = GLSLInt
                 self._glUniform = gl.glUniform1i
                 self.value = 1 if value is None else value
-            case 'float':
+            case "float":
                 self._type = GLSLFloat
                 self._glUniform = gl.glUniform1f
                 self.value = 1.0 if value is None else value
-            case str() as t if t.startswith('float['):
+            case str() as t if t.startswith("float["):
                 try:
-                    m = re.match(r'float\[(\d+)\]', type_)
+                    m = re.match(r"float\[(\d+)\]", type_)
                     len = int(m.group(1))
                 except (AttributeError, ValueError) as e:
                     raise UniformIntializationError(
@@ -99,22 +102,23 @@ class Uniform(UniformLike):
                 self._type = (float,) * len
                 self._glUniform = gl.glUniform1fv
                 self.value = (0.0,) * len if value is None else value
-            case 'vec2':
+            case "vec2":
                 self._type = GLSLVec2
                 self._glUniform = gl.glUniform2f
-                self.value = (1.,)*2 if value is not None else value
-            case 'vec3':
+                self.value = (1.0,) * 2 if value is not None else value
+            case "vec3":
                 self._type = GLSLVec3
                 self._glUniform = gl.glUniform3f
-                self.value = (1.,)*3 if value is not None else value
-            case 'vec4':
+                self.value = (1.0,) * 3 if value is not None else value
+            case "vec4":
                 self._type = GLSLVec4
                 self._glUniform = gl.glUniform4f
-                self.value = (1.,)*4 if value is not None else value
+                self.value = (1.0,) * 4 if value is not None else value
             case _:
                 raise NotImplementedError(
                     f"Uniform type '{self.type}' not implemented:"
-                    f" {self.name} ({self.value})")
+                    f" {self.name} ({self.value})"
+                )
 
         self.value = value
 
@@ -133,33 +137,35 @@ class Uniform(UniformLike):
         return f"uniform {self.type} {self.name};"
 
     def __repr__(self):
-        return (f'<Uniform'
-                f' type={self.type}'
-                f' name="{self.name}"'
-                f' value={self.value}'
-                f' _type={self._type}'
-                f' _glUniform={self._glUniform.__name__}'
-                f' at 0x{self._location:04x}>')
+        return (
+            f"<Uniform"
+            f" type={self.type}"
+            f' name="{self.name}"'
+            f" value={self.value}"
+            f" _type={self._type}"
+            f" _glUniform={self._glUniform.__name__}"
+            f" at 0x{self._location:04x}>"
+        )
 
     def update(self):
         args = self.value
         if not isinstance(args, Iterable):
             args = [args]
-        if self._glUniform.__name__.endswith('v'):
+        if self._glUniform.__name__.endswith("v"):
             self._glUniform(self._location, len(args), args)
         else:
             self._glUniform(self._location, *args)
 
 
 class Renderer:
-
     # TODO use stdlib arrays, make np optional for mic input
-    VERTICES = np.array([[-1.0,  1.0, 0.0],
-                         [-1.0, -1.0, 0.0],
-                         [ 1.0,  1.0, 0.0],
-                         [ 1.0, -1.0, 0.0]],
-                        dtype=np.float32)
-
+    VERTICES = np.array(
+        [[-1.0,  1.0, 0.0],
+         [-1.0, -1.0, 0.0],
+         [ 1.0,  1.0, 0.0],
+         [ 1.0, -1.0, 0.0]],
+        dtype=np.float32
+    )  # fmt: skip
 
     VERTEX_SHADER = dedent(  # glsl
         """\
@@ -189,7 +195,8 @@ class Renderer:
             vec2 pos = gl_FragCoord.xy / Resolution;
             FragColor = vec4(pos.x, pos.y, 1.0 - (pos.x + pos.y) / 2.0, 1.0);
         }
-    """)
+    """
+    )
 
     def __init__(self, system_uniforms: list[UniformLike]):
         self.preamble = self.FRAGMENT_SHADER_PREAMBLE.format(
@@ -203,35 +210,41 @@ class Renderer:
         self.uniforms: dict[str, Uniform] = {}
 
         self.vao, self.vbo = self._create_vertices(self.VERTICES)
-        self.vertex_shader = self._create_shader(gl.GL_VERTEX_SHADER,
-                                                 self.VERTEX_SHADER)
+        self.vertex_shader = self._create_shader(
+            gl.GL_VERTEX_SHADER, self.VERTEX_SHADER
+        )
 
-        self.set_shader(self.DEFAULT_FRAGMENT_SHADER,
-                        uniforms=system_uniforms,
-                        clear=True)
+        self.set_shader(
+            self.DEFAULT_FRAGMENT_SHADER, uniforms=system_uniforms, clear=True
+        )
 
     @staticmethod
-    def _create_vertices(vertices: np.ndarray) -> tuple[VertexArrayObject,
-                                                        VertexBufferObject]:
+    def _create_vertices(
+        vertices: np.ndarray,
+    ) -> tuple[VertexArrayObject, VertexBufferObject]:
         vao = gl.glGenVertexArrays(1)
         vbo = gl.glGenBuffers(1)
 
         gl.glBindVertexArray(vao)
 
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
-        gl.glBufferData(target=gl.GL_ARRAY_BUFFER,
-                        size=vertices.nbytes,
-                        data=vertices,
-                        usage=gl.GL_STATIC_DRAW)
+        gl.glBufferData(
+            target=gl.GL_ARRAY_BUFFER,
+            size=vertices.nbytes,
+            data=vertices,
+            usage=gl.GL_STATIC_DRAW,
+        )
 
         # Specify the layout of the vertex data
         vertex_attrib_idx = 0
-        gl.glVertexAttribPointer(index=vertex_attrib_idx,
-                                size=3, # len(x, y, z)
-                                type=gl.GL_FLOAT,
-                                normalized=gl.GL_FALSE,
-                                stride=3 * 4,  # (x, y, z) * sizeof(GL_FLOAT)  # TODO
-                                pointer=gl.ctypes.c_void_p(0))
+        gl.glVertexAttribPointer(
+            index=vertex_attrib_idx,
+            size=3,  # len(x, y, z)
+            type=gl.GL_FLOAT,
+            normalized=gl.GL_FALSE,
+            stride=3 * 4,  # (x, y, z) * sizeof(GL_FLOAT)  # TODO
+            pointer=gl.ctypes.c_void_p(0),
+        )
         gl.glEnableVertexAttribArray(vertex_attrib_idx)
 
         # Unbind the VAO
@@ -246,8 +259,7 @@ class Renderer:
         gl.glShaderSource(shader, shader_source)
         gl.glCompileShader(shader)
         if gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
-            raise ShaderCompileError(
-                gl.glGetShaderInfoLog(shader).decode('utf-8'))
+            raise ShaderCompileError(gl.glGetShaderInfoLog(shader).decode("utf-8"))
         return shader  # pyright: ignore [reportReturnType]
 
     @staticmethod
@@ -258,43 +270,39 @@ class Renderer:
             gl.glAttachShader(program, shader)
         gl.glLinkProgram(program)
         if gl.glGetProgramiv(program, gl.GL_LINK_STATUS) != gl.GL_TRUE:
-            raise ProgramLinkError(
-                gl.glGetProgramInfoLog(program).decode('utf-8'))
+            raise ProgramLinkError(gl.glGetProgramInfoLog(program).decode("utf-8"))
         return program  # pyright: ignore [reportReturnType]
 
-
-    def update_uniform(self,
-                       name: str,
-                       value: GLSLBool | GLSLInt | GLSLFloat):
+    def update_uniform(self, name: str, value: GLSLBool | GLSLInt | GLSLFloat):
         with self._uniform_lock:
             uniform = self.uniforms[name]
             if not isinstance(value, uniform._type):
-                raise ValueError(f"Argument 'value' needs to be of type"
-                                 f" '{uniform._type}' (not '{type(value)}')")
+                raise ValueError(
+                    f"Argument 'value' needs to be of type"
+                    f" '{uniform._type}' (not '{type(value)}')"
+                )
 
             match uniform.type:
-                case 'bool':
+                case "bool":
                     uniform.value = bool(value)
-                case 'int':
+                case "int":
                     uniform.value = int(value)
-                case 'float':
+                case "float":
                     uniform.value = float(value)
                 case _:
                     raise NotImplementedError(
-                        f"Update not implemented for Uniform type '{uniform.type}'")
+                        f"Update not implemented for Uniform type '{uniform.type}'"
+                    )
 
     def create_shader_program(self, shader_src: str):
-        fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER,
-                                              shader_src)
-        self.shader_program = self._create_program(self.vertex_shader,
-                                              fragment_shader)
+        fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER, shader_src)
+        self.shader_program = self._create_program(self.vertex_shader, fragment_shader)
         gl.glDeleteShader(fragment_shader)
 
     # TODO this needs more cleanup: clear vs relead, re-use Uniform objects
-    def set_shader(self,
-                   source: str,
-                   uniforms: Sequence[UniformLike],
-                   clear: bool = False):
+    def set_shader(
+        self, source: str, uniforms: Sequence[UniformLike], clear: bool = False
+    ):
         # clear instead of update uniforms if this is a
         # new file (vs just reload)
         if clear:
@@ -305,11 +313,15 @@ class Renderer:
 
         with self._uniform_lock:
             self.uniforms.update(
-                **{parameter.name: Uniform(self.shader_program,
-                                           type_=parameter.type,
-                                           name=parameter.name,
-                                           value=parameter.value)
-                   for parameter in uniforms},
+                **{
+                    parameter.name: Uniform(
+                        self.shader_program,
+                        type_=parameter.type,
+                        name=parameter.name,
+                        value=parameter.value,
+                    )
+                    for parameter in uniforms
+                },
             )
 
     def update(self, uniforms: Sequence[UniformLike]):
@@ -318,13 +330,14 @@ class Renderer:
                 try:
                     self.uniforms[uniform.name].value = uniform.value
                 except KeyError:
-                    self.uniforms[uniform.name] = Uniform(self.shader_program,
-                                                          type_=uniform.type,
-                                                          name=uniform.name,
-                                                          value=uniform.value)
+                    self.uniforms[uniform.name] = Uniform(
+                        self.shader_program,
+                        type_=uniform.type,
+                        name=uniform.name,
+                        value=uniform.value,
+                    )
             for unused in set(self.uniforms) - set(u.name for u in uniforms):
                 del self.uniforms[unused]
-
 
     def render(self):
         # TODO do I need to do this every frame? also: glBindVertexArray

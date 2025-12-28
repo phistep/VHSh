@@ -15,29 +15,33 @@ logger = logging.getLogger(__name__)
 def import_shadertoy(url: str, outfile: Path | None = None):
     import requests
 
-    API_URL="https://www.shadertoy.com/api/v1/shaders/"
-    VIEW_URL="https://www.shadertoy.com/view/"
-    API_KEY="Nt8jhz"
-    api_key = os.getenv('VHSH_API_KEY_SHADERTOY', API_KEY)
+    API_URL = "https://www.shadertoy.com/api/v1/shaders/"
+    VIEW_URL = "https://www.shadertoy.com/view/"
+    API_KEY = "Nt8jhz"
+    api_key = os.getenv("VHSH_API_KEY_SHADERTOY", API_KEY)
 
     if url.isalnum():
         id_ = url
     else:
-        id_ = urlparse(url).path.split('/')[-1]
+        id_ = urlparse(url).path.split("/")[-1]
 
     url = f"// {VIEW_URL}{id_}"
 
-    r = requests.get(API_URL + id_,
-                     params={"key": api_key},
-                     headers={"user-agent": f"vhsh/{__version__}"})
+    r = requests.get(
+        API_URL + id_,
+        params={"key": api_key},
+        headers={"user-agent": f"vhsh/{__version__}"},
+    )
     r.raise_for_status()
     shadertoy_info = r.json()
     logger.debug(pformat(shadertoy_info))
 
-    info = shadertoy_info['Shader']['info']
-    header = '\n'.join(
-        (f"{Color.Style.BOLD}{k.title():>12}:{Color.RESET}"
-         f" {v.replace('\n', ' ') if isinstance(v, str) else v}")
+    info = shadertoy_info["Shader"]["info"]
+    header = "\n".join(
+        (
+            f"{Color.Style.BOLD}{k.title():>12}:{Color.RESET}"
+            f" {v.replace('\n', ' ') if isinstance(v, str) else v}"
+        )
         for k, v in info.items()
     )
     logger.info(header)
@@ -45,21 +49,20 @@ def import_shadertoy(url: str, outfile: Path | None = None):
     _metadata = dict(
         version=VHSh.SCENE_FORMAT_VERSION,
         name=info.get("name"),
-        author=info.get("username")
+        author=info.get("username"),
     )
-    metadata = '\n'.join(f"/// @{key} {value}"
-                         for key, value in _metadata.items()
-                         if value is not None)
+    metadata = "\n".join(
+        f"/// @{key} {value}" for key, value in _metadata.items() if value is not None
+    )
 
-    header = '\n'.join(
+    header = "\n".join(
         f"// {k}: {v.replace('\n', '\n//   ') if isinstance(v, str) else v}"
         for k, v in info.items()
     )
 
     src = next(
-        filter(lambda rp: rp['name'] == 'Image',
-               shadertoy_info['Shader']['renderpass'])
-    )['code']
+        filter(lambda rp: rp["name"] == "Image", shadertoy_info["Shader"]["renderpass"])
+    )["code"]
 
     # uniform vec3      iResolution;           // viewport resolution (in pixels)
     # uniform float     iTime;                 // shader playback time (in seconds)
@@ -98,19 +101,20 @@ def import_shadertoy(url: str, outfile: Path | None = None):
     """)
 
     if outfile is None:
-        safe_name = ''.join(c for c in info['name'].replace(' ', '-')
-                            if c.isalnum() or c in ['_', '-'])
+        safe_name = "".join(
+            c for c in info["name"].replace(" ", "-") if c.isalnum() or c in ["_", "-"]
+        )
         outfile = Path(f"{info['id']}_{safe_name}.glsl")
 
-    with open(outfile, 'w') as f:
-        f.write('\n\n'.join([metadata, url, header, adapters, src, main_func]))
+    with open(outfile, "w") as f:
+        f.write("\n\n".join([metadata, url, header, adapters, src, main_func]))
     logger.info(f"Wrote '{outfile}'")
 
 
 def import_scene(url: str, outfile: Path):
     parsed_url = urlparse(url)
     match parsed_url.hostname:
-        case 'shadertoy.com' | 'www.shadertoy.com':
+        case "shadertoy.com" | "www.shadertoy.com":
             logger.debug("matched shadertoy.com")
             import_shadertoy(url, outfile)
         case _:

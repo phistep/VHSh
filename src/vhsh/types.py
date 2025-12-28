@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 
 ### ANSI Colors
 
-class Color:
 
+class Color:
     RESET = "\x1b[0;0m"
 
     BLACK = "\x1b[30m"
@@ -78,10 +78,12 @@ GLSLVec2: TypeAlias = tuple[float, float]
 GLSLVec3: TypeAlias = tuple[float, float, float]
 GLSLVec4: TypeAlias = tuple[float, float, float, float]
 
-_UniformValue: TypeAlias = Union[GLSLBool, GLSLInt, GLSLFloat,
-                                 GLSLVec2, GLSLVec3, GLSLVec4]
+_UniformValue: TypeAlias = Union[
+    GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4
+]
 UniformValue: TypeAlias = Union[_UniformValue, Sequence[_UniformValue]]
-UniformT = TypeVar('UniformT', bound=UniformValue)
+UniformT = TypeVar("UniformT", bound=UniformValue)
+
 
 class UniformLike(Protocol, Generic[UniformT]):
     name: str
@@ -100,11 +102,14 @@ class App(Protocol):
     system_parameters: dict[str, SystemParameter]
     controllers: dict[str, Controller]
     time: Time
+
     @property
     def scene_index(self) -> int: ...
     @scene_index.setter
     def scene_index(self, value: int): ...
+
     scenes: list[Scene]
+
     @property
     def scene(self) -> Scene: ...
     def prev_scene(self, n: int = 1): ...
@@ -114,8 +119,8 @@ class App(Protocol):
 
 class Controller(ABC, Thread):
     def __init__(self, *args, **kwargs):
-        if 'name' not in kwargs:
-            kwargs['name'] = self.__class__.__name__
+        if "name" not in kwargs:
+            kwargs["name"] = self.__class__.__name__
         super().__init__(*args, **kwargs)
 
         self._stop_controller = Event()
@@ -138,6 +143,7 @@ class SystemParameter(UniformLike, Generic[UniformT]):
 
     Pass None if value should be kept constant.
     """
+
     name: str
     type: str
     value: UniformT

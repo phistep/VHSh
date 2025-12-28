@@ -10,18 +10,16 @@ from .types import Color
 logger = logging.getLogger(__name__)
 
 
-
 class ColorFormatter(logging.Formatter):
     COLORS = {
         logging.DEBUG: Color.BLUE,
         logging.INFO: Color.GREEN + Color.Style.BOLD,
         logging.WARNING: Color.Bright.YELLOW + Color.Style.BOLD,
         logging.ERROR: Color.RED + Color.Style.BOLD,
-        logging.CRITICAL: \
-            Color.WHITE + Color.Style.BOLD + Color.Background.RED,
+        logging.CRITICAL: Color.WHITE + Color.Style.BOLD + Color.Background.RED,
     }
 
-    def __init__(self, min_level = logging.DEBUG, *args, **kwargs):
+    def __init__(self, min_level=logging.DEBUG, *args, **kwargs):
         self._min_level_name = min_level
         super().__init__(*args, **kwargs)
 
@@ -31,10 +29,12 @@ class ColorFormatter(logging.Formatter):
         try:
             self._style._fmt = re.sub(
                 R"%\(levelname\)([^a-z]*)s(\s*)",
-                (f"{color}%(levelname)\\1s{Color.RESET}\\2"
-                 if record.levelno >= self._min_level_name
-                 else ""),
-                self._style._fmt
+                (
+                    f"{color}%(levelname)\\1s{Color.RESET}\\2"
+                    if record.levelno >= self._min_level_name
+                    else ""
+                ),
+                self._style._fmt,
             )
             return logging.Formatter.format(self, record)
         finally:
@@ -42,6 +42,7 @@ class ColorFormatter(logging.Formatter):
 
 
 def get_argument_parser() -> argparse.ArgumentParser:
+    # fmt: off
     parser = argparse.ArgumentParser(prog='vhsh')
     parser.add_argument('-V', '--version', action="store_true",
         help="Print version information")
@@ -76,6 +77,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
     parser_migrate.add_argument("-t", "--to-version", type=int,
         help="Default: Current version supported by VHSh (see -V)")
     parser_migrate.set_defaults(func=main_migrate)
+    # fmt: on
 
     return parser
 
@@ -107,8 +109,7 @@ def configure_logging(verbose: bool):
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
             ColorFormatter(
-                fmt=
-                f"{Color.Style.FAINT}%(asctime)s{Color.RESET}"
+                fmt=f"{Color.Style.FAINT}%(asctime)s{Color.RESET}"
                 f" %(levelname)-8s"
                 f" %(name)s"
                 f"{Color.Style.FAINT}"
@@ -118,20 +119,17 @@ def configure_logging(verbose: bool):
                 f"\n%(message)s"
             )
         )
-        logging.basicConfig(level=logging.DEBUG,
-                            handlers=[handler],
-                            force=True)
+        logging.basicConfig(level=logging.DEBUG, handlers=[handler], force=True)
         logging.getLogger("watchfiles.main").setLevel(logging.INFO)
 
     else:
         handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(ColorFormatter(fmt="\n%(levelname)s %(message)s",
-                                            min_level=logging.WARNING))
-        logging.basicConfig(level=logging.INFO,
-                            handlers=[handler],
-                            force=True)
+        handler.setFormatter(
+            ColorFormatter(fmt="\n%(levelname)s %(message)s", min_level=logging.WARNING)
+        )
+        logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)
 
-        logging.getLogger('watchfiles.main').setLevel(logging.CRITICAL)
+        logging.getLogger("watchfiles.main").setLevel(logging.CRITICAL)
 
 
 def main_run(args: argparse.Namespace):
@@ -141,12 +139,10 @@ def main_run(args: argparse.Namespace):
 
     midi_mapping = {}
     if args.midi_mapping:
-        with open(args.midi_mapping, 'rb') as f:
+        with open(args.midi_mapping, "rb") as f:
             midi_mapping = tomllib.load(f)
 
-    vhsh = VHSh(scenes=args.shader,
-                midi_mapping=midi_mapping,
-                microphone=args.mic)
+    vhsh = VHSh(scenes=args.shader, midi_mapping=midi_mapping, microphone=args.mic)
     vhsh.run()
 
 
@@ -159,9 +155,7 @@ def main_import(args: argparse.Namespace):
 def main_migrate(args: argparse.Namespace):
     from .migration import migrate
 
-    migrate(args.path,
-            from_version=args.from_version,
-            to_version=args.to_version)
+    migrate(args.path, from_version=args.from_version, to_version=args.to_version)
 
 
 def main(argv: Optional[list[str]] = None):

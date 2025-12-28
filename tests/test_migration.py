@@ -46,9 +46,7 @@ def test_migrate(tmp_path: Path, scene_source: dict[int, str]):
 
 
 @pytest.mark.parametrize(
-    "to_version",
-    range(1, len(MIGRATIONS) + 1),
-    ids=lambda v: f"{v-1}-{v}"
+    "to_version", range(1, len(MIGRATIONS) + 1), ids=lambda v: f"{v - 1}-{v}"
 )
 def test_migrate_vx(scene_source: str, to_version: int):
     from_version = to_version - 1

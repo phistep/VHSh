@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class FileWatcher(Controller):
-
     def __init__(self, app: App):
         super().__init__()
         self._app = app
@@ -21,12 +20,15 @@ class FileWatcher(Controller):
         except ImportError:
             logger.warning(
                 "Not watching for file changes!"
-                " 'watchfiles' not installed, install with 'vhsh[watch]'")
+                " 'watchfiles' not installed, install with 'vhsh[watch]'"
+            )
             self.stop()
             return
 
-        logger.info(f"{Color.Style.BOLD}Watching for changes:{Color.RESET}\n%s",
-                    "\n".join(f"  {f}" for f in self.filenames))
+        logger.info(
+            f"{Color.Style.BOLD}Watching for changes:{Color.RESET}\n%s",
+            "\n".join(f"  {f}" for f in self.filenames),
+        )
 
         for changes in watch(*self.filenames, stop_event=self._stop_controller):
             for _, filename in changes:

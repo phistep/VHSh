@@ -25,16 +25,14 @@ MIGRATIONS = {
     1: migrate_v1,
 }
 
-def _backup(path: Path,
-            backup: Path | None = None,
-            version: int | None = None) -> Path:
+
+def _backup(path: Path, backup: Path | None = None, version: int | None = None) -> Path:
     if backup is None:
         if version is None:
-            version = path.metadata.get('version', 0)
-        backup = path.parent / (f"{path.name}"
-                                f".{version}"
-                                f".{datetime.now().isoformat()}"
-                                f".bkp")
+            version = path.metadata.get("version", 0)
+        backup = path.parent / (
+            f"{path.name}.{version}.{datetime.now().isoformat()}.bkp"
+        )
     shutil.copy2(path, backup)
     return backup
 
@@ -48,17 +46,19 @@ def _set_version(source: str, version: int):
     if "/// @version" not in source:
         source = f"/// @version {version}\n\n" + source
     else:
-        source = "\n".join(
-            f"/// @version {version}" if line.startswith("/// @version")
-            else line
-            for line in source.splitlines()
-        ) + '\n'
+        source = (
+            "\n".join(
+                f"/// @version {version}" if line.startswith("/// @version") else line
+                for line in source.splitlines()
+            )
+            + "\n"
+        )
     return source
 
 
-def migrate(path: Path,
-            from_version: int | None = None,
-            to_version: int | None = None) -> Scene:
+def migrate(
+    path: Path, from_version: int | None = None, to_version: int | None = None
+) -> Scene:
     if from_version is None:
         from_version = _get_version(path.read_text())
     if to_version is None:
@@ -90,14 +90,18 @@ def migrate(path: Path,
             logger.info(
                 f"{Color.GREEN + Color.Style.BOLD}Migration successful!{Color.RESET}"
                 f"  {Color.Style.FAINT}[%s]{Color.RESET}",
-                path
+                path,
             )
         except Exception as e:
             shutil.copy2(backup_path, path)
-            logger.critical("Migration from version %i to version %i failed.!"
-                            "Restored backup from '%s' to '%s'!",
-                            current_version, next_version,
-                            path.absolute(), backup_path.absolute())
+            logger.critical(
+                "Migration from version %i to version %i failed.!"
+                "Restored backup from '%s' to '%s'!",
+                current_version,
+                next_version,
+                path.absolute(),
+                backup_path.absolute(),
+            )
             raise e
 
     logging.info("All migrations done.")
@@ -106,10 +110,14 @@ def migrate(path: Path,
         scene = Scene(path, required_version=to_version)
     except Exception as e:
         shutil.copy2(original_backup, path)
-        logger.critical("Migration from version %i to version %i failed.!"
-                        "Restored backup from '%s' to '%s'!",
-                        from_version, to_version,
-                        path.absolute(), original_backup.absolute())
+        logger.critical(
+            "Migration from version %i to version %i failed.!"
+            "Restored backup from '%s' to '%s'!",
+            from_version,
+            to_version,
+            path.absolute(),
+            original_backup.absolute(),
+        )
         raise e
 
     logging.info("Scene read successfully. Migration successful!")
