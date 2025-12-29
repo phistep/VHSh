@@ -1,5 +1,4 @@
 .DS_Store
-.env
 
 __pycache__/
 *.py[oc]
@@ -9,7 +8,10 @@ wheels/
 *.egg-info
 
 .venv
+.ruff_cache
+.pytest_cache
 
+.env
 imgui.ini
 
 experiments

@@ -2,22 +2,25 @@
 
 ## 1.0
 
-- git tag `__version__`
-- read through every file and polish, check for dead code
-- test on the machine!
 - cleanup diagnostics
 - ty typing
+
 - docstrings
 - dev docs: Scenes, Parameters, Controllers, scene_index
 - docs for `import` command
 - merge README from main
+- changelog
+
+- git tag `__version__`
 - proper pyproject.toml metadata
 - license
-- changelog
+
+- read through every file and polish, check for dead code
+- test on the machine!
 
 release rc
 
-- github actions (test rcs)
+- github actions (test, lint, tag+publish on merge)
 
 release 1.0.0 🥳
 

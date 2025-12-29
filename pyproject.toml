@@ -51,6 +51,21 @@ select = ["E", "F", "I", "RUF100", "TC"]
 [tool.ruff.lint.isort]
 combine-as-imports = true
 
+
+[tool.ty.src]
+exclude = [
+    # FIXME https://github.com/astral-sh/ty/issues/691
+    # see https://docs.astral.sh/ty/reference/typing-faq/#does-ty-support-pep-723-inline-metadata-scripts
+    "tests/plot_logscale.py",
+    # TODO
+    "src/vhsh/renderer.py",
+    "src/vhsh/scene.py",
+    "tests/test_scene.py",
+    # TODO subs
+    "src/vhsh/midi.py",
+    "src/vhsh/window.py",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 log_level = "DEBUG"
