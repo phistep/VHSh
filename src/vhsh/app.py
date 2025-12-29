@@ -13,7 +13,7 @@ from .microphone import Microphone
 from .midi import MIDIController
 from .renderer import Renderer, ShaderCompileError
 from .scene import ParameterParserError, Scene
-from .types import Color, Controller, SystemParameter, SystemParameters
+from .types import Color, Controller, SystemParameter, UniformValue
 from .watch import FileWatcher
 from .window import Window
 
@@ -80,7 +80,10 @@ class VHSh:
         ]
         if not self.scenes:
             self.scenes = self._get_default_scenes()
-        self.system_parameters: SystemParameters = dict(
+        # NOTE: we don't want to use the `SystemParameters` TypedDict here, because
+        # without `extra_items=` (3.15) `self.system_parameters.values()` yields
+        # `object` instead of `SystemParameter`.
+        self.system_parameters: dict[str, SystemParameter[UniformValue]] = dict(
             Resolution=SystemParameter(
                 "Resolution",
                 type="vec2",

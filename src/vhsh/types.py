@@ -13,13 +13,13 @@ from typing import (
     TypedDict,
     TypeVar,
     Union,
-    final,
 )
 
 import numpy as np
 
 if TYPE_CHECKING:
     from collections import deque
+    from typing import NotRequired
 
     from ty_extensions import JustFloat
 
@@ -111,7 +111,7 @@ class App(Protocol):
     window: Window
     error: ShaderCompileError | ParameterParserError | None
     frame_times: deque[float]
-    system_parameters: SystemParameters
+    system_parameters: dict[str, SystemParameter[UniformValue]]
     controllers: dict[str, Controller]
     time: Time
 
@@ -176,12 +176,14 @@ class SystemParameter(UniformLike, Generic[UniformT]):
         self.update = update
 
 
-@final
 class SystemParameters(
     TypedDict,
     # TODO Python 3.15: https://peps.python.org/pep-0728/
     # extra_items=SystemParameter[UniformValue],
 ):
-    Resolution: SystemParameter[GLSLVec2]  # app.VHSh.__init__
-    Time: SystemParameter[GLSLFloat]  # app.VHSh.__init__
-    Microphone: SystemParameter[Sequence[GLSLFloat]]  # microphone.Microphone.__init__
+    # app.VHSh.__init__
+    Resolution: SystemParameter[GLSLVec2]
+    # app.VHSh.__init__
+    Time: SystemParameter[GLSLFloat]
+    # microphone.Microphone.__init__
+    Microphone: NotRequired[SystemParameter[Sequence[GLSLFloat]]]

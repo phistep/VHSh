@@ -1,11 +1,11 @@
 from array import array
-from typing import Protocol, Type
+from typing import Protocol, Type, cast
 
 import imgui
 
 from .microphone import Microphone
 from .scene import Widget
-from .types import App
+from .types import App, SystemParameters
 
 
 class ImguiRenderer(Protocol):
@@ -141,23 +141,26 @@ class GUI:
         imgui.separator()
         imgui.spacing()
 
+        # NOTE for unpacking .value into arguments, we need the TypedDict in order to
+        # know the UniformValue materialization
+        system_parameters = cast("SystemParameters", app.system_parameters)
+
         # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
         with imgui.begin_group():
-            imgui.drag_float("Time", app.system_parameters["Time"].value)
+            imgui.drag_float("Time", system_parameters["Time"].value)
             imgui.same_line()
             _, app.time.running = imgui.checkbox(
                 "playing" if app.time.running else "paused", app.time.running
             )
-
-        imgui.drag_float2(
-            "Resolution", *app.system_parameters["Resolution"].value, format="%.0f"
-        )
+            imgui.drag_float2(
+                "Resolution", *system_parameters["Resolution"].value, format="%.0f"
+            )
 
         if "Microphone" in app.controllers and app.controllers["Microphone"].is_alive():
-            levels: array[float] = array(
-                "f", app.system_parameters[Microphone.UNIFORM_NAME].value
+            imgui.plot_histogram(
+                Microphone.UNIFORM_NAME,
+                array("f", system_parameters[Microphone.UNIFORM_NAME].value),
             )
-            imgui.plot_histogram(Microphone.UNIFORM_NAME, levels)
 
         imgui.spacing()
         imgui.separator()
