@@ -5,7 +5,7 @@ from ast import literal_eval
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Generic, Iterable, get_args
+from typing import Generic, Iterable, NotRequired, TypedDict, get_args
 
 from .types import (
     Color,
@@ -334,6 +334,12 @@ class Preset:
         return presets
 
 
+class SceneMetadata(TypedDict):
+    name: NotRequired[str]
+    author: NotRequired[str]
+    version: NotRequired[int]
+
+
 class Scene:
     presets: list[Preset]
 
@@ -409,8 +415,8 @@ class Scene:
         return presets
 
     @staticmethod
-    def _load_metadata(source: str) -> dict[str, str | int]:
-        metadata = {}
+    def _load_metadata(source: str) -> SceneMetadata:
+        metadata = SceneMetadata()
         for line in source.splitlines():
             if line.startswith("/// @"):
                 key, value = line.lstrip("/ @").strip().split(" ", 1)

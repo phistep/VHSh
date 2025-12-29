@@ -29,7 +29,8 @@ MIGRATIONS = {
 def _backup(path: Path, backup: Path | None = None, version: int | None = None) -> Path:
     if backup is None:
         if version is None:
-            version = path.metadata.get("version", 0)
+            #    version = scene.metadata.get("version", 0)
+            version = 0
         backup = path.parent / (
             f"{path.name}.{version}.{datetime.now().isoformat()}.bkp"
         )
@@ -103,6 +104,9 @@ def migrate(
                 backup_path.absolute(),
             )
             raise e
+    else:
+        # already at to_version
+        return Scene(path, required_version=to_version)
 
     logging.info("All migrations done.")
 
