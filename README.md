@@ -247,7 +247,9 @@ Currently supported metadata fields:
 
 ## Development
 
-VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and packaging and [`ruff`][ruff] for linting and formatting.
+VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and
+packaging, [`ruff`][ruff] for linting and formatting, and [`ty`][ty] as language
+server and type checker.
 
 ### Setup
 
@@ -261,7 +263,13 @@ Then create a virtual environment and run the test suite.
 ```sh
 uv sync --dev --extra all
 uv run ruff check
+uv run ty check
 uv run pytest
+```
+
+To ignore formatting changes etc for git-blame, configure
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
 ### Publish
@@ -272,7 +280,8 @@ To publish the package to PyPI, setup the credentials for PyPI in `.env`
 UV_PUBLISH_TOKEN=pypi-...
 ```
 
-Create a [SemVer][semver] git tag, as the package version is dynmically determined by the latest git tag. Use `uv` to build and publish wheels.
+Create a [SemVer][semver] git tag, as the package version is dynmically determined by
+the latest git tag. Use `uv` to build and publish wheels.
 
 ```sh
 git tag -a v1.23.42
@@ -324,4 +333,5 @@ defaults write org.python.python ApplePersistenceIgnoreState NO
 [uv]: https://docs.astral.sh/uv/
 [uv-install]: https://docs.astral.sh/uv/getting-started/installation/
 [ruff]: https://docs.astral.sh/ruff/
+[ty]: https://docs.astral.sh/ty/
 [semver]: https://semver.org/

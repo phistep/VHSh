@@ -167,12 +167,8 @@ wheels = [
 
 [[package]]
 name = "pyimgui-stubs"
-version = "0.0.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/36/b8/73ebcccb009fedcb4b6347e6b5016dc0a072912a34afaf72ecef85c9166b/pyimgui_stubs-0.0.2.tar.gz", hash = "sha256:2c3615e68b9c8c0e7354d432e798c57d8cefc4689932f7bf8a8dc4ac303276fe", size = 11451, upload-time = "2024-10-05T19:29:17.949Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/5d/77e95eafaefb0f6a16693f579ca8aee9b718468a5b25cb3b6ee2f2fa571a/pyimgui_stubs-0.0.2-py3-none-any.whl", hash = "sha256:bd2fc7bc524bc3479441bad5a8708b918dcb3fb9f5dfda0cbfdfb216d079b94a", size = 11303, upload-time = "2024-10-05T19:29:16.375Z" },
-]
+version = "0.0.3"
+source = { git = "https://github.com/phistep/pyimgui-stubs?branch=plot_histogram#8edb6b9a1283b879cebc59421ac063e1c9d67e65" }
 
 [[package]]
 name = "pyopengl"
@@ -353,7 +349,7 @@ provides-extras = ["all", "watch", "midi", "audio", "import"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pyimgui-stubs" },
+    { name = "pyimgui-stubs", git = "https://github.com/phistep/pyimgui-stubs?branch=plot_histogram" },
     { name = "ruff" },
     { name = "ty" },
 ]

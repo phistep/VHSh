@@ -42,9 +42,11 @@ environments = [
     "sys_platform == 'darwin'",
     "sys_platform == 'linux'",
 ]
+[tool.uv.sources]
+pyimgui-stubs = { git = "https://github.com/phistep/pyimgui-stubs", branch = "plot_histogram" }
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "RUF100"]
+select = ["E", "F", "I", "RUF100", "TC"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true

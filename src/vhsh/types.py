@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections import deque
 from dataclasses import dataclass
 from threading import Event, Thread
 from typing import (
@@ -11,13 +10,19 @@ from typing import (
     Protocol,
     Sequence,
     TypeAlias,
+    TypedDict,
     TypeVar,
     Union,
+    final,
 )
 
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections import deque
+
+    from ty_extensions import JustFloat
+
     from .app import Time
     from .renderer import ShaderCompileError
     from .scene import ParameterParserError, Scene
@@ -73,10 +78,17 @@ ShaderProgram: TypeAlias = int
 
 GLSLBool: TypeAlias = bool
 GLSLInt: TypeAlias = int
-GLSLFloat: TypeAlias = float
-GLSLVec2: TypeAlias = tuple[float, float]
-GLSLVec3: TypeAlias = tuple[float, float, float]
-GLSLVec4: TypeAlias = tuple[float, float, float, float]
+if TYPE_CHECKING:
+    GLSLFloat: TypeAlias = JustFloat
+    GLSLVec2: TypeAlias = tuple[JustFloat, JustFloat]
+    GLSLVec3: TypeAlias = tuple[JustFloat, JustFloat, JustFloat]
+    GLSLVec4: TypeAlias = tuple[JustFloat, JustFloat, JustFloat, JustFloat]
+else:
+    GLSLFloat: TypeAlias = float
+    GLSLVec2: TypeAlias = tuple[float, float]
+    GLSLVec3: TypeAlias = tuple[float, float, float]
+    GLSLVec4: TypeAlias = tuple[float, float, float, float]
+
 
 _UniformValue: TypeAlias = Union[
     GLSLBool, GLSLInt, GLSLFloat, GLSLVec2, GLSLVec3, GLSLVec4
@@ -99,7 +111,7 @@ class App(Protocol):
     window: Window
     error: ShaderCompileError | ParameterParserError | None
     frame_times: deque[float]
-    system_parameters: dict[str, SystemParameter]
+    system_parameters: SystemParameters
     controllers: dict[str, Controller]
     time: Time
 
@@ -162,3 +174,14 @@ class SystemParameter(UniformLike, Generic[UniformT]):
             return value
 
         self.update = update
+
+
+@final
+class SystemParameters(
+    TypedDict,
+    # TODO Python 3.15: https://peps.python.org/pep-0728/
+    # extra_items=SystemParameter[UniformValue],
+):
+    Resolution: SystemParameter[GLSLVec2]  # app.VHSh.__init__
+    Time: SystemParameter[GLSLFloat]  # app.VHSh.__init__
+    Microphone: SystemParameter[Sequence[GLSLFloat]]  # microphone.Microphone.__init__

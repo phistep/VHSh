@@ -335,6 +335,8 @@ class Preset:
 
 
 class Scene:
+    presets: list[Preset]
+
     def __init__(self, path: Path, required_version: int | None = None):
         self.path = path
         self.name = self.path.stem.replace("_", " ").replace("-", " ").title()
@@ -434,11 +436,11 @@ class Scene:
         return current_preset.parameters
 
     @property
-    def preset_index(self):
+    def preset_index(self) -> int:
         return self._preset_index
 
     @preset_index.setter
-    def preset_index(self, value):
+    def preset_index(self, value: int):
         self._preset_index = value % len(self.presets)
         logger.info(
             f"{Color.Style.BOLD}Current Preset:{Color.RESET}\n%s",

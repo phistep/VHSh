@@ -2,6 +2,7 @@ import logging
 from collections import deque
 from threading import Lock
 from time import sleep
+from typing import Final
 
 import numpy as np
 
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class Microphone(Controller):
-    UNIFORM_NAME = "Microphone"
+    UNIFORM_NAME: Final = "Microphone"
 
     def __init__(
         self,
