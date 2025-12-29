@@ -2,11 +2,11 @@ import logging
 from collections import deque
 from threading import Lock
 from time import sleep
-from typing import Final
+from typing import Final, Sequence
 
 import numpy as np
 
-from .types import App, Controller, SystemParameter
+from .types import App, Controller, GLSLFloat, SystemParameter
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +62,13 @@ class Microphone(Controller):
                 f"Microphone uniform '{self.UNIFORM_NAME}' already exists"
             )
         num_levels = len(self._levels)
-        app.system_parameters[self.UNIFORM_NAME] = SystemParameter(
+        app.system_parameters[self.UNIFORM_NAME]: SystemParameter[
+            Sequence[GLSLFloat]
+        ] = SystemParameter(
             self.UNIFORM_NAME,
             type=f"float[{num_levels}]",
             value=(0.0) * num_levels,
-            update=lambda app: app.controllers[self.__class__.__name__].levels,  # type: ignore
+            update=lambda app: app.controllers[self.__class__.__name__].levels,
         )
 
         if not enabled:
