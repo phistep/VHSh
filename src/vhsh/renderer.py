@@ -2,7 +2,7 @@ import logging
 import re
 from textwrap import dedent
 from threading import Lock
-from typing import Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 import numpy as np
 import OpenGL.GL as gl
@@ -22,6 +22,9 @@ from .types import (
     VertexArrayObject,
     VertexBufferObject,
 )
+
+if TYPE_CHECKING:
+    from types import FunctionType
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +80,7 @@ class Uniform(UniformLike):
         self.name = name
 
         # TODO default step is dropped if not passed
-        self._glUniform: Callable[..., None]
+        self._glUniform: FunctionType[..., None]
         match self.type:
             case "bool":
                 self._type = GLSLBool
@@ -94,8 +97,10 @@ class Uniform(UniformLike):
             case str() as t if t.startswith("float["):
                 try:
                     m = re.match(r"float\[(\d+)\]", type_)
+                    if m is None:
+                        raise ValueError("No matches")
                     len = int(m.group(1))
-                except (AttributeError, ValueError) as e:
+                except ValueError as e:
                     raise UniformIntializationError(
                         f"Unable to parse float array type '{type_}': {e}"
                     ) from e
@@ -272,27 +277,6 @@ class Renderer:
         if gl.glGetProgramiv(program, gl.GL_LINK_STATUS) != gl.GL_TRUE:
             raise ProgramLinkError(gl.glGetProgramInfoLog(program).decode("utf-8"))
         return program  # pyright: ignore [reportReturnType]
-
-    def update_uniform(self, name: str, value: GLSLBool | GLSLInt | GLSLFloat):
-        with self._uniform_lock:
-            uniform = self.uniforms[name]
-            if not isinstance(value, uniform._type):
-                raise ValueError(
-                    f"Argument 'value' needs to be of type"
-                    f" '{uniform._type}' (not '{type(value)}')"
-                )
-
-            match uniform.type:
-                case "bool":
-                    uniform.value = bool(value)
-                case "int":
-                    uniform.value = int(value)
-                case "float":
-                    uniform.value = float(value)
-                case _:
-                    raise NotImplementedError(
-                        f"Update not implemented for Uniform type '{uniform.type}'"
-                    )
 
     def create_shader_program(self, shader_src: str):
         fragment_shader = self._create_shader(gl.GL_FRAGMENT_SHADER, shader_src)

@@ -58,7 +58,6 @@ exclude = [
     # see https://docs.astral.sh/ty/reference/typing-faq/#does-ty-support-pep-723-inline-metadata-scripts
     "tests/plot_logscale.py",
     # TODO
-    "src/vhsh/renderer.py",
     "src/vhsh/scene.py",
     "tests/test_scene.py",
     # TODO subs
