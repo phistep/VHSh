@@ -50,6 +50,7 @@ environments = [
 [tool.uv.sources]
 pyimgui-stubs = { git = "https://github.com/phistep/pyimgui-stubs", branch = "plot_histogram" }
 mido = [
+    # FIXME missing attributes, see https://github.com/mido/mido/issues/641
     # FIXME always pulled in, even without --dev
     # see https://github.com/astral-sh/uv/issues/17252
     { git = "https://github.com/mido/mido", group = "dev" },
@@ -70,8 +71,6 @@ exclude = [
     # TODO
     "src/vhsh/scene.py",
     "tests/test_scene.py",
-    # TODO subs
-    "src/vhsh/window.py",
 ]
 
 [tool.pytest.ini_options]

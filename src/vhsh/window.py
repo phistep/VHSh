@@ -1,4 +1,9 @@
+import logging
+import sys
+
 import glfw
+
+logger = logging.getLogger(__name__)
 
 
 class Window:
@@ -21,7 +26,8 @@ class Window:
             RuntimeError("GLFW could not initialize OpenGL context")
 
         # needed for restoring the window posision
-        glfw.window_hint_string(glfw.COCOA_FRAME_NAME, title)
+        if sys.platform == "darwin" and hasattr(glfw, "window_hint_string"):
+            glfw.window_hint_string(glfw.COCOA_FRAME_NAME, title)
 
         # macOS supports only forward-compatible core profiles from 3.2
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
@@ -48,6 +54,10 @@ class Window:
 
     @opacity.setter
     def opacity(self, opacity: float):
+        if not hasattr(glfw, "set_window_opacity"):
+            logger.warning("GLFW version does not support transparent windows")
+            return
+
         if self._opacity == opacity:
             return
         self._opacity = opacity
@@ -59,6 +69,10 @@ class Window:
 
     @floating.setter
     def floating(self, floating: bool):
+        if not hasattr(glfw, "set_window_attrib"):
+            logger.warning("GLFW version does not support floating windows")
+            return
+
         if self._floating == floating:
             return
         self._floating = floating

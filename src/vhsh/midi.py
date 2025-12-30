@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# FIXME missing attributes, see https://github.com/mido/mido/issues/641
+
+
 class MIDIController(Controller):
     def __init__(self, app: App, system_mapping: dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
