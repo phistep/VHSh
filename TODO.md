@@ -80,6 +80,9 @@ release 1.0.0 🥳
         - microphone
         - keybindings (time, scene, preset, ...)
     - [ ] write default midi mappings to XDG_DATA_HOME
+    - https://www.glfw.org/docs/3.3/window_guide.html#window_hints_osx
+      - `GLFW_COCOA_GRAPHICS_SWITCHING, False`
+      - `GLFW_COCOA_RETINA_FRAMEBUFFER, True`
 
 - [ ] joystick support:
       `vec3 <position>`, `vec4 <orientation>` (quat?)
@@ -93,6 +96,8 @@ release 1.0.0 🥳
   - [ ] arbitrary data as buffer object
   -> chatgpt: opencv
 - [ ] limit resolution and upscale
+  - `glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.TRUE)`
+
 - [ ] record mp4
 - [ ] render to buffer, make prev frame available as texture
 
@@ -186,3 +191,29 @@ release 1.0.0 🥳
   - mic input https://www.lazyfoo.net/tutorials/SDL/34_audio_recording/index.php
 - "touchpad" widget for `vec2`
 - move to wgpu (macos deprecates opengl)
+
+
+## Upstream
+### pyimgui-stubs
+- [ ] [#3: `plot_historgram`](https://github.com/denballakh/pyimgui-stubs/pull/3)
+- [ ] [#4: build-system in pyproject.toml](https://github.com/denballakh/pyimgui-stubs/pull/4)
+- [ ] [#5: ignore .zed editor config dir](zed:https://github.com/denballakh/pyimgui-stubs/pull/5)
+### mido
+- [ ] [#641: Missing Attributes on Message and Backend when Type Checking v1.3.4.dev](https://github.com/mido/mido/issues/641)
+### ty
+- [ ] [#2250: Incomplete function argument inlay hint for unpacked iterable](https://github.com/astral-sh/ty/issues/2250)
+- [ ] [#2251: Emit error when unpacking a not-iterable argument in a call](https://github.com/astral-sh/ty/issues/2251)
+- [ ] [#2253: Unable to infer zip type](https://github.com/astral-sh/ty/issues/2253)
+- [ ] [#2282: Support dynamic type guards with `hasattr` in a loop](https://github.com/astral-sh/ty/issues/2282)
+
+
+```py
+# FIXME: `uv` cannot catch the dynamic type guard
+# for attr in [...]: raise RuntimeError(f"...{attr}")
+if not hasattr(glfw, attr := "window_hint_string"):
+    raise RuntimeError(f"GLFW is missing required attribute: {attr}")
+if not hasattr(glfw, attr := "set_window_opacity"):
+    raise RuntimeError(f"GLFW is missing required attribute: {attr}")
+if not hasattr(glfw, attr := "set_window_attrib"):
+    raise RuntimeError(f"GLFW is missing required attribute: {attr}")
+```
