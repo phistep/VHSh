@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from ty_extensions import JustFloat
 
     from .app import Time
+    from .gui import GUI
     from .renderer import ShaderCompileError
     from .scene import ParameterParserError, Scene
     from .window import Window
@@ -109,6 +110,7 @@ class UniformLike(Protocol, Generic[UniformT]):
 # TODO protocols for all circular imports
 class App(Protocol):
     window: Window
+    gui: GUI
     error: ShaderCompileError | ParameterParserError | None
     frame_times: deque[float]
     system_parameters: dict[str, SystemParameter[UniformValue]]

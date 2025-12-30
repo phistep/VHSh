@@ -4,15 +4,12 @@ from collections import defaultdict
 from contextlib import ExitStack
 from datetime import datetime
 from pprint import pformat
-
-try:
-    import mido
-
-    MIDO_AVAILABLE = True
-except ImportError:
-    MIDO_AVAILABLE = False
+from typing import TYPE_CHECKING
 
 from .types import App, Color, Controller
+
+if TYPE_CHECKING:
+    import mido
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +18,14 @@ class MIDIController(Controller):
     def __init__(self, app: App, system_mapping: dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if not MIDO_AVAILABLE:
+        try:
+            import mido
+        except ImportError as e:
             logger.warning(
                 "Not listenting to MIDI, external control disabled!"
                 " 'mido' not installed, install with 'vhsh[midi]'"
             )
+            logger.exception(e)
             self.stop()
             return
 
@@ -45,44 +45,44 @@ class MIDIController(Controller):
         )
 
     def _handle_message(self, msg: "mido.Message"):
-        logger.debug(f"Received MIDI message: #{msg.control} = {msg.value}")
-        button_down = bool(msg.value)
+        logger.debug(f"Received MIDI message: #{msg.control} = {msg.value}")  # ty:ignore[unresolved-attribute]
+        button_down = bool(msg.value)  # ty:ignore[unresolved-attribute]
 
-        if msg.control == self._system_mapping["scene"].get("prev"):
+        if msg.control == self._system_mapping["scene"].get("prev"):  # ty:ignore[unresolved-attribute]
             if button_down:
                 self._app.prev_scene()
-        elif msg.control == self._system_mapping["scene"].get("next"):
+        elif msg.control == self._system_mapping["scene"].get("next"):  # ty:ignore[unresolved-attribute]
             if button_down:
                 self._app.next_scene()
 
-        elif msg.control == self._system_mapping["preset"].get("prev"):
+        elif msg.control == self._system_mapping["preset"].get("prev"):  # ty:ignore[unresolved-attribute]
             if button_down:
                 self._app.scene.prev_preset()
-        elif msg.control == self._system_mapping["preset"].get("next"):
+        elif msg.control == self._system_mapping["preset"].get("next"):  # ty:ignore[unresolved-attribute]
             if button_down:
                 self._app.scene.next_preset()
-        elif msg.control == self._system_mapping["preset"].get("save"):
+        elif msg.control == self._system_mapping["preset"].get("save"):  # ty:ignore[unresolved-attribute]
             if button_down:
                 self._app.scene.write_file(new_preset=f"MIDI {datetime.now()}")
 
-        elif msg.control == self._system_mapping["parameter"].get("time", {}).get(
+        elif msg.control == self._system_mapping["parameter"].get("time", {}).get(  # ty:ignore[unresolved-attribute]
             "toggle"
         ):
-            self._app.time.running = bool(msg.value)
+            self._app.time.running = bool(msg.value)  # ty:ignore[unresolved-attribute]
 
-        elif msg.control == self._system_mapping["ui"].get("toggle"):
-            self._app.gui.visible = bool(msg.value)
+        elif msg.control == self._system_mapping["ui"].get("toggle"):  # ty:ignore[unresolved-attribute]
+            self._app.gui.visible = bool(msg.value)  # ty:ignore[unresolved-attribute]
 
         else:
             parameter = None
             try:
-                parameter = self._parameter_mapping[msg.control]
-                assert 0 <= msg.value <= 127
-                value = msg.value / 127.0
+                parameter = self._parameter_mapping[msg.control]  # ty:ignore[unresolved-attribute]
+                assert 0 <= msg.value <= 127  # ty:ignore[unresolved-attribute]
+                value = msg.value / 127.0  # ty:ignore[unresolved-attribute]
                 self._app.scene.parameters[parameter].set_value_normalized(value)
 
             except KeyError:
-                logger.warning(f"MIDI mapping not found for: {msg.control}")
+                logger.warning(f"MIDI mapping not found for: {msg.control}")  # ty:ignore[unresolved-attribute]
                 logger.debug(str(msg))
                 logger.debug(pformat(self._parameter_mapping))
 
@@ -90,15 +90,15 @@ class MIDIController(Controller):
                 logger.error(f"setting uniform '{parameter}': {e}")
 
     def run(self):
-        # we need this if `mido` is not installed and class is not initialized
-        # due to early return.
         if self._stop_controller.is_set():
             return
+
+        import mido
 
         try:
             with ExitStack() as stack:
                 ports = [
-                    stack.enter_context(mido.open_input(device))
+                    stack.enter_context(mido.open_input(device))  # ty:ignore[unresolved-attribute]
                     for device in self.devices
                 ]
                 logger.info(
@@ -116,8 +116,6 @@ class MIDIController(Controller):
             logger.exception(e)
 
     def update_pre(self):
-        # we need this if `mido` is not installed and class is not initialized
-        # due to early return.
         if self._stop_controller.is_set():
             return
 
