@@ -37,6 +37,7 @@ release 1.0.0 🥳
   - joystick support `<rotation>`, `<translation>`
   - gui show mappings
   - version + pydantic model midi mapping? 
+  - specialized parameter classes
 - 1.2: scene dir support: Collection? Project?
 - 1.3: kiosk
 - 1.4: sampler2D support: image, video

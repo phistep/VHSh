@@ -5,7 +5,7 @@ from ast import literal_eval
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Generic, Iterable, NotRequired, TypedDict, get_args
+from typing import Iterable, NotRequired, TypedDict, cast, get_args
 
 from .types import (
     Color,
@@ -16,7 +16,6 @@ from .types import (
     GLSLVec3,
     GLSLVec4,
     UniformLike,
-    UniformT,
 )
 
 logger = logging.getLogger(__name__)
@@ -101,110 +100,36 @@ def interpolate_log(
         return v_min_fudged * (v_max_fudged / v_min_fudged) ** t_with_flip
 
 
+# TODO change into ABC + specialized subclasses: BoolParameter, VecParameter
 @dataclass
-class Parameter(UniformLike, Generic[UniformT]):
+class Parameter[UniformT](UniformLike):
     name: str
     type: str
     default: UniformT
-    value: UniformT = None  # annotate optional param, but always set
-    range: tuple[float, float, float] | None = None
+    value: UniformT
+    range: tuple[float, float, float] | None
     widget: Widget | None = None
     midi: int | None = None  # TODO -> controls: tuple[int]
 
-    # delete everything but the default setting at the bottom? _type not needed
     def __post_init__(self):
-        # TODO default step is dropped if not passed
-        match self.type:
-            case "bool":
-                _type = GLSLBool
-                if self.default is None:
-                    self.default = True
-                self.default = bool(self.default)
-                self.range = None
-                if self.value is not None:
-                    self.value = bool(self.value)
-
-            case "int":
-                _type = GLSLInt
-                if self.default is None:
-                    self.default = 1
-                self.default = int(self.default)
-                if self.range is None:
-                    self.range = (0, 100, 1)
-                elif len(self.range) == 2:
-                    self.range = (*self.range, 1)
-                if self.value is not None:
-                    self.value = int(self.value)
-
-            case "float":
-                _type = GLSLFloat
-                if self.default is None:
-                    self.default = 1.0
-                self.default = float(self.default)
-                if self.range is None:
-                    self.range = (0.0, 1.0, 0.01)
-                elif len(self.range) == 2:
-                    self.range = (*self.range, 0.01)
-                if self.value is not None:
-                    self.value = float(self.value)
-
-            case str() as t if t.startswith("float["):
-                try:
-                    m = re.match(r"float\[(\d+)\]", self.type)
-                    length = int(m.group(1))  # pyright: ignore[reportOptionalMemberAccess]
-                except (AttributeError, ValueError) as e:
-                    raise ParameterParserError(
-                        f"Unable to parse float array type '{self.type}': {e}"
-                    ) from e
-                _type = (float,) * length
-                self.default = tuple(float(v) for v in self.default) or (0.0,) * length  # type: ignore
-                self.range = None
-                if self.value is not None:
-                    self.value = tuple(float(v) for v in self.value)
-
-            case "vec2":
-                _type = GLSLVec2
-                if self.default is None:
-                    self.default = (1.0,) * 2  # type: ignore
-                self.default = tuple(float(v) for v in self.default)
-                if self.range is None:
-                    self.range = (0.0, 1.0, 0.01)
-                elif len(self.range) == 2:
-                    self.range = (*self.range, 0.01)
-                if self.value is not None:
-                    self.value = tuple(float(v) for v in self.value)
-
-            case "vec3":
-                _type = GLSLVec3
-                if self.default is None:
-                    self.default = (1.0,) * 3  # type: ignore
-                self.default = tuple(float(v) for v in self.default)
-                if self.range is None:
-                    self.range = (0.0, 1.0, 0.01)
-                elif len(self.range) == 2:
-                    self.range = (*self.range, 0.01)
-                if self.value is not None:
-                    self.value = tuple(float(v) for v in self.value)
-
-            case "vec4":
-                _type = GLSLVec4
-                if self.default is None:
-                    self.default = (1.0,) * 4  # type: ignore
-                self.default = tuple(float(v) for v in self.default)
-                if self.range is None:
-                    self.range = (0.0, 1.0, 0.01)
-                elif len(self.range) == 2:
-                    self.range = (*self.range, 0.01)
-                if self.value is not None:
-                    self.value = tuple(float(v) for v in self.value)
-            case _:
-                raise NotImplementedError(
-                    f"Uniform type '{self.type}' not implemented:"
-                    f" {self.name} ({self.value})"
-                )
-
         # TODO I think this is not working. in `set_value_normalized` I got
         # flaot values for int parameters.
+        if (type_match := re.match(R"float\[(\d+)\]", self.type)) is not None:
+            length = int(type_match.group(1))
+            _type = (float,) * length
+        else:
+            try:
+                _type = {
+                    "bool": GLSLBool,
+                    "int": GLSLInt,
+                    "float": GLSLFloat,
+                    "vec2": GLSLVec2,
+                    "vec3": GLSLVec3,
+                    "vec4": GLSLVec4,
+                }[self.type]
+            except KeyError:
+                raise ValueError(f"Unsupported type '{self.type}'")
+
         uniform_type = get_args(_type) or _type
         value_type = (
             tuple(type(elem) for elem in self.default)
@@ -232,6 +157,19 @@ class Parameter(UniformLike, Generic[UniformT]):
             s += f" #{self.midi}"
         return s
 
+    def __repr__(self) -> str:
+        return (
+            f"<Parameter"
+            f" name={self.name}"
+            f" type={self.type}"
+            f" value={self.value}"
+            f" default={self.default}"
+            f" range={self.range}"
+            f" widget={self.widget}"
+            f" midi={self.midi}"
+            ">"
+        )
+
     @classmethod
     def from_def(cls, definition: str) -> "Parameter":
         # TODO take line number, better error messages
@@ -249,7 +187,7 @@ class Parameter(UniformLike, Generic[UniformT]):
                 ),
                 definition,
             )
-            type_, name, widget, default_s, range_s, midi = matches.groups()
+            type_, name, widget, default_s, range_s, midi = matches.groups()  # ty:ignore[possibly-missing-attribute]
         except Exception as e:
             raise ParameterParserError(
                 f"Syntax error in metadata defintion: {definition}"
@@ -262,7 +200,6 @@ class Parameter(UniformLike, Generic[UniformT]):
                 raise ParameterParserError(f"Unknown widget type '{widget}'") from e
 
         try:
-            # TODO ast.literal_eval
             default = literal_eval(default_s.removeprefix("=")) if default_s else None
         except SyntaxError as e:
             raise ParameterParserError(
@@ -271,7 +208,18 @@ class Parameter(UniformLike, Generic[UniformT]):
 
         try:
             range = literal_eval(range_s) if range_s else None
-        except SyntaxError as e:
+            if range is not None:
+                assert isinstance(range, list)
+                assert all(isinstance(x, (int, float)) for x in range)
+                assert 2 <= len(range) <= 3
+                range = tuple(range)
+                # FIXME ty doesn't understand the len() and all() guards
+                range = cast(
+                    """tuple[float | int, float | int]
+                     | tuple[float | int, float | int, float | int]""",
+                    range,
+                )
+        except (SyntaxError, AssertionError) as e:
             raise ParameterParserError(
                 f"Invalid 'range' metadata for uniform '{name}': {e}: {range_s!r}"
             ) from e
@@ -284,6 +232,76 @@ class Parameter(UniformLike, Generic[UniformT]):
                     f"Invalid 'midi' metadata for uniform '{name}': {e}: {midi!r}"
                 ) from e
 
+        # TODO  move this into __init__ once split up into specialized classes
+        def cast_float_tuple(default):
+            return tuple(float(v) for v in default)
+
+        match type_:
+            case "bool":
+                default_value = True
+                default_factory = bool
+                bounds = None
+                step = None
+
+            case "int":
+                default_value = 1
+                default_factory = int
+                bounds = (0, 100)
+                step = 1
+
+            case "float":
+                default_value = 1.0
+                default_factory = float
+                bounds = (0.0, 1.0)
+                step = 0.01
+
+            case str() as t if (m := re.match(r"float\[(\d+)\]", t)) is not None:
+                try:
+                    length = int(m.group(1))
+                except ValueError as e:
+                    raise ParameterParserError(
+                        f"Unable to parse float array type '{type}': {e}"
+                    ) from e
+                default_value = [1.0] * length
+                default_factory = lambda d, l=length: [1.0] * l  # noqa: E731, E741
+                bounds = None
+                step = None
+
+            case "vec2":
+                default_value = (1.0,) * 2
+                default_factory = cast_float_tuple
+                bounds = (0.0, 1.0)
+                step = 0.01
+
+            case "vec3":
+                default_value = (1.0,) * 3
+                default_factory = cast_float_tuple
+                bounds = (0.0, 1.0)
+                step = 0.01
+
+            case "vec4":
+                default_value = (1.0,) * 4
+                default_factory = cast_float_tuple
+                bounds = (0.0, 1.0)
+                step = 0.01
+            case _:
+                raise NotImplementedError(
+                    f"Uniform type '{type_}' not implemented: {name} ({definition})"
+                )
+
+        default = default_value if default is None else default_factory(default)
+
+        if step is None or bounds is None:
+            range = None
+        else:
+            if range is None:
+                range = (bounds[0], bounds[1], step)
+            elif len(range) == 2:
+                range = (range[0], range[1], step)
+            # FIXME ty doesn't understand the len() guard
+            range = cast("tuple[float | int, float | int, float | int]", range)
+            range
+
         return Parameter(
             name=name,
             value=default,
@@ -294,11 +312,16 @@ class Parameter(UniformLike, Generic[UniformT]):
             midi=midi,
         )
 
-    def set_value_normalized(self, value):
+    # TODO JustFloat
+    def set_value_normalized(self, value: float):
         if self.range is None:
-            raise ValueError(
+            raise TypeError(
                 f"Paramter '{self.name}' of type {self.type} cannot be set normalized"
             )
+        elif not 0.0 <= value <= 1.0:
+            raise ValueError(f"Normalized value '{value}' not in [0.0, 1.0]")
+
+        assert isinstance(self.value, (GLSLInt, GLSLFloat))
         min_, max_ = self.range[:2]
 
         logger.debug(
@@ -314,7 +337,8 @@ class Parameter(UniformLike, Generic[UniformT]):
         if self.type == "int":
             new_value = int(round(new_value))
 
-        self.value = new_value
+        # FIXME isinstance and generic UniformT@Parameter not working?
+        self.value = new_value  # ty: ignore[invalid-assignment]
         logger.debug("%f -> %f", value, self.value)
 
 
@@ -421,11 +445,14 @@ class Scene:
             if line.startswith("/// @"):
                 key, value = line.lstrip("/ @").strip().split(" ", 1)
                 key = key.strip()
+                if key not in metadata.keys():
+                    logger.warning("")
+                    continue
                 value = value.strip()
                 match key:
                     case "version":
                         value = int(value)
-                metadata[key] = value
+                metadata[key] = value  # ty:ignore[invalid-key]
 
         return metadata
 

@@ -12,4 +12,11 @@
       }
     },
   },
+  "lsp": {
+    "ty": {
+      "settings": {
+        "diagnosticMode": "workspace"
+      }
+    }
+  }
 }

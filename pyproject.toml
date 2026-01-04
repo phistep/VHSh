@@ -68,9 +68,6 @@ exclude = [
     # FIXME https://github.com/astral-sh/ty/issues/691
     # see https://docs.astral.sh/ty/reference/typing-faq/#does-ty-support-pep-723-inline-metadata-scripts
     "tests/plot_logscale.py",
-    # TODO
-    "src/vhsh/scene.py",
-    "tests/test_scene.py",
 ]
 
 [tool.pytest.ini_options]

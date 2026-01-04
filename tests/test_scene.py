@@ -1,7 +1,76 @@
 import pytest
 
 from vhsh.scene import Parameter, Widget
-from vhsh.types import UniformLike
+from vhsh.types import UniformLike, UniformT
+
+
+@pytest.mark.parametrize("midi", [None, 23])
+@pytest.mark.parametrize("widget", [None, *list(Widget)])
+@pytest.mark.parametrize(
+    "type_, default, value, range",
+    [
+        ("bool", True, True, None),
+        ("bool", False, False, None),
+        ("int", 1, 1, (0, 1, 1)),
+        ("int", 1, 1, (-1, 1, 1)),
+        ("int", 1, 1, (0, 10, 2)),
+        ("float", 1.0, 1.0, (0.0, 1.0, 0.1)),
+        ("float", 1.0, 1.0, (-1.0, 1.0, 0.1)),
+        ("float", 1.0, 1.0, (0.0, 10.0, 2.0)),
+        ("vec2", (1.0, 0.0), (1.0, 0.0), (0.0, 1.0, 0.1)),
+        ("vec3", (1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.1)),
+        ("vec4", (1.0, 0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.1)),
+        (
+            "float[10]",
+            float_array_default := [float(n) for n in range(10)],
+            float_array_default,
+            None,
+        ),
+    ],
+)
+def test_parameter(
+    type_: str,
+    default: UniformT | None,
+    value: UniformT | None,
+    range: tuple[float, float, float] | None,
+    widget: Widget | None,
+    midi: int | None,
+):
+    parameter = Parameter(
+        name="name",
+        type=type_,
+        default=default,
+        value=value,
+        range=range,
+        widget=widget,
+        midi=midi,
+    )
+    assert parameter.name == "name"
+    assert parameter.type == type_
+    assert parameter.default == default
+    assert parameter.value == value
+    assert parameter.range == range
+    assert parameter.widget == widget
+    assert parameter.midi == midi
+
+
+@pytest.mark.xfail  # TODO
+def test_paramter_type():
+    # Test that invalid type/value combinations fail
+    raise NotImplementedError
+
+
+@pytest.mark.xfail  # TODO
+def test_paramter_range():
+    # Test that default bounds and steps are fallen back to
+    raise NotImplementedError
+
+
+# TODO
+# def test_paramter_from_def(line: str, default: UniformLike):
+# parameter = Parameter.from_def(line)
+# assert parameter.default == default
+# assert parameter.value == default
 
 
 @pytest.mark.parametrize(
@@ -17,7 +86,8 @@ from vhsh.types import UniformLike
         ("uniform vec2 vec2_with_bool_default; // =(True,False)", (1., 0.)),
         ("uniform vec3 vec3_with_bool_default; // =(True,False,False)", (1., 0., 0.)),
         ("uniform vec4 vec4_with_bool_default; // =(True,True,False,False)", (1., 1., 0., 0.)),  # noqa: E501
-        ("uniform float[2] float_array_with_bool_default; // =(True,False)", (1., 0.)),
+        # NOTE float array always defaults to just ones: [1., 1., ...]
+        ("uniform float[2] float_array_with_bool_default; // =(True,False)", [1., 1.]),
         ("uniform vec3 vec3_with_no_default; //", (1., 1., 1.)),
         # ruff: enable[E501]
     ],
@@ -51,7 +121,14 @@ def test_parameter_set_value_normalized(
     if flipped:
         min_, max_ = max_, min_
 
-    parameter = Parameter("test", type_, default=1, range=(min_, max_), widget=widget)
+    parameter = Parameter(
+        name="test",
+        type=type_,
+        default=(default := (1 if type_ == "int" else 1.0)),
+        value=default,
+        range=(min_, max_, 1),
+        widget=widget,
+    )
 
     parameter.set_value_normalized(0)
     assert parameter.value == pytest.approx(min_)

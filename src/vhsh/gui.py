@@ -4,7 +4,7 @@ from typing import Protocol, Type, cast
 import imgui
 
 from .microphone import Microphone
-from .scene import Widget
+from .scene import Parameter, Widget
 from .types import App, SystemParameters
 
 
@@ -173,6 +173,10 @@ class GUI:
         # see https://github.com/astral-sh/ty/issues/2253
         # see https://github.com/astral-sh/ty/issues/2251
         # then we could use imgui_slider_...(..., *parameter.value, ...)
+        peaking_parameters = cast(
+            "list[tuple[tuple[str, Parameter], tuple[str, Parameter]]]",
+            peaking_parameters,
+        )
         for (name, parameter), (next_name, _) in peaking_parameters:
             flags = 0
             if parameter.widget == Widget.LOG:
@@ -186,25 +190,28 @@ class GUI:
                     _, parameter.value = imgui.checkbox(name, parameter.value)
 
                 case int(x), Widget.DRAG:
+                    assert parameter.range is not None
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_int(
                         name,
                         parameter.value,
-                        min_value=min_,
-                        max_value=max_,
+                        min_value=int(min_),
+                        max_value=int(max_),
                         change_speed=step,
                     )
                 case int(x), _:
+                    assert parameter.range is not None
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.slider_int(
                         name,
                         parameter.value,
-                        min_value=min_,
-                        max_value=max_,
+                        min_value=int(min_),
+                        max_value=int(max_),
                         flags=flags,
                     )
 
                 case float(x), Widget.DRAG:
+                    assert parameter.range is not None
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float(
                         name,
@@ -215,6 +222,7 @@ class GUI:
                         flags=flags,
                     )
                 case float(x), _:
+                    assert parameter.range is not None
                     min_, max_, _ = parameter.range
                     _, parameter.value = imgui.slider_float(
                         name,
@@ -225,6 +233,7 @@ class GUI:
                     )
 
                 case [float(x), float(y)], Widget.DRAG:
+                    assert parameter.range is not None
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float2(
                         name,
@@ -236,6 +245,7 @@ class GUI:
                         flags=flags,
                     )
                 case [float(x), float(y)], _:
+                    assert parameter.range is not None
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.slider_float2(
                         name,
@@ -251,6 +261,7 @@ class GUI:
                         name, r, g, b, imgui.COLOR_EDIT_FLOAT
                     )
                 case [float(x), float(y), float(z)], Widget.DRAG:
+                    assert parameter.range is not None
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float3(
                         name,
@@ -262,6 +273,7 @@ class GUI:
                         change_speed=step,
                     )
                 case [float(x), float(y), float(z)], _:
+                    assert parameter.range is not None
                     min_, max_, _ = parameter.range
                     _, parameter.value = imgui.slider_float3(
                         name,
@@ -276,8 +288,9 @@ class GUI:
                 case [float(r), float(g), float(b), float(a)], Widget.COLOR:
                     _, parameter.value = imgui.color_edit4(
                         name, r, g, b, a, imgui.COLOR_EDIT_FLOAT
-                    )  # pyright: ignore [reportCallIssue]
+                    )
                 case [float(x), float(y), float(z), float(w)], Widget.DRAG:
+                    assert parameter.range is not None
                     min_, max_, step = parameter.range
                     _, parameter.value = imgui.drag_float4(
                         name,
@@ -290,6 +303,7 @@ class GUI:
                         change_speed=step,
                     )
                 case [float(x), float(y), float(z), float(w)], _:
+                    assert parameter.range is not None
                     min_, max_, _ = parameter.range
                     _, parameter.value = imgui.slider_float4(
                         name,
