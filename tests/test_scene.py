@@ -1,6 +1,9 @@
+import logging
+from textwrap import dedent
+
 import pytest
 
-from vhsh.scene import Parameter, Widget
+from vhsh.scene import Parameter, Scene, SceneMetadata, Widget
 from vhsh.types import UniformLike, UniformT
 
 
@@ -148,3 +151,50 @@ def test_parameter_set_value_normalized(
 
     parameter.set_value_normalized(1)
     assert parameter.value == pytest.approx(max_)
+
+
+@pytest.mark.parametrize(
+    "header, expected",
+    [
+        pytest.param("", {}, id="none"),
+        pytest.param("/// @version 23", {"version": 23}, id="version"),
+        pytest.param("/// @author Author", {"author": "Author"}, id="author"),
+        pytest.param(
+            "/// @name Unicode \N{VIDEOCASSETTE}",
+            {"name": "Unicode \N{VIDEOCASSETTE}"},
+            id="name",
+        ),
+        pytest.param("/// @name  \t   Name", {"name": "Name"}, id="whitespace"),
+        pytest.param("/// @extra Extra", {"extra": "Extra"}, id="extra"),
+        pytest.param(
+            dedent(
+                """\
+            /// @name    Name
+            /// @version 23
+            /// @extra   Additional Info
+            """
+            ),
+            {
+                "name": "Name",
+                "version": 23,
+                "extra": "Additional Info",
+            },
+            id="all",
+        ),
+        pytest.param("// @version 23", {}, id="no_triple_slash"),
+    ],
+)
+def test_scene__load_metadata(header: str, expected: SceneMetadata):
+    assert Scene._load_metadata(header) == expected
+
+
+def test_scene__load_metadata_warn(caplog: pytest.LogCaptureFixture):
+    assert "name" in SceneMetadata.__annotations__
+    with caplog.at_level(logging.WARNING):
+        assert Scene._load_metadata("/// @name Name") == {"name": "Name"}
+        assert not caplog.text
+
+    assert "extra" not in SceneMetadata.__annotations__
+    with caplog.at_level(logging.WARNING):
+        assert Scene._load_metadata("/// @extra Extra") == {"extra": "Extra"}
+        assert "Unknown Metadata Tag" in caplog.text

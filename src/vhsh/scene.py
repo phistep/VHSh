@@ -445,9 +445,10 @@ class Scene:
             if line.startswith("/// @"):
                 key, value = line.lstrip("/ @").strip().split(" ", 1)
                 key = key.strip()
-                if key not in metadata.keys():
-                    logger.warning("")
-                    continue
+                if key not in SceneMetadata.__annotations__:
+                    logger.warning("Unknown Metadata Tag: '%s'", key)
+                # NOTE using `type_ = SceneMetadata.__annotations__[key]` was
+                # considered, but with nested Annotations it's too cumbersome
                 value = value.strip()
                 match key:
                     case "version":
