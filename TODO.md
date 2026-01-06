@@ -2,8 +2,6 @@
 
 ## 1.0
 
-- changelog
-
 - git tag `__version__`
 - proper pyproject.toml metadata
 - license
