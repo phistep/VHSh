@@ -2,21 +2,21 @@
 
 ## 1.0
 
-- docstrings
-- dev docs: Scenes, Parameters, Controllers, scene_index
-- docs for `import` command
-- merge README from main
 - changelog
 
 - git tag `__version__`
 - proper pyproject.toml metadata
 - license
 
+release b1
+
 - read through every file and polish, check for dead code
 - test on the machine!
 
 release rc
 
+- dev docs: Scenes, Parameters, Controllers, scene_index
+- docstrings
 - github actions (test, lint, tag+publish on merge)
 
 release 1.0.0 🥳

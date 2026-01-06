@@ -5,39 +5,63 @@ _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 ![Screenshot of VHSh in action](screenshot.png)
 
 
-## Setup
+## Installation
 
-Create a virtual environmenet and install the dependencies
+[`uv`][uv] is the recommended way of installing
 
-```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip3 install -r requirements.txt
+- macOS
+  ```sh
+  brew install uv
+  uv tool update-shell
+  ```
+- Ubuntu
+  ```sh
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  # for audio support
+  sudo apt install portaudio19-dev
+  uv tool update-shell
+  ```
+
+Or  refer to its [documentation][uv-install].
+
+Then you can install VHSh:
+
+```sh
+uv tool install vhsh[all]
 ```
+
+The `[all]` installs the full feature set. If you want to manually select
+certain features, for example because you don't need audio or MIDI, you can list
+them in the brackers (multiple are possible):
+
+- automatic reload on file change: `vhsh[watch]`
+- MIDI support: `vhsh[midi]`
+- audio support: `vhsh[audio]`
+- import from Shadertoy: `vhsh[import]`
+- everyting: `vhsh[all]`
 
 
 ## Usage
 
-Then run `VHSh` fron that environment
+To open a shader file, a _scene_, use the `run` command:
 
-```bash
-source .venv/bin/activate
-python3 -m vhsh run mandelbrot.glsl
+```sh
+vhsh run myscene.glsl
 ```
-
-If you pass multiple shader files, you can switch between them in the tool.
-To open all files in a given folder, use `my_shader_folder/*`.
-
-If installed with `[watch]`, the shader files will be watched for changes and
-automatically reloaded
-
-You can pass `--mic` to enable microphone input. See
-[_Builin Parameters_](#builtin-parameters).
-
-To toggle the UI, press `<tab>`.
 
 When run without any file argument, the default scenes will be loaded and a
 `testcard.glsl` scene will be created in the current directory.
+
+If you pass multiple shader files, you can switch between them in the tool.
+To open all files GLSL files in a given folder, use `my_shader_folder/*.glsl`.
+
+If installed with `[watch]`, the shader files will be watched for changes and
+automatically reloaded.
+
+If installed with `[audio]` You can pass `--mic` to enable microphone input. See
+[_Builin Parameters_](#builtin-parameters).
+
+To toggle the UI, press `<tab>`.
 
 
 ### MIDI Support
@@ -84,8 +108,9 @@ It defines
 
 > OpenGL Version 330 core
 
-so you just need to supply a `main` function and set the output color `FragColor`
-as an RGBA `vec4` with floats between 0 and 1 (`0., 0., 0., 1.)` being black).
+so you just need to supply a `main` function and set the output color
+`FragColor` as an RGBA `vec4` with floats between 0 and 1 (`0., 0., 0., 1.)`
+being black).
 
 ```glsl
 void main() {
@@ -114,8 +139,8 @@ preamble:
 - `float[7] Microphone`: If started with `--mic`, this is a float
   array that gives you volume per frequency band normalized over the last 5s.
 
-  | Index             | Range   |        | Description |
-  | --------------- | ------- | ------ | ----------- |
+  | Index           | Range   |        | Description |
+  | --------------- | -------:| ------:| ----------- |
   | `Microphone[0]` | 0 Hz    | 60 Hz  | Rumble      |
   | `Microphone[1]` | 60 Hz   | 250 Hz | Low End     |
   | `Microphone[2]` | 250 Hz  | 500 Hz | Low Mids    |
@@ -191,7 +216,7 @@ If two consecutive uniforms share a common prefix in their name (like
 `box_size` and `box_color`), they will be grouped together.
 
 
-### Presets
+#### Presets
 
 You can save the current uniform values as the new `=DEFAULT` parameter in your
 loaded shader source file by clicking `Save` when the currently selected preset.
@@ -199,11 +224,11 @@ is `<current>`.
 
 Furthermore, you can store multiple sets of parameters (including different)
 default values, ranges, MIDI mappings etc.) as _presets_. To save a new preset,
-enter the name in the `Name` field and click `New Preset`. The shader source file
-will be modified by prepending the unform and metadata defintions with a special
-comment prefix (`/// `). Since all those lines will deleted and rewritten on save,
-be sure to not use triple-slashes for other reasons. Each preset is preceeded by
-its name.
+enter the name in the `Name` field and click `New Preset`. The shader source
+file will be modified by prepending the unform and metadata defintions with a
+special comment prefix (`/// `). Since all those lines will deleted and
+rewritten on save, be sure to not use triple-slashes for other reasons. Each
+preset is preceeded by its name.
 
 ```glsl
 /// // My New Preset
@@ -219,11 +244,11 @@ You can add, modify and delete these comment blocks with you're text editor as
 well.
 
 To update an existing preset, select it, adjust the parameter values and click
-`Save`. The current paremeter values will be written to the default values of the
-currently selected preset.
+`Save`. The current paremeter values will be written to the default values of
+the currently selected preset.
 
 
-### Metadata
+#### Metadata
 
 Metadata for a scene can be recorded in the form of
 ```glsl
@@ -238,14 +263,36 @@ Currently supported metadata fields:
 - `name` (`str`): Can be used to set a custom scene name. If omitted, the file
   name will be cleaned up and title-cased.
 
-### Scene Format Version History
+#### Scene Format Version History
 
-#### `@version 1`
+##### `@version 1`
 - Introduced version number
 - Changed system uniforms from `u_Time` to `Time` etc.
 
+### Importing Scenes
+
+#### Shadertoy
+
+> [!WARNING]
+> The Shadertoy API usage was exceeded and the included key does not work..
+
+You can import scenes from [Shadertoy.com][shaderdoy].
+
+```sh
+vhsh import https://www.shadertoy.com/view/ftt3R7
+```
+
+To use your own API key (available from [Shadertoy Apps][shadertoy-apps]), set
+`$VHSH_API_KEY_SHADERTOY`:
+```sh
+VHSH_API_KEY_SHADERTOY=abc123 vhsh import https://www.shadertoy.com/view/ftt3R7
+```
+
 
 ## Development
+
+You can run `vhsh` with the `-v`/`--verbose` (before the sub-command), to enable
+debug logging.
 
 VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and
 packaging, [`ruff`][ruff] for linting and formatting, and [`ty`][ty] as language
@@ -281,8 +328,8 @@ To publish the package to PyPI, setup the credentials for PyPI in `.env`
 UV_PUBLISH_TOKEN=pypi-...
 ```
 
-Create a [SemVer][semver] git tag, as the package version is dynmically determined by
-the latest git tag. Use `uv` to build and publish wheels.
+Create a [SemVer][semver] git tag, as the package version is dynmically
+determined by the latest git tag. Use `uv` to build and publish wheels.
 
 ```sh
 git tag -a v1.23.42
@@ -336,3 +383,5 @@ defaults write org.python.python ApplePersistenceIgnoreState NO
 [ruff]: https://docs.astral.sh/ruff/
 [ty]: https://docs.astral.sh/ty/
 [semver]: https://semver.org/
+[shadertoy]: https://shadertoy.com/
+[shadertoy-apps]: https://www.shadertoy.com/myapps
