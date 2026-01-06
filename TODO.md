@@ -2,9 +2,6 @@
 
 ## 1.0
 
-- cleanup diagnostics
-- ty typing
-
 - docstrings
 - dev docs: Scenes, Parameters, Controllers, scene_index
 - docs for `import` command

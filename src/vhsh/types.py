@@ -84,13 +84,11 @@ if TYPE_CHECKING:
     GLSLVec2: TypeAlias = tuple[JustFloat, JustFloat]
     GLSLVec3: TypeAlias = tuple[JustFloat, JustFloat, JustFloat]
     GLSLVec4: TypeAlias = tuple[JustFloat, JustFloat, JustFloat, JustFloat]
-    GLSLFloatArray: TypeAlias = list[JustFloat]
 else:
     GLSLFloat: TypeAlias = float
     GLSLVec2: TypeAlias = tuple[float, float]
     GLSLVec3: TypeAlias = tuple[float, float, float]
     GLSLVec4: TypeAlias = tuple[float, float, float, float]
-    GLSLFloatArray: TypeAlias = list[float]
 
 
 _UniformValue: TypeAlias = Union[

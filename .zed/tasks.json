@@ -46,4 +46,13 @@
       "--watch",
     ]
   },
+  {
+    "label": "Lint (all)",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "command": "sh",
+    "args": [
+      "-c",
+      "'uv sync --dev --extra all && uv run ruff check && uv run ty check && uv run vulture && uv run pytest'"
+    ]
+  },
 ]

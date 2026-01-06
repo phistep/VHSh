@@ -27,6 +27,7 @@ dev = [
     "ty",
     "pyimgui-stubs",
     "mido>=1.3.4.dev0", # https://github.com/mido/mido/pull/624
+    "vulture>=2.14",
 ]
 test = ["pytest"]
 
@@ -56,19 +57,25 @@ mido = [
     { git = "https://github.com/mido/mido", group = "dev" },
 ]
 
+[tool.ruff]
+exclude = ["./.vulture.py"]
+
 [tool.ruff.lint]
 select = ["E", "F", "I", "RUF100", "TC"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
 
-
 [tool.ty.src]
 exclude = [
+    "./.vulture.py",
     # FIXME https://github.com/astral-sh/ty/issues/691
     # see https://docs.astral.sh/ty/reference/typing-faq/#does-ty-support-pep-723-inline-metadata-scripts
     "tests/plot_logscale.py",
 ]
+
+[tool.vulture]
+paths = ["src", "tests", ".vulture.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

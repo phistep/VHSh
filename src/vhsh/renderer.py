@@ -208,8 +208,6 @@ class Renderer:
             system_uniforms="\n".join(str(u) for u in system_uniforms)
         )
         logger.debug("preamble:\n%s", self.preamble)
-        # TODO remove?
-        self._lineno_offset = len(self.preamble.splitlines()) + 1
 
         self._uniform_lock = Lock()
         self.uniforms: dict[str, Uniform] = {}

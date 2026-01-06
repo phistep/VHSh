@@ -264,6 +264,7 @@ Then create a virtual environment and run the test suite.
 uv sync --dev --extra all
 uv run ruff check
 uv run ty check
+uv run vulture
 uv run pytest
 ```
 
