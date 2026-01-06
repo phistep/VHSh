@@ -147,9 +147,25 @@ def main_run(args: argparse.Namespace):
 
 
 def main_import(args: argparse.Namespace):
+    from requests.exceptions import HTTPError
+
     from .scene_import import import_scene
 
-    import_scene(args.url, args.outfile)
+    try:
+        import_scene(args.url, args.outfile)
+    except ValueError as e:
+        logger.error(f"Failed to import scene: {e}")
+        exit(1)
+    except HTTPError as e:
+        if e.response.status_code == 403:
+            logger.error(f"Author disabled downloading: {e}")
+            exit(3)
+        if e.response.status_code == 404:
+            logger.error(f"Scene not found on Shadertoy: {e}")
+            exit(4)
+        else:
+            logger.error(f"Failed to import scene: {e}")
+            exit(2)
 
 
 def main_migrate(args: argparse.Namespace):
