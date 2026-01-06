@@ -107,7 +107,10 @@ class VHSh:
         self.gui = GUI(app=self, renderer=GlfwRenderer, window=self.window.handler)
 
         def _rel(path: Path) -> Path:
-            return path.absolute().relative_to(Path.cwd().absolute())
+            try:
+                return path.absolute().relative_to(Path.cwd().absolute())
+            except ValueError:
+                return path.absolute()
 
         logger.info(
             f"{Color.Style.BOLD}Scenes:{Color.RESET}\n%s",

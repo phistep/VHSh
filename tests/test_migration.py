@@ -13,8 +13,8 @@ def scene_source() -> dict[int, str]:
         0: dedent("""\
             void main() {
                 vec2 uv = (gl_FragCoord.xy * 2. - u_Resolution.xy) / u_Resolution.y;
-                t = sin(2. * u_Time) / 2.;
-                m = u_Microphone[7]
+                float t = sin(2. * u_Time) / 2.;
+                float m = u_Microphone[0];
                 FragColor = vec4(uv.x, t, m, 1.);
             }
         """),
@@ -22,8 +22,8 @@ def scene_source() -> dict[int, str]:
             /// @version 1
             void main() {
                 vec2 uv = (gl_FragCoord.xy * 2. - Resolution.xy) / Resolution.y;
-                t = sin(2. * Time) / 2.;
-                m = Microphone[7]
+                float t = sin(2. * Time) / 2.;
+                float m = Microphone[0];
                 FragColor = vec4(uv.x, t, m, 1.);
             }
         """),
