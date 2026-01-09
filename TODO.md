@@ -2,11 +2,12 @@
 
 ## 1.0
 
+- fix package can't find the default scenes!
+  uv run --with  dist/vhsh-1.0.0b0-py3-none-any.whl vhsh -v  run
+
 - git tag `__version__`
 - proper pyproject.toml metadata
 - license -> AGPL3.0?
-- gui viewer for "Shader how to" of README.md (find `###`) and CHANGELOG.md
-  auto open on new version, save version
 
 release b1
 
@@ -117,6 +118,21 @@ release 1.0.0 🥳
       - https://www.korg.com/us/support/download/manual/0/159/2710/
       - also: configure push-button/toggle on-the-fly <toggle>
 
+
+- [ ] gui refactor: functions for windows,sections
+- [ ] sidebar?
+- [ ] imgui debug windows when `-v` passed
+      ```python
+      imgui.begin("Guide", closable=False)
+      imgui.show_user_guide()
+      imgui.end()
+      imgui.show_metrics_window()
+      imgui.begin("Style", closable=False)
+      imgui.show_style_editor()
+      imgui.end()
+      ```
+
+
 - [ ] make named midi ccs in toml via #defines
      ```toml
      [uniform.inputs]
@@ -187,6 +203,10 @@ release 1.0.0 🥳
 - switch to SDL?
   - native macos fullscreen
   - mic input https://www.lazyfoo.net/tutorials/SDL/34_audio_recording/index.php
+- switch to https://github.com/pthom/imgui_bundle
+  - markdown rendering for docs/news
+  - text editor
+  - node editor
 - "touchpad" widget for `vec2`
 - move to wgpu (macos deprecates opengl)
 

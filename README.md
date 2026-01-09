@@ -262,12 +262,15 @@ Currently supported metadata fields:
   incompatible version. Missing version will be updated when saving a preset.
 - `name` (`str`): Can be used to set a custom scene name. If omitted, the file
   name will be cleaned up and title-cased.
+- `author` (`str`): Credit the author.
 
 #### Scene Format Version History
 
 ##### `@version 1`
 - Introduced version number
 - Changed system uniforms from `u_Time` to `Time` etc.
+- Introduced metadata, keys: `version`, `name`, `author`
+
 
 ### Importing Scenes
 

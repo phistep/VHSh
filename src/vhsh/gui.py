@@ -1,4 +1,5 @@
 from array import array
+from pathlib import Path
 from typing import Protocol, Type, cast
 
 import imgui
@@ -6,6 +7,10 @@ import imgui
 from .microphone import Microphone
 from .scene import Parameter, Widget
 from .types import App, SystemParameters
+
+DIR_DOCS = Path(__file__).parent / "docs"
+FILE_README_MD = DIR_DOCS / "README.md"
+FILE_CHANGELOG_MD = DIR_DOCS / "CHANGELOG.md"
 
 
 class ImguiRenderer(Protocol):
@@ -33,6 +38,26 @@ class GUI:
 
         self._new_preset_name = ""
 
+        self.docs = self._get_docs()
+        self.news = FILE_CHANGELOG_MD.read_text()
+
+    def _get_docs(self):
+        readme = FILE_README_MD.read_text()
+
+        docs = []
+        found_header = False
+        for line in readme.splitlines():
+            if line.startswith("### Writing Shaders"):
+                found_header = True
+                continue
+
+            if found_header:
+                if line.startswith("### "):
+                    break
+                docs.append(line)
+
+        return "\n".join(docs)
+
     def update(self):
         app = self._app
 
@@ -42,6 +67,18 @@ class GUI:
             self.visible = not self.visible
 
         imgui.new_frame()
+
+        with imgui.begin("Documentation", closable=False):  # TODO how to make closable
+            with imgui.begin_tab_bar("DocumentationTabBar") as tab_bar:
+                if tab_bar.opened:
+                    with imgui.begin_tab_item("Documentation") as item_docs:
+                        if item_docs.selected:  # ty:ignore[unresolved-attribute]
+                            imgui.text_wrapped(self.docs)
+
+                    with imgui.begin_tab_item("News") as item_news:
+                        if item_news.selected:  # ty:ignore[unresolved-attribute]
+                            imgui.text_wrapped(self.news)
+
         imgui.begin("Parameters", closable=False)
 
         with imgui.begin_popup_modal(

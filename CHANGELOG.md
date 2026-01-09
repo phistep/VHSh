@@ -13,7 +13,8 @@ First stable release after a big refactoring.
 - `migrate` subcommand migrate from scene format 0 to 1
 - `import` subcommand to import from shaderdoy.com
 - proper `<log>` scaling with external MIDI controlers
-- human-friednly log output
+- human-friendly log output
+- documentation and news viewer
 - default testcard shader when started without arguments
 - lots of bug fixes
 
