@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import functools
 from abc import ABC
 from dataclasses import dataclass
 from threading import Event, Thread
 from typing import (
     TYPE_CHECKING,
     Callable,
-    Generic,
     Protocol,
     Sequence,
     TypeAlias,
@@ -98,7 +98,7 @@ UniformValue: TypeAlias = Union[_UniformValue, Sequence[_UniformValue]]
 UniformT = TypeVar("UniformT", bound=UniformValue)
 
 
-class UniformLike(Protocol, Generic[UniformT]):
+class UniformLike[UniformT](Protocol):
     name: str
     type: str
     value: UniformT | list[UniformT]
@@ -107,7 +107,6 @@ class UniformLike(Protocol, Generic[UniformT]):
         return f"uniform {self.type} {self.name};"
 
 
-# TODO protocols for all circular imports
 class App(Protocol):
     window: Window
     gui: GUI
@@ -152,7 +151,7 @@ class Controller(ABC, Thread):
 
 
 @dataclass
-class SystemParameter(UniformLike, Generic[UniformT]):
+class SystemParameter[UniformT](UniformLike):
     """Pass a function that returns a value to update the Parameter with.
 
     Pass None if value should be kept constant.
@@ -169,6 +168,7 @@ class SystemParameter(UniformLike, Generic[UniformT]):
 
         self._update = self.update
 
+        @functools.wraps(self._update)
         def update(renderer: App):
             value = self._update(renderer)
             if value is not None:
@@ -183,9 +183,9 @@ class SystemParameters(
     # TODO Python 3.15: https://peps.python.org/pep-0728/
     # extra_items=SystemParameter[UniformValue],
 ):
-    # app.VHSh.__init__
+    # app.VHSh.__init__()
     Resolution: SystemParameter[GLSLVec2]
-    # app.VHSh.__init__
+    # app.VHSh.__init__()
     Time: SystemParameter[GLSLFloat]
-    # microphone.Microphone.__init__
+    # microphone.Microphone.__init__()
     Microphone: NotRequired[SystemParameter[Sequence[GLSLFloat]]]

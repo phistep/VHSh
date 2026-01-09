@@ -4,7 +4,9 @@
 
 - git tag `__version__`
 - proper pyproject.toml metadata
-- license
+- license -> AGPL3.0?
+- gui viewer for "Shader how to" of README.md (find `###`) and CHANGELOG.md
+  auto open on new version, save version
 
 release b1
 
