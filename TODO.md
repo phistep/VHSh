@@ -2,7 +2,6 @@
 
 ## 1.0
 
-- proper pyproject.toml metadata
 - license -> AGPL3.0?
 
 release b1
