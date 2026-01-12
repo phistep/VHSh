@@ -2,10 +2,6 @@
 
 ## 1.0
 
-- fix package can't find the default scenes!
-  uv run --with  dist/vhsh-1.0.0b0-py3-none-any.whl vhsh -v  run
-
-- git tag `__version__`
 - proper pyproject.toml metadata
 - license -> AGPL3.0?
 

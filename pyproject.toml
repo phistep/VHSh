@@ -34,20 +34,10 @@ test = ["pytest"]
 # TODO uv build does not support scm verison
 # https://github.com/astral-sh/uv/issues/14037
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=80", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["vhsh"]
-package-dir = {"" = "src"}
-dynamic = { "version" = { attr = "vhsh.__version__" } }
-
-[tool.setuptools.package-data]
-vhsh = [
-    "docs/*.md",
-    "midi_mappings/*",
-    "scenes/*.glsl",
-]
+[tool.setuptools_scm]
 
 [tool.uv]
 default-groups = ["dev", "test"]
