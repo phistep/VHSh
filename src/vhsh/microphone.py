@@ -61,7 +61,7 @@ class Microphone(Controller):
             raise RuntimeError(
                 f"Microphone uniform '{self.UNIFORM_NAME}' already exists"
             )
-        num_levels = len(self._levels)
+        num_levels = len(intervals)
         app.system_parameters[self.UNIFORM_NAME]: SystemParameter[
             Sequence[GLSLFloat]
         ] = SystemParameter(
