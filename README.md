@@ -2,7 +2,7 @@
 
 _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
-![Screenshot of VHSh in action](screenshot.png)
+![Screenshot of VHSh in action](https://raw.githubusercontent.com/phistep/VHSh/refs/tags/1.0.0b1/screenshot.png)
 
 
 ## Installation
@@ -12,17 +12,18 @@ _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 - macOS
   ```sh
   brew install uv
+  brew install portaudio  # for audio support
   uv tool update-shell
   ```
 - Ubuntu
   ```sh
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  # for audio support
-  sudo apt install portaudio19-dev
+  sudo apt install portaudio19-dev  # for audio support
   uv tool update-shell
   ```
 
-Or  refer to its [documentation][uv-install].
+Or  refer to `uv`'s [documentation][uv-install] and ensure to provide the
+necessary system dependencies.
 
 Then you can install VHSh:
 
@@ -264,12 +265,33 @@ Currently supported metadata fields:
   name will be cleaned up and title-cased.
 - `author` (`str`): Credit the author.
 
+
 #### Scene Format Version History
 
 ##### `@version 1`
 - Introduced version number
 - Changed system uniforms from `u_Time` to `Time` etc.
 - Introduced metadata, keys: `version`, `name`, `author`
+
+
+### Migrating Scenes
+
+For a history of the scene format, see
+[_Scene Format Version History_](#scene-format-version-history).
+
+To migrate your scenes from its current version to the most recent one, use
+the `migrate` command:
+
+```sh
+vhsh migrate myscene.glsl
+```
+
+Afterwards, the file `myscene.glsl` will be migrated and can be run with
+`vhsh run`. A backup file will be created in the current directory, so in case
+there is a problem with the auto-migration no, no data will be lost.
+
+Check `vhsh migrate --help` for more info, but you can also pass `--from` and
+`--to` version numbers to only migrate between those.
 
 
 ### Importing Scenes
