@@ -68,7 +68,8 @@ class GUI:
 
         imgui.new_frame()
 
-        with imgui.begin("Documentation", closable=False):  # TODO how to make closable
+        imgui.set_next_window_size(590, 500, condition=imgui.FIRST_USE_EVER)
+        with imgui.begin("Documentation", closable=True):  # TODO how to make closable
             with imgui.begin_tab_bar("DocumentationTabBar") as tab_bar:
                 if tab_bar.opened:
                     with imgui.begin_tab_item("Documentation") as item_docs:
@@ -79,6 +80,7 @@ class GUI:
                         if item_news.selected:  # ty:ignore[unresolved-attribute]
                             imgui.text_wrapped(self.news)
 
+        imgui.set_next_window_size(500, 600, condition=imgui.FIRST_USE_EVER)
         imgui.begin("Parameters", closable=False)
 
         with imgui.begin_popup_modal(
