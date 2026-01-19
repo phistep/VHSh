@@ -2,9 +2,8 @@
 
 ## 1.0
 
-- license -> AGPL3.0?
-
-release b1
+- migration kills presets?
+- import from source
 
 - read through every file and polish, check for dead code
 - test on the machine!
@@ -16,6 +15,8 @@ release rc
 - github actions (test, lint, tag+publish on merge)
 
 release 1.0.0 🥳
+
+review branches, delete already-included 
 
 
 ## Road Map
