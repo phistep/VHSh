@@ -16,11 +16,13 @@ class Window:
         height: int,
         opacity: float = 1.0,
         floating: bool = False,
+        fullscreen: bool = False,
     ):
         # TODO @property
         self.title = title
         self._opacity = opacity
         self._floating = floating
+        self._fullscreen = fullscreen
 
         if not glfw.init():
             RuntimeError("GLFW could not initialize OpenGL context")
@@ -79,6 +81,23 @@ class Window:
         glfw.set_window_attrib(
             self.handler, glfw.FLOATING, glfw.TRUE if floating else glfw.FALSE
         )
+
+    @property
+    def fullscreen(self) -> bool:
+        return self._fullscreen
+
+    @fullscreen.setter
+    def fullscreen(self, value):
+        # TODO proper toggle debounce
+        self._fullscreen = value
+        logger.debug("Set fullscreen: %s", self._fullscreen)
+
+        if self._fullscreen:
+            glfw.set_window_monitor(
+                self.handler, glfw.get_primary_monitor(), 0, 0, 1, 1, 60
+            )
+
+        return self._fullscreen
 
     # TODO as contetxt manager?
     # with window.update():

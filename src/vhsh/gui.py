@@ -66,6 +66,9 @@ class GUI:
         if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_TAB)):
             self.visible = not self.visible
 
+        if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_ENTER)):
+            self._app.window.fullscreen = not self._app.window.fullscreen
+
         imgui.new_frame()
 
         imgui.set_next_window_size(590, 500, condition=imgui.FIRST_USE_EVER)
