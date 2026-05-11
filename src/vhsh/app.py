@@ -254,7 +254,7 @@ class VHSh:
                             *self.scene.parameters.values(),
                         )
                     )
-                    self.renderer.render()
+                    self.renderer.render(framebuffer_size=self.window.size)
 
                 for controller in self.controllers.values():
                     controller.update_post()

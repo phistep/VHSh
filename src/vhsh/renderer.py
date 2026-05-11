@@ -321,14 +321,16 @@ class Renderer:
             for unused in set(self.uniforms) - set(u.name for u in uniforms):
                 del self.uniforms[unused]
 
-    def render(self):
+    def render(self, framebuffer_size: tuple[int, int]):
+        """width, height"""
         # TODO do I need to do this every frame? also: glBindVertexArray
+        gl.glViewport(0, 0, *framebuffer_size)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
         gl.glUseProgram(self.shader_program)
         with self._uniform_lock:
             for uniform in self.uniforms.values():
                 uniform.update()
-
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glBindVertexArray(self.vao)
         gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, len(self.VERTICES))
 
