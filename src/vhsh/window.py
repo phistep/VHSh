@@ -95,13 +95,16 @@ class Window:
             # TODO broken on macOS: "fake fullscreen", just window as big as screen
             # TODO broken on Linux: just upscales (even imgui at smaller resolution
             #      this works: wmctrl -F -r 'VHSh' -b add,fullscreen
+
+            if not hasattr(glfw, "glfwSetWindowMonitor"):
+                logger.warning("Fullscreen not supported")
+                return
+
             glfw.set_window_monitor(
                 self.handler, glfw.get_primary_monitor(), 0, 0, 1, 1, 60
             )
         else:
             ...
-
-        return self._fullscreen
 
     # TODO as contetxt manager?
     # with window.update():
