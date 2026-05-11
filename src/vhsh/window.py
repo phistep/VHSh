@@ -88,14 +88,18 @@ class Window:
 
     @fullscreen.setter
     def fullscreen(self, value):
-        # TODO proper toggle debounce
         self._fullscreen = value
         logger.debug("Set fullscreen: %s", self._fullscreen)
 
         if self._fullscreen:
+            # TODO broken on macOS: "fake fullscreen", just window as big as screen
+            # TODO broken on Linux: just upscales (even imgui at smaller resolution
+            #      this works: wmctrl -F -r 'VHSh' -b add,fullscreen
             glfw.set_window_monitor(
                 self.handler, glfw.get_primary_monitor(), 0, 0, 1, 1, 60
             )
+        else:
+            ...
 
         return self._fullscreen
 
