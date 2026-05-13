@@ -17,15 +17,16 @@ _Video Home Shader_: A demo tool for digitally assisted analog vjaying
   ```
 - Ubuntu
   ```sh
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  sudo apt install portaudio19-dev  # for audio support
+  sudo snap install --classic astral-uv
+  # for audio support
+  sudo apt install build-essential python3.12-dev portaudio19-dev 
   uv tool update-shell
   ```
 
-Or  refer to `uv`'s [documentation][uv-install] and ensure to provide the
-necessary system dependencies.
+Alternatively refer to `uv`'s [documentation][uv-install] and ensure to provide
+the necessary system dependencies.
 
-Then you can install VHSh:
+Install VHSh via:
 
 ```sh
 uv tool install vhsh[all]
@@ -63,37 +64,6 @@ If installed with `[audio]` You can pass `--mic` to enable microphone input. See
 [_Builin Parameters_](#builtin-parameters).
 
 To toggle the UI, press `<tab>`.
-
-
-### MIDI Support
-
-When installed using `[midi]` flag, VHSh will listen to incoming MIDI messages
-and allow you to map parameters to MIDI controls. How to assign uniform mappings
-is described in [Custom Parameters](#Custom_Parameters).
-
-There are also a couple of system controls, like switching scenes, that can be
-mapped to buttons as well. Such a mapping is defined as a [TOML][toml] file and
-passed via `--midi-mapping`.
-
-```toml
-[scene]
-prev = 58  # switch to next scene
-next = 59  # switch to previous scene
-
-[preset]
-prev = 61  # switch to next preset
-next = 62  # switch to previous preset
-save = 60  # save current parameter values to a new preset
-
-[ui]
-toggle = 45  # show/hide parameter control window
-
-[parameter.time]
-toggle = 41
-```
-
-Sensible mappings for various controls are supplied in
-[`midi_mappings/`](./midi_mappings).
 
 
 ### Writing Shaders for _Video Home Shader_
@@ -266,12 +236,51 @@ Currently supported metadata fields:
 - `author` (`str`): Credit the author.
 
 
+#### Resources
+
+- https://iquilezles.org/articles/
+- https://docs.gl/sl4/
+- https://www.youtube.com/watch?v=f4s1h2YETNY
+- http://dev.thi.ng/gradients/
+
+
 #### Scene Format Version History
 
 ##### `@version 1`
 - Introduced version number
 - Changed system uniforms from `u_Time` to `Time` etc.
 - Introduced metadata, keys: `version`, `name`, `author`
+
+
+### MIDI Support
+
+When installed using `[midi]` flag, VHSh will listen to incoming MIDI messages
+and allow you to map parameters to MIDI controls. How to assign uniform mappings
+is described in [Custom Parameters](#custom-parameters).
+
+There are also a couple of system controls, like switching scenes, that can be
+mapped to buttons as well. Such a mapping is defined as a [TOML][toml] file and
+passed via `--midi-mapping`.
+
+```toml
+[scene]
+prev = 58  # switch to next scene
+next = 59  # switch to previous scene
+
+[preset]
+prev = 61  # switch to next preset
+next = 62  # switch to previous preset
+save = 60  # save current parameter values to a new preset
+
+[ui]
+toggle = 45  # show/hide parameter control window
+
+[parameter.time]
+toggle = 41
+```
+
+Sensible mappings for various controls are supplied in
+[`midi_mappings/`](./midi_mappings).
 
 
 ### Migrating Scenes
@@ -298,14 +307,14 @@ Check `vhsh migrate --help` for more info, but you can also pass `--from` and
 
 #### Shadertoy
 
-> [!WARNING]
-> The Shadertoy API usage was exceeded and the included key does not work..
-
-You can import scenes from [Shadertoy.com][shaderdoy].
+You can import scenes from [Shadertoy.com][shadertoy].
 
 ```sh
 vhsh import https://www.shadertoy.com/view/ftt3R7
 ```
+
+> [!WARNING]
+> The Shadertoy API usage was exceeded and the included key does not work..
 
 To use your own API key (available from [Shadertoy Apps][shadertoy-apps]), set
 `$VHSH_API_KEY_SHADERTOY`:
@@ -322,6 +331,7 @@ debug logging.
 VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and
 packaging, [`ruff`][ruff] for linting and formatting, and [`ty`][ty] as language
 server and type checker.
+
 
 ### Setup
 
@@ -345,6 +355,7 @@ To ignore formatting changes etc for git-blame, configure
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
+
 ### Publish
 
 To publish the package to PyPI, setup the credentials for PyPI in `.env`
@@ -366,7 +377,16 @@ uv publish
 ```
 
 
-## Resources
+### Resources
+
+- https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
+- https://pyopengl.sourceforge.net/documentation/manual-3.0/
+- https://regex101.com
+- https://github.com/pyimgui/pyimgui/blob/master/doc/examples/testwindow.py
+- https://mido.readthedocs.io/en/stable/intro.html
+
+
+## Miscellaneous
 
 If you're seeing a message like
 
@@ -381,22 +401,6 @@ run the following to get rid of it:
 ```sh
 defaults write org.python.python ApplePersistenceIgnoreState NO
 ```
-
-### Shader Development
-
-- https://iquilezles.org/articles/
-- https://docs.gl/sl4/
-- https://www.youtube.com/watch?v=f4s1h2YETNY
-- http://dev.thi.ng/gradients/
-
-
-### VHSh Development
-
-- https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
-- https://pyopengl.sourceforge.net/documentation/manual-3.0/
-- https://regex101.com
-- https://github.com/pyimgui/pyimgui/blob/master/doc/examples/testwindow.py
-- https://mido.readthedocs.io/en/stable/intro.html
 
 
 [imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364
