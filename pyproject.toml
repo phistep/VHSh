@@ -1,40 +1,110 @@
 [project]
 name = "vhsh"
-version = "0.1.1"
-requires-python = "== 3.12.*"  # pyimgui build failure for 3.13
-dependencies = ["PyOpenGL", "glfw", "imgui[glfw]", "numpy", "watchfiles"]
-authors = [{ name = "Philipp Stephan", email = "mail@philippstephan.de" }]
-description = "Video Home Shader: A demo tool for digitally assisted analog vjaying"
+description = "VideoHomeShader: A demo tool for digitally assisted analog vjaying"
 readme = "README.md"
+authors = [
+    { name = "Philipp Stephan", email = "mail@philippstephan.de" }
+]
+license = "GPL-3.0"
+license-files = ["LICENSE"]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
     "Environment :: GPU",
     "Topic :: Artistic Software",
     "Topic :: Multimedia :: Graphics :: 3D Rendering",
 ]
-license = "MIT"
-license-files = ["LICENSE"]
+dynamic = ["version"]
 
-[project.urls]
-Homepage = "https://github.com/phistep/vhsh"
-Issues = "https://github.com/phistep/vhsh/issues"
-
+requires-python = "== 3.12.*"  # pyimgui build failure for 3.13
+dependencies = [
+    "PyOpenGL",
+    "glfw",
+    "imgui[glfw]",
+    "numpy",
+]
+# https://peps.python.org/pep-0771/
+# default-optional-dependency-keys = ["watch", "import"]
 
 [project.optional-dependencies]
-all = ["vhsh[midi,audio]"]
-dev = ["ruff", "pyright", "pyimgui-stubs"]
+all = ["vhsh[midi,audio,watch,import]"]
+watch = ["watchfiles"]
 midi = ["mido[ports-rtmidi]"]
 audio = ["PyAudio"]
+import = ["requests"]
 
 [project.scripts]
 vhsh = "vhsh.__main__:main"
 
-[build-system]
-requires = ["uv_build"]
-build-backend = "uv_build"
+[dependency-groups]
+dev = [
+    {include-group = "lint"},
+    {include-group = "typing"},
+    {include-group = "test"},
+]
+lint = [
+    "ruff",
+    "vulture>=2.14",
+]
+typing = [
+    "ty",
+    "pyimgui-stubs",
+    "mido>=1.3.4.dev0", # https://github.com/mido/mido/pull/624
+]
+test = [
+    "vhsh[all]",
+    "pytest",
+]
 
-[tool.pyright]
-venvPath = "."
-venv = ".venv"
+[project.urls]
+source = "https://github.com/phistep/vhsh"
+issues = "https://github.com/phistep/vhsh/issues"
+changelog = "https://github.com/phistep/vhsh/blob/main/CHANGELOG.md"
+
+# TODO uv build does not support scm verison
+# https://github.com/astral-sh/uv/issues/14037
+[build-system]
+requires = ["setuptools>=80", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]  # TODO needed?
+
+[tool.uv]
+default-groups = ["dev", "test"]
+environments = [
+    "sys_platform == 'darwin'",
+    "sys_platform == 'linux'",
+]
+[tool.uv.sources]
+pyimgui-stubs = { git = "https://github.com/phistep/pyimgui-stubs", branch = "plot_histogram" }
+mido = [
+    # FIXME missing attributes, see https://github.com/mido/mido/issues/641
+    # FIXME always pulled in, even without --dev
+    # see https://github.com/astral-sh/uv/issues/17252
+    { git = "https://github.com/mido/mido", group = "dev" },
+]
+
+[tool.ruff]
+exclude = ["./.vulture.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "RUF100", "TC"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ty.src]
+exclude = [
+    "./.vulture.py",
+    # FIXME https://github.com/astral-sh/ty/issues/691
+    # see https://docs.astral.sh/ty/reference/typing-faq/#does-ty-support-pep-723-inline-metadata-scripts
+    "tests/plot_logscale.py",
+]
+
+[tool.vulture]
+paths = ["src", "tests", ".vulture.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_level = "DEBUG"
