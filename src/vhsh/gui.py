@@ -1,0 +1,380 @@
+from array import array
+from pathlib import Path
+from typing import Protocol, Type, cast
+
+import imgui
+
+from .microphone import Microphone
+from .scene import Parameter, Widget
+from .types import App, SystemParameters
+
+DIR_DOCS = Path(__file__).parent / "docs"
+FILE_README_MD = DIR_DOCS / "README.md"
+FILE_CHANGELOG_MD = DIR_DOCS / "CHANGELOG.md"
+
+
+class ImguiRenderer(Protocol):
+    def render(self, draw_data) -> None: ...
+    def process_inputs(self) -> None: ...
+    def shutdown(self) -> None: ...
+
+
+class GUI:
+    def __init__(self, app: App, renderer: Type[ImguiRenderer], *args, **kwargs):
+        self._app: App = app
+        self.visible = True
+
+        imgui.create_context()
+        imgui_style = imgui.get_style()
+        imgui.style_colors_dark(imgui_style)
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM] = imgui_style.colors[
+            imgui.COLOR_PLOT_LINES
+        ]
+        imgui_style.colors[imgui.COLOR_PLOT_HISTOGRAM_HOVERED] = imgui_style.colors[
+            imgui.COLOR_BUTTON_HOVERED
+        ]
+
+        self._renderer = renderer(*args, **kwargs)
+
+        self._new_preset_name = ""
+
+        self.docs = self._get_docs()
+        self.news = FILE_CHANGELOG_MD.read_text()
+
+    def _get_docs(self):
+        readme = FILE_README_MD.read_text()
+
+        docs = []
+        found_header = False
+        for line in readme.splitlines():
+            if line.startswith("### Writing Shaders"):
+                found_header = True
+                continue
+
+            if found_header:
+                if line.startswith("### "):
+                    break
+                docs.append(line)
+
+        return "\n".join(docs)
+
+    def update(self):
+        app = self._app
+
+        # TODO ctrl+tab? or ctrl+`
+        # TODO not while in input
+        if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_TAB)):
+            self.visible = not self.visible
+
+        if imgui.is_key_pressed(imgui.get_key_index(imgui.KEY_ENTER)):
+            self._app.window.fullscreen = not self._app.window.fullscreen
+
+        imgui.new_frame()
+
+        imgui.set_next_window_size(590, 500, condition=imgui.FIRST_USE_EVER)
+        with imgui.begin("Documentation", closable=True):  # TODO how to make closable
+            with imgui.begin_tab_bar("DocumentationTabBar") as tab_bar:
+                if tab_bar.opened:
+                    with imgui.begin_tab_item("Documentation") as item_docs:
+                        if item_docs.selected:  # ty:ignore[unresolved-attribute]
+                            imgui.text_wrapped(self.docs)
+
+                    with imgui.begin_tab_item("News") as item_news:
+                        if item_news.selected:  # ty:ignore[unresolved-attribute]
+                            imgui.text_wrapped(self.news)
+
+        imgui.set_next_window_size(500, 600, condition=imgui.FIRST_USE_EVER)
+        imgui.begin("Parameters", closable=False)
+
+        with imgui.begin_popup_modal(
+            "Error", flags=imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_RESIZE
+        ) as error_popup:
+            if error_popup.opened:
+                if app.error is None:
+                    imgui.close_current_popup()
+                else:
+                    # TODO colored
+                    imgui.text_wrapped(str(app.error))
+
+        if app.error is not None:
+            imgui.open_popup("Error")
+
+        with imgui.begin_group():
+            _, app.window.opacity = imgui.slider_float(
+                "Opacity", app.window.opacity, min_value=0.0, max_value=1.0
+            )
+
+            imgui.same_line()
+
+            _, app.window.floating = imgui.checkbox("Floating", app.window.floating)
+
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        with imgui.begin_group():
+            if imgui.begin_combo("##Scene", app.scene.name):
+                for idx, item in enumerate([scene.name for scene in app.scenes]):
+                    is_selected = idx == app.scene_index
+                    if imgui.selectable(item, is_selected)[0]:
+                        app.scene_index = idx
+                    if is_selected:
+                        imgui.set_item_default_focus()
+                imgui.end_combo()
+            imgui.same_line()
+            if imgui.arrow_button("Prev Scene", imgui.DIRECTION_LEFT):
+                app.prev_scene()
+            imgui.same_line()
+            if imgui.arrow_button("Next Scene", imgui.DIRECTION_RIGHT):
+                app.next_scene()
+            imgui.same_line()
+            imgui.text("Scene")
+
+        imgui.spacing()
+
+        with imgui.begin_group():
+            # TODO begin_list_box?
+            if imgui.begin_combo(
+                "##Preset", app.scene.presets[app.scene.preset_index].name
+            ):
+                for idx, item in [(p.index, p.name) for p in app.scene.presets]:
+                    is_selected = idx == app.scene.preset_index
+                    if imgui.selectable(item, is_selected)[0]:
+                        app.scene.preset_index = idx
+                    if is_selected:
+                        imgui.set_item_default_focus()
+                imgui.end_combo()
+            imgui.same_line()
+            if imgui.arrow_button("Prev Preset", imgui.DIRECTION_LEFT):
+                app.scene.prev_preset()
+            imgui.same_line()
+            if imgui.arrow_button("Next Preset", imgui.DIRECTION_RIGHT):
+                app.scene.next_preset()
+            imgui.same_line()
+            if imgui.button("Save"):
+                app.scene.write_file()
+            imgui.same_line()
+            imgui.text("Preset")
+
+            # TODO should live in GUI
+            _, self._new_preset_name = imgui.input_text_with_hint(
+                "##Name", "New Preset Name", self._new_preset_name
+            )
+            imgui.same_line()
+            if imgui.button("Save##Save New Preset"):
+                app.scene.write_file(new_preset=self._new_preset_name)
+                self._new_preset_name = ""
+            imgui.same_line()
+            imgui.text("New Preset")
+
+        imgui.spacing()
+
+        with imgui.begin_group():
+            frame_times = array("f", app.frame_times)
+            imgui.plot_lines(
+                "Frame Time##Plot",
+                frame_times,
+                overlay_text=f"{frame_times[-1]:5.2f} ms"
+                f"  ({1000 / frame_times[-1]:3.0f} fps)",
+            )
+            imgui.same_line()
+
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        # NOTE for unpacking .value into arguments, we need the TypedDict in order to
+        # know the UniformValue materialization
+        system_parameters = cast("SystemParameters", app.system_parameters)
+
+        # TODO disabled https://github.com/ocornut/imgui/issues/211#issuecomment-1245221815
+        with imgui.begin_group():
+            imgui.drag_float("Time", system_parameters["Time"].value)
+            imgui.same_line()
+            _, app.time.running = imgui.checkbox(
+                "playing" if app.time.running else "paused", app.time.running
+            )
+            imgui.drag_float2(
+                "Resolution", *system_parameters["Resolution"].value, format="%.0f"
+            )
+
+        if "Microphone" in app.controllers and app.controllers["Microphone"].is_alive():
+            imgui.plot_histogram(
+                Microphone.UNIFORM_NAME,
+                array("f", system_parameters[Microphone.UNIFORM_NAME].value),
+            )
+
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        current_preset = app.scene.presets[app.scene.preset_index]
+        parameters = list(current_preset.parameters.items())
+        peaking_parameters = zip(parameters, parameters[1:] + [(None, None)])
+        # FIXME parameter: Unknown,
+        # see https://github.com/astral-sh/ty/issues/2253
+        # see https://github.com/astral-sh/ty/issues/2251
+        # then we could use imgui_slider_...(..., *parameter.value, ...)
+        peaking_parameters = cast(
+            "list[tuple[tuple[str, Parameter], tuple[str, Parameter]]]",
+            peaking_parameters,
+        )
+        for (name, parameter), (next_name, _) in peaking_parameters:
+            flags = 0
+            if parameter.widget == Widget.LOG:
+                flags |= (
+                    imgui.SLIDER_FLAGS_LOGARITHMIC
+                    | imgui.SLIDER_FLAGS_NO_ROUND_TO_FORMAT
+                )
+
+            match parameter.value, parameter.widget:
+                case bool(x), _:
+                    _, parameter.value = imgui.checkbox(name, parameter.value)
+
+                case int(x), Widget.DRAG:
+                    assert parameter.range is not None
+                    min_, max_, step = parameter.range
+                    _, parameter.value = imgui.drag_int(
+                        name,
+                        parameter.value,
+                        min_value=int(min_),
+                        max_value=int(max_),
+                        change_speed=step,
+                    )
+                case int(x), _:
+                    assert parameter.range is not None
+                    min_, max_, step = parameter.range
+                    _, parameter.value = imgui.slider_int(
+                        name,
+                        parameter.value,
+                        min_value=int(min_),
+                        max_value=int(max_),
+                        flags=flags,
+                    )
+
+                case float(x), Widget.DRAG:
+                    assert parameter.range is not None
+                    min_, max_, step = parameter.range
+                    _, parameter.value = imgui.drag_float(
+                        name,
+                        parameter.value,
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step,
+                        flags=flags,
+                    )
+                case float(x), _:
+                    assert parameter.range is not None
+                    min_, max_, _ = parameter.range
+                    _, parameter.value = imgui.slider_float(
+                        name,
+                        parameter.value,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
+                    )
+
+                case [float(x), float(y)], Widget.DRAG:
+                    assert parameter.range is not None
+                    min_, max_, step = parameter.range
+                    _, parameter.value = imgui.drag_float2(
+                        name,
+                        x,
+                        y,
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step,
+                        flags=flags,
+                    )
+                case [float(x), float(y)], _:
+                    assert parameter.range is not None
+                    min_, max_, step = parameter.range
+                    _, parameter.value = imgui.slider_float2(
+                        name,
+                        x,
+                        y,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
+                    )
+
+                case [float(r), float(g), float(b)], Widget.COLOR:
+                    _, parameter.value = imgui.color_edit3(
+                        name, r, g, b, imgui.COLOR_EDIT_FLOAT
+                    )
+                case [float(x), float(y), float(z)], Widget.DRAG:
+                    assert parameter.range is not None
+                    min_, max_, step = parameter.range
+                    _, parameter.value = imgui.drag_float3(
+                        name,
+                        x,
+                        y,
+                        z,
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step,
+                    )
+                case [float(x), float(y), float(z)], _:
+                    assert parameter.range is not None
+                    min_, max_, _ = parameter.range
+                    _, parameter.value = imgui.slider_float3(
+                        name,
+                        x,
+                        y,
+                        z,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
+                    )
+
+                case [float(r), float(g), float(b), float(a)], Widget.COLOR:
+                    _, parameter.value = imgui.color_edit4(
+                        name, r, g, b, a, imgui.COLOR_EDIT_FLOAT
+                    )
+                case [float(x), float(y), float(z), float(w)], Widget.DRAG:
+                    assert parameter.range is not None
+                    min_, max_, step = parameter.range
+                    _, parameter.value = imgui.drag_float4(
+                        name,
+                        x,
+                        y,
+                        z,
+                        w,
+                        min_value=min_,
+                        max_value=max_,
+                        change_speed=step,
+                    )
+                case [float(x), float(y), float(z), float(w)], _:
+                    assert parameter.range is not None
+                    min_, max_, _ = parameter.range
+                    _, parameter.value = imgui.slider_float4(
+                        name,
+                        x,
+                        y,
+                        z,
+                        w,
+                        min_value=min_,
+                        max_value=max_,
+                        flags=flags,
+                    )
+
+            # group prefixed uniforms
+            if next_name is not None:
+                if name.split("_")[0] != next_name.split("_")[0]:
+                    imgui.spacing()
+
+        imgui.end()
+        imgui.end_frame()
+
+    def process_inputs(self):
+        self._renderer.process_inputs()
+
+    def render(self):
+        if not self.visible:
+            return
+
+        imgui.render()
+        self._renderer.render(imgui.get_draw_data())
+
+    def shutdown(self):
+        self._renderer.shutdown()

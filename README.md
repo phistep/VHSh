@@ -2,29 +2,44 @@
 
 _Video Home Shader_: A demo tool for digitally assisted analog vjaying
 
-![Screenshot of VHSh in action](https://raw.githubusercontent.com/phistep/VHSh/refs/tags/0.1.1/screenshot.png)
+![Screenshot of VHSh in action](https://raw.githubusercontent.com/phistep/VHSh/refs/tags/1.0.0b1/screenshot.png)
 
-## Setup
+
+## Installation
+
+[`uv`][uv] is the recommended way of installing
 
 - macOS
   ```sh
   brew install uv
+  brew install portaudio  # for audio support
+  uv tool update-shell
   ```
-- ubuntu
+- Ubuntu
   ```sh
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+  sudo snap install --classic astral-uv
   # for audio support
-  sudo apt install portaudio19-dev
+  sudo apt install build-essential python3.12-dev portaudio19-dev 
+  uv tool update-shell
   ```
+
+Alternatively refer to `uv`'s [documentation][uv-install] and ensure to provide
+the necessary system dependencies.
+
+Install VHSh via:
 
 ```sh
-uv tool update-shell
 uv tool install vhsh[all]
-vhsh -h
 ```
 
+The `[all]` installs the full feature set. If you want to manually select
+certain features, for example because you don't need audio or MIDI, you can list
+them in the brackers (multiple are possible):
+
+- automatic reload on file change: `vhsh[watch]`
 - MIDI support: `vhsh[midi]`
 - audio support: `vhsh[audio]`
+- import from Shadertoy: `vhsh[import]`
 - everyting: `vhsh[all]`
 
 
@@ -56,68 +71,30 @@ uv publish
 
 ## Usage
 
-Then run `VHSh` fron that environment
+To open a shader file, a _scene_, use the `run` command:
 
-```bash
-source .venv/bin/activate
-python3 vhsh.py mandelbrot.glsl
+```sh
+vhsh run myscene.glsl
 ```
 
+When run without any file argument, the default scenes will be loaded and a
+`testcard.glsl` scene will be created in the current directory.
+
 If you pass multiple shader files, you can switch between them in the tool.
-To open all files in a given folder, use `my_shader_folder/*`.
+To open all files GLSL files in a given folder, use `my_shader_folder/*.glsl`.
 
-You can pass `--watch` to automatically reload the shader upon file change.
+If installed with `[watch]`, the shader files will be watched for changes and
+automatically reloaded.
 
-You can pass `--mic` to enable microphone input. See
+If installed with `[audio]` You can pass `--mic` to enable microphone input. See
 [_Builin Parameters_](#builtin-parameters).
 
 To toggle the UI, press `<tab>`.
 
-If you're seeing a message like
 
-> 2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState:
-> Existing state will not be touched. New state will be written to
-> /var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
+### Writing Shaders for _Video Home Shader_
 
-run the following to get rid of it:
-
-```bash
-defaults write org.python.python ApplePersistenceIgnoreState NO
-```
-
-
-### MIDI Support
-
-When using the `--midi` flag, VHSh will listen to incoming MIDI messages and allow
-you to map parameters to MIDI controls. How to assign uniform mappings is described
-in [Custom Parameters](#Custom_Parameters).
-
-There are also a couple of system controls, like switching scenes, that can be
-mapped to buttons as well. Such a mapping is defined as a [TOML][toml] file and
-passed via `--midi-mapping`.
-
-```toml
-[scene]
-prev = 58  # switch to next scene
-next = 59  # switch to previous scene
-
-[preset]
-prev = 61  # switch to next preset
-next = 62  # switch to previous preset
-save = 60  # save current parameter values to a new preset
-
-[uniform]
-toggle_ui = 45  # toggle paramter tweaking window
-
-[uniform.time]
-toggle = 41  # toggle u_Time running
-```
-
-Sensible mappings for various controls are supplied in
-[`midi_mappings/`](./midi_mappings).
-
-
-## Writing Shaders for _Video Home Shader_
+_Scene format version: 1_
 
 _Video Home Shader_ supplies you with a 2D canvas to draw into using an OpenGL
 _fragment shader_. It is run once for every pixel on the screen and determines
@@ -128,8 +105,9 @@ It defines
 
 > OpenGL Version 330 core
 
-so you just need to supply a `main` function and set the output color `FragColor`
-as an RGBA `vec4` with floats between 0 and 1 (`0., 0., 0., 1.)` being black).
+so you just need to supply a `main` function and set the output color
+`FragColor` as an RGBA `vec4` with floats between 0 and 1 (`0., 0., 0., 1.)`
+being black).
 
 ```glsl
 void main() {
@@ -137,38 +115,38 @@ void main() {
 }
 ```
 
-### Builtin Parameters
+#### Builtin Parameters
 
 You can use the following built-in parameters, that are pre-defined in the
 preamble:
 
-- `vec2 u_Resolution`: width and height of the window in pixels. This can
+- `vec2 Resolution`: width and height of the window in pixels. This can
   be used to calculate normalized screen space coordinates like
   ```glsl
-  vec2 pos = gl_FragCoord.xy / u_Resolution;
+  vec2 pos = gl_FragCoord.xy / Resolution;
   ```
   where `pos.xy` will now have the current pixel's coordinates between
   `[-1, 1]^2`
-- `float u_Time`: Seconds since the program start. This can be used to animate
+- `float Time`: Seconds since the program start. This can be used to animate
   things. For example
   ```glsl
-  vec4 color = vec4((sin(2. * 3.14 * u_Time * ) + 1.) / 2., 0., 0., 1.);
+  vec4 color = vec4((sin(2. * 3.14 * Time * ) + 1.) / 2., 0., 0., 1.);
   ```
   will create a red pulsing effect with one pulse per second.
-- `float[7] u_Microphone`: If started with `--mic`, this is a float
+- `float[7] Microphone`: If started with `--mic`, this is a float
   array that gives you volume per frequency band normalized over the last 5s.
 
-  | Index             | Range   |        | Description |
-  | ----------------- | ------- | ------ | ----------- |
-  | `u_Microphone[0]` | 0 Hz    | 60 Hz  | Rumble      |
-  | `u_Microphone[1]` | 60 Hz   | 250 Hz | Low End     |
-  | `u_Microphone[2]` | 250 Hz  | 500 Hz | Low Mids    |
-  | `u_Microphone[3]` | 500 Hz  | 2 kHz  | Mids        |
-  | `u_Microphone[4]` | 2 KHz   | 6 kHz  | High Mids   |
-  | `u_Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
-  | `u_Microphone[6]` | > 8 KHz |        | Air         |
+  | Index           | Range   |        | Description |
+  | --------------- | -------:| ------:| ----------- |
+  | `Microphone[0]` | 0 Hz    | 60 Hz  | Rumble      |
+  | `Microphone[1]` | 60 Hz   | 250 Hz | Low End     |
+  | `Microphone[2]` | 250 Hz  | 500 Hz | Low Mids    |
+  | `Microphone[3]` | 500 Hz  | 2 kHz  | Mids        |
+  | `Microphone[4]` | 2 KHz   | 6 kHz  | High Mids   |
+  | `Microphone[5]` | 6 kHz   | 8 kHz  | Highs       |
+  | `Microphone[6]` | > 8 KHz |        | Air         |
 
-### Custom Parameters
+#### Custom Parameters
 
 You can define custom parameters to vary directly in the code, and the user
 interface to manipulate them will be generated automatically. Use the `uniform`
@@ -235,7 +213,7 @@ If two consecutive uniforms share a common prefix in their name (like
 `box_size` and `box_color`), they will be grouped together.
 
 
-## Presets
+#### Presets
 
 You can save the current uniform values as the new `=DEFAULT` parameter in your
 loaded shader source file by clicking `Save` when the currently selected preset.
@@ -243,11 +221,11 @@ is `<current>`.
 
 Furthermore, you can store multiple sets of parameters (including different)
 default values, ranges, MIDI mappings etc.) as _presets_. To save a new preset,
-enter the name in the `Name` field and click `New Preset`. The shader source file
-will be modified by prepending the unform and metadata defintions with a special
-comment prefix (`/// `). Since all those lines will deleted and rewritten on save,
-be sure to not use triple-slashes for other reasons. Each preset is preceeded by
-its name.
+enter the name in the `Name` field and click `New Preset`. The shader source
+file will be modified by prepending the unform and metadata defintions with a
+special comment prefix (`/// `). Since all those lines will deleted and
+rewritten on save, be sure to not use triple-slashes for other reasons. Each
+preset is preceeded by its name.
 
 ```glsl
 /// // My New Preset
@@ -263,130 +241,211 @@ You can add, modify and delete these comment blocks with you're text editor as
 well.
 
 To update an existing preset, select it, adjust the parameter values and click
-`Save`. The current paremeter values will be written to the default values of the
-currently selected preset.
+`Save`. The current paremeter values will be written to the default values of
+the currently selected preset.
 
 
-## TODO
+#### Metadata
 
-- [x] render fragment shader over the whole screen
-- [x] load shader from file
-- [x] auto-generate tuning ui for uniforms
-- [x] auto-define builtin uniforms / math library / preamble
-- [x] hot reload https://watchfiles.helpmanual.io/api/watch/
-- [x] define defaults and ranges in uniform definition as comment
-- [x] MIDI controller support
-- [x] select different shaders
-- [x] save and load different presets
-- [x] write current values to file
-- [x] 60fps cap / fps counter
-- [x] show or hide the controls
-- [x] imgui display shader compile errors
-- [x] widget size and close button
-- [x] re-parse metadata on reload
-- [x] remember window position
-- [ ] fix dropdown crashes when no presets available
-      ```
-      File "/Users/phistep/Projects/vhsh/vhsh.py", line 563, in _update_gui
-      for idx, item in  [(p['index'], p['name'])
-                        ~^^^^^^^^^
-      ```
-- [ ] fix `t` as uniform name doesn't generate ui
-- [ ] bug uniform parsing when float `=0.0`
-- [ ] limit resolution and upscale
-- [ ] write state to MIDI controler (uTime, UI toggle etc)
-- [ ] autosave and restore uniform values
-      `atexit` and `pickle`
-- [ ] `#include`s, or at least one stdlib in preamble, or pass libs
-- [ ] vec3 input method:
-      - select dim with S/M/R buttons, then use the slider
-      - auto assign n sucessor ids as well
-      - have the user assign multiple `#1,#2,#3`
-- [ ] "touchpad" widget for `vec2`
-- [ ] test image when started without any shader files
-- [ ] record mp4
-- [ ] startup mode: no gui and fullscreen (not possible in glfw, need sdl)
-      maybe `glfw.get_cocoa_window` https://github.com/glfw/glfw/issues/1216
-- [ ] TODO.md
-- [ ] pypi
-- [ ] pass scene dir with scenes, midi mapping and other assets
-- [ ] shadertoy import
-- [ ] rename uniforms to just capitalized: `Time`, etc.
-- [ ] simplify parser: split on `" "`, then `match` on first char
-- [ ] make named midi ccs in toml via #defines
-     ```toml
-     [uniform.inputs]
-     slider = [1, 2, 3, 4]
-     knob = [10, 11, 12, 13]
-     button = [20, 21, 22, 23]
-     master_button = 42
-     ```
-     ```glsl
-     uniform float zoom; // #slider1
-     uniform bool debug; // <toggle> #button1
-     uniform bool flash; // #master_button
-     ```
-- [ ] view midi mappings in imgui
-- [ ] widgets
-  - [x] `<log>`
-  - [x] `<drag>` drag input, others sliders (for slider flags)
-  - [x] ~~~`<hsv` and `<rgb>`~~~
-  - [ ] MIDI vector control with button triplet
-- [ ] uniforms
-  - [x] time
-  - [ ] mouse
-  - [ ] prev frame
-  - [-] audio fft
-    - [x] listen
-    - [x] fft
-    - [x] array uniforms
-    - [ ] normalization
-    - [ ] gui bar plot
-    - [ ] docs, demo scene
-    - [ ] selecting microphone
-  - [ ] video in
-  - [ ] image/video file in with `uniform sampler2D foo; // @assets/foo.mp4`
-  - [ ] arbitrary data as buffer object
-- [ ] Gamma Correctio
-    - [_Monitor Guide: Gamma ramp_](https://www.glfw.org/docs/latest/monitor_guide.html)
-    - [`GLFW_SRGB_CAPABLE`](https://www.glfw.org/docs/latest/window_guide.html#GLFW_SRGB_CAPABLE)
-    - [`GLFWgammarramp`](https://www.glfw.org/docs/latest/group__monitor.html#ga939cf093cb0af0498b7b54dc2e181404)
-- [ ] big refactoring
-  - one file? or full package with exe in PATH?
-  - docstrings
-  - ```
-    VideoHomeShader
-        context: all variables to consider
-      MIDIManager
-        Thread
-        needs uniforms, system commands
-      GUI
-        needs uniforms, system commands
-      ShaderRenderer
-        scenes
-        needs system commands
-      FileWatcher
-        talks to Shader Renderer
-      PresetManager
-        presets
-    ```
-- switch to SDL?
-  - native macos fullscreen
-  - mic input https://www.lazyfoo.net/tutorials/SDL/34_audio_recording/index.php
+Metadata for a scene can be recorded in the form of
+```glsl
+/// @key value
+```
 
-## Resources
+Currently supported metadata fields:
 
-- https://pyopengl.sourceforge.net/documentation/manual-3.0/
-- https://regex101.com
-- https://github.com/pyimgui/pyimgui/blob/master/doc/examples/testwindow.py
-- https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
+- `version` (`int`): Used to ensure scene format and VHSh version are
+  compatible. Will emit a warning when loading a scene with missing or
+  incompatible version. Missing version will be updated when saving a preset.
+- `name` (`str`): Can be used to set a custom scene name. If omitted, the file
+  name will be cleaned up and title-cased.
+- `author` (`str`): Credit the author.
+
+
+#### Resources
+
 - https://iquilezles.org/articles/
 - https://docs.gl/sl4/
 - https://www.youtube.com/watch?v=f4s1h2YETNY
 - http://dev.thi.ng/gradients/
+
+
+#### Scene Format Version History
+
+##### `@version 1`
+- Introduced version number
+- Changed system uniforms from `u_Time` to `Time` etc.
+- Introduced metadata, keys: `version`, `name`, `author`
+
+
+### MIDI Support
+
+When installed using `[midi]` flag, VHSh will listen to incoming MIDI messages
+and allow you to map parameters to MIDI controls. How to assign uniform mappings
+is described in [Custom Parameters](#custom-parameters).
+
+There are also a couple of system controls, like switching scenes, that can be
+mapped to buttons as well. Such a mapping is defined as a [TOML][toml] file and
+passed via `--midi-mapping`.
+
+```toml
+[scene]
+prev = 58  # switch to next scene
+next = 59  # switch to previous scene
+
+[preset]
+prev = 61  # switch to next preset
+next = 62  # switch to previous preset
+save = 60  # save current parameter values to a new preset
+
+[ui]
+toggle = 45  # show/hide parameter control window
+
+[parameter.time]
+toggle = 41
+```
+
+Sensible mappings for various controls are supplied in
+[`midi_mappings/`](./midi_mappings).
+
+
+### Migrating Scenes
+
+For a history of the scene format, see
+[_Scene Format Version History_](#scene-format-version-history).
+
+To migrate your scenes from its current version to the most recent one, use
+the `migrate` command:
+
+```sh
+vhsh migrate myscene.glsl
+```
+
+Afterwards, the file `myscene.glsl` will be migrated and can be run with
+`vhsh run`. A backup file will be created in the current directory, so in case
+there is a problem with the auto-migration no, no data will be lost.
+
+Check `vhsh migrate --help` for more info, but you can also pass `--from` and
+`--to` version numbers to only migrate between those.
+
+
+### Importing Scenes
+
+#### Shadertoy
+
+You can import scenes from [Shadertoy.com][shadertoy].
+
+```sh
+vhsh import https://www.shadertoy.com/view/ftt3R7
+```
+
+> [!WARNING]
+> The Shadertoy API usage was exceeded and the included key does not work..
+
+To use your own API key (available from [Shadertoy Apps][shadertoy-apps]), set
+`$VHSH_API_KEY_SHADERTOY`:
+```sh
+VHSH_API_KEY_SHADERTOY=abc123 vhsh import https://www.shadertoy.com/view/ftt3R7
+```
+
+
+## Development
+
+You can run `vhsh` with the `-v`/`--verbose` (before the sub-command), to enable
+debug logging.
+
+VHSh uses the [Astral][astral] toolchain: [`uv`][uv] for dependcy-management and
+packaging, [`ruff`][ruff] for linting and formatting, and [`ty`][ty] as language
+server and type checker.
+
+
+### Setup
+
+On macOS, install `uv` via, or refer to its [documentation][uv-install]:
+```sh
+brew install uv
+```
+
+Then create a virtual environment and run the test suite.
+
+```sh
+uv sync --dev --extra all
+uv run ruff check
+uv run ty check
+uv run vulture
+uv run pytest
+```
+
+To ignore formatting changes etc for git-blame, configure
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+
+### Publish
+
+To publish the package to PyPI, setup the credentials for PyPI in `.env`
+
+```sh
+UV_PUBLISH_TOKEN=pypi-...
+```
+
+Create a [SemVer][semver] git tag, as the package version is dynmically
+determined by the latest git tag. Use `uv` to build and publish wheels.
+
+```sh
+git tag -a v1.23.42
+
+set -a; source .env; set +a
+
+uv build
+uv publish
+```
+
+
+### Resources
+
+- https://pthom.github.io/imgui_manual_online/manual/imgui_manual.html
+- https://pyopengl.sourceforge.net/documentation/manual-3.0/
+- https://regex101.com
+- https://github.com/pyimgui/pyimgui/blob/master/doc/examples/testwindow.py
 - https://mido.readthedocs.io/en/stable/intro.html
+
+
+## Miscellaneous
+
+If you're seeing a message like
+
+```
+2024-10-02 22:10:15.567 Python\[75271:1828570\] ApplePersistenceIgnoreState:
+Existing state will not be touched. New state will be written to
+/var/folders/2b/gfpmffr15n9cwdy6_44mhy8r0000gn/T/org.python.python.savedState
+```
+
+run the following to get rid of it:
+
+```sh
+defaults write org.python.python ApplePersistenceIgnoreState NO
+```
+
+## License
+
+```
+VHSh Copyright (C) 2024  Philipp Stephan
+This program comes with ABSOLUTELY NO WARRANTY
+This is free software, and you are welcome to redistribute it
+under certain conditions
+```
 
 
 [imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364
 [imgui.pyi]: https://raw.githubusercontent.com/denballakh/pyimgui-stubs/refs/heads/master/imgui.pyi
 [toml]: https://toml.io
+[astral]: https://www.astral.sh/
+[uv]: https://docs.astral.sh/uv/
+[uv-install]: https://docs.astral.sh/uv/getting-started/installation/
+[ruff]: https://docs.astral.sh/ruff/
+[ty]: https://docs.astral.sh/ty/
+[semver]: https://semver.org/
+[shadertoy]: https://shadertoy.com/
+[shadertoy-apps]: https://www.shadertoy.com/myapps

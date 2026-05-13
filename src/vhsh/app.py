@@ -1,0 +1,286 @@
+import logging
+import shutil
+import time
+from collections import deque
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from threading import Event
+
+from imgui.integrations.glfw import GlfwRenderer
+
+from .gui import GUI
+from .microphone import Microphone
+from .midi import MIDIController
+from .renderer import Renderer, ShaderCompileError
+from .scene import ParameterParserError, Scene
+from .types import Color, Controller, SystemParameter, UniformValue
+from .watch import FileWatcher
+from .window import Window
+
+DEFAULT_SCENE_DIR = Path(__file__).parent / "scenes"
+
+
+logger = logging.getLogger(__name__)
+
+
+class Time:
+    def __init__(self, running: bool = True):
+        self._running = running
+        self._start = self.now()
+        self._last_time = 0
+        self._offset = 0
+
+    def now(self):
+        return time.monotonic()
+
+    @property
+    def running(self) -> bool:
+        return self._running
+
+    @running.setter
+    def running(self, start: bool):
+        if start == self._running:
+            return
+        if start:
+            self._offset += self.now() - self._last_time
+            self._running = True
+            logger.info("Time restarted at %.3fs", self())
+        else:
+            self._last_time = self.now()
+            self._running = False
+            logger.info("Time stopped at %.3fs", self())
+
+    def __call__(self) -> float:
+        current_time = self.now() if self.running else self._last_time
+        return current_time - self._start - self._offset
+
+
+class VHSh:
+    SCENE_FORMAT_VERSION = 1
+
+    def __init__(
+        self,
+        scenes: list[Path],
+        width: int = 1280,
+        height: int = 720,
+        midi_mapping: dict = {},
+        microphone: bool = False,
+    ):
+        self.window = Window(self.__class__.__name__, width, height)
+
+        self.time = Time()
+        self.frame_times = deque([1.0], maxlen=100)
+        self.error: ShaderCompileError | ParameterParserError | None = None
+
+        self._load_request = Event()
+        self._load_request_args = {}
+        self._scene_index = 0
+        self.scenes = [
+            Scene(path, required_version=self.SCENE_FORMAT_VERSION) for path in scenes
+        ]
+        if not self.scenes:
+            self.scenes = self._get_default_scenes()
+        # NOTE: we don't want to use the `SystemParameters` TypedDict here, because
+        # without `extra_items=` (3.15) `self.system_parameters.values()` yields
+        # `object` instead of `SystemParameter`.
+        self.system_parameters: dict[str, SystemParameter[UniformValue]] = dict(
+            Resolution=SystemParameter(
+                "Resolution",
+                type="vec2",
+                value=(0.0, 0.0),
+                update=lambda app: app.window.size,
+            ),
+            Time=SystemParameter(
+                "Time", type="float", value=0.0, update=lambda app: app.time()
+            ),
+        )
+
+        self.controllers: dict[str, Controller] = dict(
+            FileWatcher=FileWatcher(self),
+            MIDIController=MIDIController(self, system_mapping=midi_mapping),
+            Microphone=Microphone(self, enabled=microphone),
+        )
+        for controller in self.controllers.values():
+            controller.start()
+
+        self.renderer = Renderer(list(self.system_parameters.values()))
+        self.gui = GUI(app=self, renderer=GlfwRenderer, window=self.window.handler)
+
+        def _rel(path: Path) -> Path:
+            try:
+                return path.absolute().relative_to(Path.cwd().absolute())
+            except ValueError:
+                return path.absolute()
+
+        logger.info(
+            f"{Color.Style.BOLD}Scenes:{Color.RESET}\n%s",
+            "\n".join(
+                f"  {scene.name}  {Color.Style.FAINT}[{_rel(scene.path)}]{Color.RESET}"
+                for scene in self.scenes
+            ),
+        )
+        self.load()
+
+    # TODO move to __main__
+    def _get_default_scenes(self, directory: Path = DEFAULT_SCENE_DIR) -> list[Scene]:
+        _paths = sorted(directory.glob("*.glsl"))
+
+        # create first scene in current dir
+        local_paths = [Path() / _paths[0].name.lstrip("_")]
+
+        # use temporary files for remaining, so users can't over-write these
+        for _path in _paths[1:]:
+            local_paths.append(
+                Path(
+                    NamedTemporaryFile(
+                        prefix=f"{self.__class__.__name__.lower()}_",
+                        suffix=f"_{_path.name}",
+                        # we don't clean up because we don't want to delete
+                        # potential user edits
+                        delete=False,
+                    ).name
+                )
+            )
+
+        for _path, local_path in zip(_paths, local_paths):
+            # TODO 3.14 Path.copy()
+            # does not preserve permissions or metadata
+            shutil.copyfile(_path, local_path)
+
+        return [
+            Scene(path, required_version=self.SCENE_FORMAT_VERSION)
+            for path in local_paths
+        ]
+
+    @property
+    def scene(self) -> Scene:
+        return self.scenes[self.scene_index]
+
+    @property
+    def scene_index(self) -> int:
+        return self._scene_index
+
+    @scene_index.setter
+    def scene_index(self, value: int):
+        logger.debug("VHSh.scene_index.setter: %i", value)
+
+        self._scene_index = value
+        self.scene.preset_index = 0
+        # TODO maybe make reload explicit? with `changed` return from imgui
+        self.load(clear=True)
+
+    def prev_scene(self, n=1):
+        self.scene_index = (self.scene_index - n) % len(self.scenes)
+
+    def next_scene(self, n=1):
+        self.scene_index = (self.scene_index + n) % len(self.scenes)
+
+    def load(self, clear: bool = True):
+        # self.render.set_shader will interact with the OpenGL system. So if
+        # called from a different thread (ie MIDI), it will crash. Therefore,
+        # we ensure that it is only called from the MainThread by signaling
+        # from the other threads and actually loading in the main loop. And
+        # hope for no race conditions
+        self._load_request.set()
+        # yes yes, I know, I need a lock, ...
+        self._load_request_args = dict(clear=clear)
+
+    def _load(self, clear: bool = True):
+        logger.info(f"{Color.Style.BOLD}\nScene:{Color.RESET} %s", self.scene.name)
+        logger.info(
+            f"{Color.Style.BOLD}Presets:{Color.RESET}\n%s",
+            "\n".join(f"  {p.name}" for p in self.scene.presets),
+        )
+        current_preset = self.scene.presets[self.scene.preset_index]
+        logger.info(
+            f"{Color.Style.BOLD}Parameters:{Color.RESET}\n%s",
+            "\n".join(
+                f"  {p.removeprefix('/// uniform ')}"
+                for p in str(current_preset).splitlines()
+            ),
+        )
+
+        self.scene.reload()
+        parameters = [*self.system_parameters.values(), *self.scene.parameters.values()]
+        try:
+            self.renderer.set_shader(self.scene.source, parameters, clear=clear)
+        except ShaderCompileError as e:
+            self.error = e
+            logger.error("%s:\n%s", self.scene.path, e.format())
+        else:
+            self.error = None
+            logger.info(
+                f"{Color.GREEN + Color.Style.BOLD}OK{Color.RESET}:"
+                f" {self.scene.name}"
+                f"  {Color.Style.FAINT}[{self.scene.path}]{Color.RESET}"
+            )
+
+    def run(self):
+        last_time = self.time.now()
+        num_frames = 0
+        try:
+            if not self.renderer or not self.gui or self.gui._renderer is None:
+                raise RuntimeError("glfw imgui renderer not initialized!")
+
+            while not self.window.should_close():
+                # TODO -> renderer.frame_times, .update()? maybe not
+                # TODO fix should use own high precion timer?
+                # TODO correct unit?
+                current_time = self.time.now()
+                num_frames += 1
+                if current_time - last_time >= 0.1:
+                    self.frame_times.append(100 / num_frames)
+                    num_frames = 0
+                    last_time += 0.1
+
+                self.window.update()
+                self.gui.process_inputs()
+
+                if self._load_request.is_set():
+                    self._load(**self._load_request_args)
+                    self._load_request_args = {}
+                    self._load_request.clear()
+
+                for system_parameter in self.system_parameters.values():
+                    system_parameter.update(self)
+
+                for controller in self.controllers.values():
+                    controller.update_pre()
+
+                if not self.error:
+                    self.renderer.update(
+                        (
+                            *self.system_parameters.values(),
+                            *self.scene.parameters.values(),
+                        )
+                    )
+                    self.renderer.render(framebuffer_size=self.window.size)
+
+                for controller in self.controllers.values():
+                    controller.update_post()
+
+                self.gui.update()
+                self.gui.render()
+
+                self.window.swap_buffers()
+
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.shutdown()
+
+    def shutdown(self):
+        if hasattr(self, "renderer"):
+            self.renderer.shutdown()
+        if hasattr(self, "gui"):
+            self.gui.shutdown()
+        self.window.close()
+
+        if hasattr(self, "controllers"):
+            for controller in self.controllers.values():
+                if controller.is_alive():
+                    controller.stop()
+                    controller.join()
+
+    def __del__(self):
+        self.shutdown()

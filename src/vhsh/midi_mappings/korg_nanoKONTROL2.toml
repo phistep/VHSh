@@ -1,7 +1,7 @@
 [scene]
 prev = 58
 next = 59
-auto_play = 46
+# auto_play = 46
 # record = 45
 
 [preset]
@@ -9,11 +9,19 @@ prev = 61
 next = 62
 save = 60
 
-[uniform]
-color_control_offset = [32, 48, 64]
-toggle_ui = 45
+[ui]
+toggle = 45
+# transparency =
+# floating =
+# fullscreen =
 
-[uniform.time]
+[parameter.time]
 toggle = 41
-decrease_speed = 43
-increase_speed = 44
+# decrease_speed = 43
+# increase_speed = 44
+
+# [parameter.custom]
+# slider = [1, 2, 3, 4]
+# knob = [10, 11, 12, 13]
+# button = [20, 21, 22, 23]
+# master_button = 42
