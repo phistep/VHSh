@@ -1,19 +1,5 @@
 # TODO
 
-## 1.0
-
-- migration file name with slashes?!
-  `4d_12_cell.glsl.0.2026-01-19T21/18/33.482303.bkp`
-  -> `4d_12_cell.bkp.0.2026-01-19T21-18-33.482303.glsl`
-- migrate doesn't work?!
-- move to GPL! (AI)
-- remove fullscreen
-
-release rc
-
-
-release 1.0.0 🥳
-
 review branches, delete already-included 
 
 - dev docs: Scenes, Parameters, Controllers, scene_index
@@ -58,6 +44,7 @@ review branches, delete already-included
 - [ ] homebrew package
 - [ ] import from source (`--format`/`--dialect` + file)
 - [ ] width of error window
+- [ ] fix fullscreen (fake on macOS, buggy on Linux)
 
 - included scenes
   - testcard

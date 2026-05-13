@@ -5,7 +5,7 @@ readme = "README.md"
 authors = [
     { name = "Philipp Stephan", email = "mail@philippstephan.de" }
 ]
-license = "MIT"
+license = "GPL-3.0"
 license-files = ["LICENSE"]
 classifiers = [
     "Programming Language :: Python :: 3.12",

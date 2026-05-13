@@ -402,6 +402,15 @@ run the following to get rid of it:
 defaults write org.python.python ApplePersistenceIgnoreState NO
 ```
 
+## License
+
+```
+VHSh Copyright (C) 2024  Philipp Stephan
+This program comes with ABSOLUTELY NO WARRANTY
+This is free software, and you are welcome to redistribute it
+under certain conditions
+```
+
 
 [imgui-issue-stubs]: https://github.com/pyimgui/pyimgui/issues/364
 [imgui.pyi]: https://raw.githubusercontent.com/denballakh/pyimgui-stubs/refs/heads/master/imgui.pyi
