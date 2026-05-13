@@ -11,6 +11,9 @@ from vhsh.scene import Scene
 def scene_source() -> dict[int, str]:
     return {
         0: dedent("""\
+            /// foo
+            /// uniform float f; // =42.0 #42
+            uniform float f; // =23.0 #42
             void main() {
                 vec2 uv = (gl_FragCoord.xy * 2. - u_Resolution.xy) / u_Resolution.y;
                 float t = sin(2. * u_Time) / 2.;
@@ -20,6 +23,9 @@ def scene_source() -> dict[int, str]:
         """),
         1: dedent("""\
             /// @version 1
+            /// foo
+            /// uniform float f; // =42.0 #42
+            uniform float f; // =23.0 #42
             void main() {
                 vec2 uv = (gl_FragCoord.xy * 2. - Resolution.xy) / Resolution.y;
                 float t = sin(2. * Time) / 2.;
