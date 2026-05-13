@@ -83,7 +83,7 @@ class VHSh:
         # NOTE: we don't want to use the `SystemParameters` TypedDict here, because
         # without `extra_items=` (3.15) `self.system_parameters.values()` yields
         # `object` instead of `SystemParameter`.
-        self.system_parameters: dict[str, SystemParameter[UniformValue]] = dict(
+        self.system_parameters: dict[str, SystemParameter[UniformValue]] = dict(  # ty: ignore[invalid-assignment]
             Resolution=SystemParameter(
                 "Resolution",
                 type="vec2",

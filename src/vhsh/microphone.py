@@ -68,8 +68,8 @@ class Microphone(Controller):
             self.UNIFORM_NAME,
             type=f"float[{num_levels}]",
             value=(0.0) * num_levels,
-            update=lambda app: app.controllers[self.__class__.__name__].levels,
-        )
+            update=lambda app: app.controllers[self.__class__.__name__].levels,  # ty: ignore[unresolved-attribute]
+        )  # ty: ignore
 
         if not enabled:
             logger.debug("microphone disabled, shutting down...")

@@ -157,10 +157,10 @@ def main_import(args: argparse.Namespace):
         logger.error(f"Failed to import scene: {e}")
         exit(1)
     except HTTPError as e:
-        if e.response.status_code == 403:
+        if e.response and e.response.status_code == 403:
             logger.error(f"Author disabled downloading: {e}")
             exit(3)
-        if e.response.status_code == 404:
+        if e.response and e.response.status_code == 404:
             logger.error(f"Scene not found on Shadertoy: {e}")
             exit(4)
         else:
