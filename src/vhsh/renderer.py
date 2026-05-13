@@ -322,7 +322,7 @@ class Renderer:
                 del self.uniforms[unused]
 
     def render(self, framebuffer_size: tuple[int, int]):
-        """width, height"""
+        """:param framebuffer_size: width, height"""
         # TODO do I need to do this every frame? also: glBindVertexArray
         gl.glViewport(0, 0, *framebuffer_size)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)

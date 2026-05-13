@@ -2,21 +2,23 @@
 
 ## 1.0
 
-- migration kills presets?
-- import from source
-
-- read through every file and polish, check for dead code
-- test on the machine!
+- migration file name with slashes?!
+  `4d_12_cell.glsl.0.2026-01-19T21/18/33.482303.bkp`
+  -> `4d_12_cell.bkp.0.2026-01-19T21-18-33.482303.glsl`
+- migrate doesn't work?!
+- move to GPL! (AI)
+- remove fullscreen
 
 release rc
 
-- dev docs: Scenes, Parameters, Controllers, scene_index
-- docstrings
-- github actions (test, lint, tag+publish on merge)
 
 release 1.0.0 🥳
 
 review branches, delete already-included 
+
+- dev docs: Scenes, Parameters, Controllers, scene_index
+- docstrings
+- github actions (test, lint, tag+publish on merge)
 
 
 ## Road Map
@@ -32,6 +34,7 @@ review branches, delete already-included
   - gui show mappings
   - version + pydantic model midi mapping? 
   - specialized parameter classes
+  - apc abelton take over mode?
 - 1.2: scene dir support: Collection? Project?
 - 1.3: kiosk
 - 1.4: sampler2D support: image, video
@@ -52,6 +55,9 @@ review branches, delete already-included
 - [ ] change time speed
 - [ ] debian package: install system deps, mime handlers, dekstop file,
       branch `package-linux` or flatpak
+- [ ] homebrew package
+- [ ] import from source (`--format`/`--dialect` + file)
+- [ ] width of error window
 
 - included scenes
   - testcard
@@ -127,6 +133,7 @@ review branches, delete already-included
       imgui.show_style_editor()
       imgui.end()
       ```
+- [ ] make imgui optional, [gui] extra, (support newer Python?)
 
 
 - [ ] make named midi ccs in toml via #defines
